@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true); // Inicia como true
+  const [loading, setLoading] = useState(true);
 
   const fetchProfileAndRole = async (userId: string) => {
     console.log(`[AuthContext] fetchProfileAndRole INICIADO para o usuário: ${userId}`);
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (roleError && roleError.code !== 'PGRST116') { // PGRST116 significa que nenhuma linha foi encontrada, o que é aceitável se o usuário ainda não tiver um cargo
         console.error('[AuthContext] fetchProfileAndRole: Erro ao buscar cargo:', roleError.message);
-        setRole(null);
+        setRole(null); // Set role to null on error
       } else if (roleData) {
         console.log('[AuthContext] fetchProfileAndRole: Dados de cargo brutos recebidos:', roleData);
         setRole(roleData.role as UserRole ?? null);
@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Inscrição de estado de autenticação cancelada.');
       subscription.unsubscribe();
     };
-  }, []); // Array de dependências vazio significa que isso é executado uma vez na montagem
+  }, []);
 
   // Configurar listeners em tempo real para mudanças de perfil e cargo
   useEffect(() => {
@@ -193,11 +193,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(roleChannel);
     };
-  }, [user?.id]); // Reexecutar quando user.id muda
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     console.log('[AuthContext] Tentando fazer login...');
-    setLoading(true); // Define loading como true na tentativa de login
+    setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -205,26 +205,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (error) {
         console.error('[AuthContext] Erro no login:', error);
-        setLoading(false); // Redefine loading em caso de erro
+        setLoading(false);
       }
       return { error };
     } catch (error) {
       console.error('[AuthContext] Exceção inesperada no login:', error);
-      setLoading(false); // Redefine loading em caso de exceção
+      setLoading(false);
       return { error: error as Error };
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string, userRole: UserRole) => {
     console.log('[AuthContext] Tentando cadastrar...');
-    setLoading(true); // Define loading como true na tentativa de cadastro
+    setLoading(true);
     try {
       // Validar dados de cadastro
       try {
         signupSchema.parse({ email, password, full_name: fullName });
       } catch (error) {
         if (error instanceof z.ZodError) {
-          setLoading(false); // Redefine loading em caso de erro de validação
+          setLoading(false);
           return { error: new Error(error.errors[0].message) };
         }
       }
@@ -244,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('[AuthContext] Erro no cadastro:', error);
-        setLoading(false); // Redefine loading em caso de erro
+        setLoading(false);
         return { error };
       }
 
@@ -256,28 +256,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (roleError) {
           console.error('[AuthContext] Erro ao inserir cargo:', roleError);
-          setLoading(false); // Redefine loading em caso de erro de cargo
+          setLoading(false);
           return { error: roleError as unknown as Error };
         }
       }
-      // setLoading(false) será tratado por onAuthStateChange após o cadastro bem-sucedido
       return { error: null };
     } catch (error) {
       console.error('[AuthContext] Exceção inesperada no cadastro:', error);
-      setLoading(false); // Redefine loading em caso de exceção
+      setLoading(false);
       return { error: error as Error };
     }
   };
 
   const signOut = async () => {
     console.log('[AuthContext] Tentando sair...');
-    setLoading(true); // Define loading como true na tentativa de sair
+    setLoading(true);
     try {
       await supabase.auth.signOut();
-      // setLoading(false) será tratado por onAuthStateChange após a saída bem-sucedida
     } catch (error) {
       console.error('[AuthContext] Erro ao sair:', error);
-      setLoading(false); // Redefine loading em caso de erro
+      setLoading(false);
     }
   };
 
