@@ -103,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
       }
 
-      // ⭐ AQUI ESTAVA FALTANDO ⭐
       setLoading(false);
       console.log(`[AuthContext] onAuthStateChange: Loading agora é ${false}. Usuário: ${currentSession?.user?.id}, cargo: ${role}`);
     };
@@ -199,10 +198,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
+
       if (error) {
         console.error('[AuthContext] Erro no login:', error);
         setLoading(false); // Reset loading on error
       }
+      // Se der certo, o onAuthStateChange cuida do resto (setLoading(false))
       return { error };
     } catch (error) {
       console.error('[AuthContext] Exceção inesperada no login:', error);
