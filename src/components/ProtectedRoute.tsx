@@ -26,7 +26,8 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(role as UserRole)) {
+  // Explicitly check if role is null or undefined before using it in includes
+  if (requiredRoles && requiredRoles.length > 0 && (!role || !requiredRoles.includes(role))) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">

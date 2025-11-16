@@ -35,6 +35,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfileAndRole = async (userId: string) => {
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+
+      // Fetch role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .order('role')
+        .limit(1)
+        .single();
+
+      if (roleError && roleError.code !== 'PGRST116') throw roleError; // PGRST116 means no rows found, which is fine if user has no role yet
+      setRole(roleData?.role as UserRole ?? null);
+    } catch (error) {
+      console.error('Error fetching profile and role:', error);
+      setProfile(null);
+      setRole(null);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -43,27 +73,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer fetching profile and role to avoid blocking
-          setTimeout(async () => {
-            await fetchProfileAndRole(session.user.id);
-          }, 0);
+          await fetchProfileAndRole(session.user.id); // Fetch immediately
         } else {
           setProfile(null);
           setRole(null);
         }
+        setLoading(false); // Set loading to false after initial state is determined
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check for existing session on initial load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfileAndRole(session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+        await fetchProfileAndRole(session.user.id); // Fetch immediately
       }
+      setLoading(false); // Set loading to false after initial state is determined
     });
 
     return () => subscription.unsubscribe();
@@ -120,34 +147,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(roleChannel);
     };
   }, [user?.id]);
-
-  const fetchProfileAndRole = async (userId: string) => {
-    try {
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) throw profileError;
-      setProfile(profileData);
-
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .order('role')
-        .limit(1)
-        .single();
-
-      if (roleError && roleError.code !== 'PGRST116') throw roleError;
-      setRole(roleData?.role as UserRole ?? null);
-    } catch (error) {
-      console.error('Error fetching profile and role:', error);
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     try {
