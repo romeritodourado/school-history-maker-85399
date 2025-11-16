@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] useEffect inicial sendo executado...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`[AuthContext] Estado de autenticação alterado: ${event}`);
+        console.log(`[AuthContext] onAuthStateChange: Evento: ${event}, Session: ${session ? 'present' : 'null'}`);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -104,13 +104,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
           setRole(null);
         }
+        console.log(`[AuthContext] onAuthStateChange: Chamando setLoading(false).`);
         setLoading(false); // Always set loading to false after processing an auth state change
-        console.log(`[AuthContext] Loading definido como false. Usuário atual: ${session?.user?.id}, cargo: ${role}`);
+        console.log(`[AuthContext] onAuthStateChange: Loading agora é ${false}. Usuário: ${session?.user?.id}, cargo: ${role}`);
       }
     );
 
     // Check for initial session to set loading state correctly
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log(`[AuthContext] getSession().then: Session: ${session ? 'present' : 'null'}`);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -124,8 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
       }
     }).finally(() => { // Adicionado .finally() para garantir que loading seja false
+      console.log(`[AuthContext] getSession().finally: Chamando setLoading(false).`);
       setLoading(false);
-      console.log(`[AuthContext] Sessão inicial verificada. Loading definido como false. Usuário: ${user?.id}`);
+      console.log(`[AuthContext] getSession().finally: Loading agora é ${false}. Usuário: ${user?.id}`);
     });
 
 
