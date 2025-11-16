@@ -104,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
           setRole(null);
         }
-        console.log(`[AuthContext] onAuthStateChange: Chamando setLoading(false).`);
         setLoading(false); // Always set loading to false after processing an auth state change
         console.log(`[AuthContext] onAuthStateChange: Loading agora é ${false}. Usuário: ${session?.user?.id}, cargo: ${role}`);
       }
@@ -206,6 +205,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('[AuthContext] Erro no login:', error);
         setLoading(false); // Redefine loading em caso de erro
+      } else {
+        // Se o login for bem-sucedido, o onAuthStateChange será acionado
+        // e definirá o loading como false. Não precisamos fazer isso aqui.
+        console.log('[AuthContext] Login bem-sucedido. onAuthStateChange irá atualizar o estado.');
       }
       return { error };
     } catch (error) {
