@@ -340,14 +340,16 @@ export default function Users() {
   const getAvailableRolesForEdit = (targetUserRole: UserRole | null): UserRole[] => {
     let availableRoles = getAvailableRolesForCreation();
     
-    // Se estiver editando, garante que o cargo atual do usuário seja uma opção,
+    // Garante que o cargo atual do usuário sendo editado esteja sempre disponível,
     // mesmo que o usuário logado não tenha permissão para *criar* esse cargo.
     if (targetUserRole && !availableRoles.includes(targetUserRole)) {
       availableRoles = [...availableRoles, targetUserRole];
     }
     
-    // Remove duplicatas e ordena para consistência
-    return Array.from(new Set(availableRoles)).sort();
+    // Filtra quaisquer valores nulos/indefinidos e garante roles únicos, depois ordena.
+    const uniqueAndSortedRoles = Array.from(new Set(availableRoles.filter((r): r is UserRole => r !== null && r !== undefined))).sort();
+    console.log("Available roles for edit:", uniqueAndSortedRoles); // Log para depuração
+    return uniqueAndSortedRoles;
   };
 
   return (
@@ -439,7 +441,7 @@ export default function Users() {
                     </SelectTrigger>
                     <SelectContent>
                       {getAvailableRolesForEdit(editingUser?.role).map((r) => {
-                        console.log("Rendering SelectItem for role:", r); // Log para depuração
+                        console.log("Rendering SelectItem for role:", r, "with label:", getRoleLabel(r)); // Log para depuração
                         return (
                           <SelectItem key={r} value={r}>
                             {getRoleLabel(r)}
