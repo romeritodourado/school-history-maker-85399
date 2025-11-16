@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, UserCog, Trash2, Mail } from 'lucide-react';
+import { ArrowLeft, Plus, UserCog, Trash2, Edit, Mail, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -17,14 +17,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { signupSchema } from '@/lib/validationSchemas'; // Importando o schema de validação
+import { z } from 'zod';
+
+type UserRole = 'superadmin' | 'adminrede' | 'diretor' | 'secretario' | 'assistente';
 
 interface UserProfile {
   id: string;
   full_name: string;
   school_id: string | null;
   status: string;
-  email?: string;
-  role?: string;
+  email: string;
+  role: UserRole | null;
   school_name?: string;
 }
 
@@ -37,12 +41,15 @@ export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado de carregamento para o formulário
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
+    id: '',
     email: '',
     password: '',
     full_name: '',
-    role: 'assistente',
+    role: 'assistente' as UserRole,
     school_id: '',
   });
   const { toast } = useToast();
@@ -95,8 +102,8 @@ export default function Users() {
 
           return {
             ...profile,
-            role: roleData?.role,
-            email: authData.user?.email,
+            email: authData.user?.email || '',
+            role: roleData?.role as UserRole ?? null,
             school_name: (profile.schools as any)?.name,
           };
         })
@@ -114,56 +121,164 @@ export default function Users() {
     }
   };
 
+  const handleEdit = (user: UserProfile) => {
+    setEditingUser(user);
+    setFormData({
+      id: user.id,
+      email: user.email,
+      password: '', // Senha não pode ser pré-preenchida por segurança
+      full_name: user.full_name,
+      role: user.role || 'assistente',
+      school_id: user.school_id || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingUser(null);
+    setFormData({
+      id: '',
+      email: '',
+      password: '',
+      full_name: '',
+      role: 'assistente',
+      school_id: '',
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    console.log("handleSubmit chamado, definindo isSubmitting para true.");
+    setIsSubmitting(true);
+
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-          },
-          emailRedirectTo: `${window.location.origin}/`,
+      // Validação dos campos principais
+      let validationError: z.ZodError | null = null;
+      try {
+        const schemaToValidate = editingUser
+          ? signupSchema.pick({ email: true, full_name: true }).partial() // Permite atualização parcial para usuário existente
+          : signupSchema.pick({ email: true, password: true, full_name: true });
+
+        schemaToValidate.parse({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+        });
+
+        // Validação adicional para senha se estiver editando e uma nova senha for fornecida
+        if (editingUser && formData.password) {
+          signupSchema.pick({ password: true }).parse({ password: formData.password });
+        } else if (!editingUser && !formData.password) {
+          // Para novos usuários, a senha é obrigatória
+          throw new z.ZodError([{ path: ['password'], message: 'Senha é obrigatória para novos usuários' }]);
         }
-      });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert([{ user_id: authData.user.id, role: formData.role as 'superadmin' | 'adminrede' | 'diretor' | 'secretario' | 'assistente' }]);
-
-        if (roleError) throw roleError;
-
-        if (formData.school_id) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ school_id: formData.school_id })
-            .eq('id', authData.user.id);
-
-          if (profileError) throw profileError;
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          validationError = error;
+        } else {
+          throw error; // Re-lança outros erros
         }
       }
 
-      toast({ title: 'Usuário criado com sucesso!' });
+      if (validationError) {
+        toast({
+          title: "Erro de validação",
+          description: validationError.errors[0].message,
+          variant: "destructive",
+        });
+        console.log("Erro de validação, retornando. isSubmitting deve ser resetado pelo finally.");
+        return; // Sai cedo se a validação falhar
+      }
+
+      if (editingUser) {
+        // --- ATUALIZAR USUÁRIO EXISTENTE ---
+        // 1. Atualizar email em auth.users (se alterado)
+        if (formData.email !== editingUser.email) {
+          const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
+            email: formData.email,
+          });
+          if (authUpdateError) throw authUpdateError;
+        }
+
+        // 2. Atualizar tabela profiles
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: formData.full_name,
+            school_id: formData.school_id || null,
+          })
+          .eq('id', editingUser.id);
+        if (profileUpdateError) throw profileUpdateError;
+
+        // 3. Atualizar tabela user_roles
+        const { error: roleUpdateError } = await supabase
+          .from('user_roles')
+          .update({ role: formData.role })
+          .eq('user_id', editingUser.id);
+        if (roleUpdateError) throw roleUpdateError;
+
+        // 4. Atualizar senha se fornecida
+        if (formData.password) {
+          const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
+            password: formData.password,
+          });
+          if (passwordUpdateError) throw passwordUpdateError;
+        }
+
+        toast({ title: 'Usuário atualizado com sucesso!' });
+
+      } else {
+        // --- CRIAR NOVO USUÁRIO ---
+        const redirectUrl = `${window.location.origin}/`;
+        
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: formData.full_name,
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert([{ user_id: authData.user.id, role: formData.role }]);
+
+          if (roleError) throw roleError;
+
+          // O trigger handle_new_user já cria o perfil com full_name.
+          // Precisamos apenas atualizar o school_id se ele foi fornecido.
+          if (formData.school_id) {
+            const { error: profileUpdateError } = await supabase
+              .from('profiles')
+              .update({ school_id: formData.school_id })
+              .eq('id', authData.user.id);
+
+            if (profileUpdateError) throw profileUpdateError;
+          }
+        }
+        toast({ title: 'Usuário criado com sucesso!' });
+      }
+
       setDialogOpen(false);
-      setFormData({
-        email: '',
-        password: '',
-        full_name: '',
-        role: 'assistente',
-        school_id: '',
-      });
+      resetForm();
       fetchUsers();
     } catch (error) {
       toast({
-        title: 'Erro ao criar usuário',
+        title: 'Erro ao salvar usuário',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
+      console.error("Erro no handleSubmit:", error);
+    } finally {
+      console.log("Bloco finally executado: definindo isSubmitting para false.");
+      setIsSubmitting(false); // Sempre reseta o estado de carregamento
     }
   };
 
@@ -185,22 +300,50 @@ export default function Users() {
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
+  const getRoleLabel = (role: UserRole | null) => {
+    const labels: Record<UserRole, string> = {
       superadmin: 'Super Administrador',
       adminrede: 'Admin da Rede',
       diretor: 'Diretor',
       secretario: 'Secretário',
       assistente: 'Assistente',
     };
-    return labels[role] || role;
+    return labels[role || 'assistente'] || 'Sem cargo';
   };
 
-  const canCreateRole = (targetRole: string) => {
-    if (role === 'superadmin') return true;
-    if (role === 'adminrede' && targetRole !== 'superadmin') return true;
-    if (role === 'diretor' && ['secretario', 'assistente'].includes(targetRole)) return true;
+  const canEditUser = (targetUser: UserProfile) => {
+    // Superadmin pode editar qualquer um, exceto a si mesmo
+    if (role === 'superadmin') return targetUser.id !== profile?.id;
+    
+    // Admin da Rede pode editar qualquer um, exceto superadmin e a si mesmo
+    if (role === 'adminrede' && targetUser.role !== 'superadmin') return targetUser.id !== profile?.id;
+    
+    // Diretor pode editar secretários e assistentes da sua própria escola, exceto a si mesmo
+    if (role === 'diretor' && ['secretario', 'assistente'].includes(targetUser.role || '') && targetUser.school_id === profile?.school_id) return targetUser.id !== profile?.id;
+    
     return false;
+  };
+
+  const getAvailableRolesForCreation = () => {
+    if (role === 'superadmin') {
+      return ['superadmin', 'adminrede', 'diretor', 'secretario', 'assistente'];
+    }
+    if (role === 'adminrede') {
+      return ['adminrede', 'diretor', 'secretario', 'assistente'];
+    }
+    if (role === 'diretor') {
+      return ['secretario', 'assistente'];
+    }
+    return ['assistente']; // Default or fallback
+  };
+
+  const getAvailableRolesForEdit = (targetUserRole: UserRole | null) => {
+    const available = getAvailableRolesForCreation();
+    // Se estiver editando, garante que o cargo atual seja uma opção, mesmo que o editor não possa criá-lo
+    if (targetUserRole && !available.includes(targetUserRole)) {
+      return [targetUserRole, ...available].filter((value, index, self) => self.indexOf(value) === index);
+    }
+    return available;
   };
 
   return (
@@ -218,21 +361,45 @@ export default function Users() {
             </h1>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              resetForm();
+              setIsSubmitting(false); // Reset explícito do isSubmitting ao fechar o diálogo
+              console.log("Diálogo fechado, isSubmitting resetado para false.");
+            } else {
+              console.log("Diálogo aberto, estado de isSubmitting:", isSubmitting);
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => {
+                resetForm();
+                console.log("Botão 'Novo Usuário' clicado, resetando formulário.");
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Usuário
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent key={editingUser ? editingUser.id : 'new-user-dialog'}>
               <DialogHeader>
-                <DialogTitle>Criar Novo Usuário</DialogTitle>
+                <DialogTitle>
+                  {editingUser ? 'Editar Usuário' : 'Criar Novo Usuário'}
+                </DialogTitle>
                 <DialogDescription>
-                  Preencha os dados do novo usuário
+                  {editingUser ? 'Edite os dados do usuário' : 'Preencha os dados do novo usuário'}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="full_name">Nome Completo</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -241,49 +408,37 @@ export default function Users() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">Senha {editingUser ? '(deixe em branco para não alterar)' : '*'}</Label>
                   <Input
                     id="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
+                    required={!editingUser}
                     minLength={6}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="full_name">Nome Completo</Label>
-                  <Input
-                    id="full_name"
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
                   <Label htmlFor="role">Cargo</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value) => setFormData({ ...formData, role: value })}
+                    onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
+                    disabled={isSubmitting || editingUser?.id === profile?.id}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {role === 'superadmin' && (
-                        <>
-                          <SelectItem value="superadmin">Super Administrador</SelectItem>
-                          <SelectItem value="adminrede">Administrador da Rede</SelectItem>
-                        </>
-                      )}
-                      {(role === 'superadmin' || role === 'adminrede') && (
-                        <SelectItem value="diretor">Diretor Escolar</SelectItem>
-                      )}
-                      <SelectItem value="secretario">Secretário Escolar</SelectItem>
-                      <SelectItem value="assistente">Assistente Administrativo</SelectItem>
+                      {getAvailableRolesForEdit(editingUser?.role).map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {getRoleLabel(r)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -292,6 +447,7 @@ export default function Users() {
                   <Select
                     value={formData.school_id}
                     onValueChange={(value) => setFormData({ ...formData, school_id: value })}
+                    disabled={isSubmitting || (role === 'diretor' && editingUser?.school_id !== profile?.school_id)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma escola (opcional)" />
@@ -306,10 +462,19 @@ export default function Users() {
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Criar</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      editingUser ? 'Atualizar' : 'Criar'
+                    )}
+                  </Button>
                 </div>
               </form>
             </DialogContent>
@@ -322,14 +487,26 @@ export default function Users() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="truncate">{user.full_name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(user.id)}
-                    disabled={user.id === profile?.id}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(user)}
+                      disabled={!canEditUser(user)}
+                      title={!canEditUser(user) ? "Você não tem permissão para editar este usuário" : "Editar usuário"}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(user.id)}
+                      disabled={user.id === profile?.id || !canEditUser(user)}
+                      title={user.id === profile?.id ? "Você não pode excluir seu próprio perfil" : (!canEditUser(user) ? "Você não tem permissão para excluir este usuário" : "Excluir usuário")}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -339,7 +516,7 @@ export default function Users() {
                     {user.email}
                   </p>
                   <p className="text-muted-foreground">
-                    Cargo: {getRoleLabel(user.role || '')}
+                    Cargo: {getRoleLabel(user.role)}
                   </p>
                   {user.school_name && (
                     <p className="text-muted-foreground">
