@@ -71,8 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AuthContext] fetchProfileAndRole: Erro ao buscar cargo:', roleError.message);
         setRole(null);
       } else if (roleData) {
+        console.log('[AuthContext] fetchProfileAndRole: Dados de cargo brutos recebidos:', roleData);
         setRole(roleData.role as UserRole ?? null);
-        console.log('[AuthContext] fetchProfileAndRole: Cargo carregado:', roleData.role);
+        console.log('[AuthContext] fetchProfileAndRole: Cargo carregado e definido:', roleData.role);
       } else {
         console.warn('[AuthContext] fetchProfileAndRole: Cargo não encontrado para o usuário:', userId);
         setRole(null);
@@ -205,10 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('[AuthContext] Erro no login:', error);
         setLoading(false); // Redefine loading em caso de erro
-      } else {
-        // Se o login for bem-sucedido, o onAuthStateChange será acionado
-        // e definirá o loading como false. Não precisamos fazer isso aqui.
-        console.log('[AuthContext] Login bem-sucedido. onAuthStateChange irá atualizar o estado.');
       }
       return { error };
     } catch (error) {
