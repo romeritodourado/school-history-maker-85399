@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileAndRole = async (userId: string) => {
     console.log(`[AuthContext] Buscando perfil e cargo para o usuário: ${userId}`);
     try {
-      // Buscar perfil
+      console.log('[AuthContext] Tentando buscar perfil...');
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthContext] Perfil carregado:', profileData);
       }
 
-      // Buscar cargo
+      console.log('[AuthContext] Tentando buscar cargo...');
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -73,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[AuthContext] Erro inesperado em fetchProfileAndRole:', error);
       setProfile(null);
       setRole(null);
+    } finally {
+      console.log('[AuthContext] fetchProfileAndRole concluído.');
     }
   };
 
@@ -94,6 +96,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log(`[AuthContext] Loading definido como false. Usuário atual: ${session?.user?.id}, cargo: ${role}`);
       }
     );
+
+    // Verifica a sessão inicial para definir o estado de carregamento corretamente
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchProfileAndRole(session.user.id);
+      } else {
+        setProfile(null);
+        setRole(null);
+      }
+      setLoading(false);
+      console.log(`[AuthContext] Sessão inicial verificada. Loading definido como false. Usuário: ${session?.user?.id}`);
+    });
+
 
     return () => {
       console.log('[AuthContext] Inscrição de estado de autenticação cancelada.');
