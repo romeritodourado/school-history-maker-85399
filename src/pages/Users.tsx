@@ -252,8 +252,25 @@ export default function Users() {
 
           if (roleError) throw roleError;
 
-          // O trigger handle_new_user já cria o perfil com full_name.
-          // Precisamos apenas atualizar o school_id se ele foi fornecido.
+          // Ensure profile exists (in case trigger was not active or for direct profile updates)
+          const { data: existingProfile, error: fetchProfileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (fetchProfileError && fetchProfileError.code !== 'PGRST116') {
+            throw fetchProfileError;
+          }
+
+          if (!existingProfile) {
+            const { error: profileInsertError } = await supabase
+              .from('profiles')
+              .insert([{ id: authData.user.id, full_name: formData.full_name }]);
+            if (profileInsertError) throw profileInsertError;
+          }
+
+          // Update school_id if provided (this part was already there)
           if (formData.school_id) {
             const { error: profileUpdateError } = await supabase
               .from('profiles')
