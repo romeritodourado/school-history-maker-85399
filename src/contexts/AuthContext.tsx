@@ -95,22 +95,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchProfileAndRole(session.user.id);
+          try {
+            await fetchProfileAndRole(session.user.id);
+          } catch (error) {
+            console.error('[AuthContext] Erro ao buscar perfil/cargo no onAuthStateChange:', error);
+          }
         } else {
           setProfile(null);
           setRole(null);
         }
-        setLoading(false); // Sempre define loading como false após processar uma mudança de estado de autenticação
+        setLoading(false); // Always set loading to false after processing an auth state change
         console.log(`[AuthContext] Loading definido como false. Usuário atual: ${session?.user?.id}, cargo: ${role}`);
       }
     );
 
-    // Verifica a sessão inicial para definir o estado de carregamento corretamente
+    // Check for initial session to set loading state correctly
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfileAndRole(session.user.id);
+        try {
+          await fetchProfileAndRole(session.user.id);
+        } catch (error) {
+          console.error('[AuthContext] Erro ao buscar perfil/cargo na sessão inicial:', error);
+        }
       } else {
         setProfile(null);
         setRole(null);
