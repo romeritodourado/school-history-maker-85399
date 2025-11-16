@@ -324,7 +324,7 @@ export default function Users() {
     return false;
   };
 
-  const getAvailableRolesForCreation = () => {
+  const getAvailableRolesForCreation = (): UserRole[] => {
     if (role === 'superadmin') {
       return ['superadmin', 'adminrede', 'diretor', 'secretario', 'assistente'];
     }
@@ -337,13 +337,17 @@ export default function Users() {
     return ['assistente']; // Default or fallback
   };
 
-  const getAvailableRolesForEdit = (targetUserRole: UserRole | null) => {
-    const available = getAvailableRolesForCreation();
-    // Se estiver editando, garante que o cargo atual seja uma opção, mesmo que o editor não possa criá-lo
-    if (targetUserRole && !available.includes(targetUserRole)) {
-      return [targetUserRole, ...available].filter((value, index, self) => self.indexOf(value) === index);
+  const getAvailableRolesForEdit = (targetUserRole: UserRole | null): UserRole[] => {
+    let availableRoles = getAvailableRolesForCreation();
+    
+    // Se estiver editando, garante que o cargo atual do usuário seja uma opção,
+    // mesmo que o usuário logado não tenha permissão para *criar* esse cargo.
+    if (targetUserRole && !availableRoles.includes(targetUserRole)) {
+      availableRoles = [...availableRoles, targetUserRole];
     }
-    return available;
+    
+    // Remove duplicatas e ordena para consistência
+    return Array.from(new Set(availableRoles)).sort();
   };
 
   return (
@@ -434,11 +438,14 @@ export default function Users() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {getAvailableRolesForEdit(editingUser?.role).map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {getRoleLabel(r)}
-                        </SelectItem>
-                      ))}
+                      {getAvailableRolesForEdit(editingUser?.role).map((r) => {
+                        console.log("Rendering SelectItem for role:", r); // Log para depuração
+                        return (
+                          <SelectItem key={r} value={r}>
+                            {getRoleLabel(r)}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
