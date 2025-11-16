@@ -33,21 +33,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Inicia como true
 
   const fetchProfileAndRole = async (userId: string) => {
+    console.log(`[AuthContext] Buscando perfil e cargo para o usuário: ${userId}`);
     try {
-      // Fetch profile
+      // Buscar perfil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (profileError) throw profileError;
-      setProfile(profileData);
+      if (profileError) {
+        console.error('[AuthContext] Erro ao buscar perfil:', profileError);
+        setProfile(null); // Garante que o perfil seja nulo em caso de erro
+      } else {
+        setProfile(profileData);
+        console.log('[AuthContext] Perfil carregado:', profileData);
+      }
 
-      // Fetch role
+      // Buscar cargo
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -56,51 +62,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .limit(1)
         .single();
 
-      if (roleError && roleError.code !== 'PGRST116') throw roleError; // PGRST116 means no rows found, which is fine if user has no role yet
-      setRole(roleData?.role as UserRole ?? null);
+      if (roleError && roleError.code !== 'PGRST116') { // PGRST116 significa que nenhuma linha foi encontrada, o que é aceitável se o usuário ainda não tiver um cargo
+        console.error('[AuthContext] Erro ao buscar cargo:', roleError);
+        setRole(null); // Garante que o cargo seja nulo em caso de erro
+      } else {
+        setRole(roleData?.role as UserRole ?? null);
+        console.log('[AuthContext] Cargo carregado:', roleData?.role);
+      }
     } catch (error) {
-      console.error('Error fetching profile and role:', error);
+      console.error('[AuthContext] Erro inesperado em fetchProfileAndRole:', error);
       setProfile(null);
       setRole(null);
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    console.log('[AuthContext] useEffect inicial sendo executado...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log(`[AuthContext] Estado de autenticação alterado: ${event}`);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchProfileAndRole(session.user.id); // Fetch immediately
+          await fetchProfileAndRole(session.user.id);
         } else {
           setProfile(null);
           setRole(null);
         }
-        setLoading(false); // Set loading to false after initial state is determined
+        setLoading(false); // Sempre define loading como false após processar uma mudança de estado de autenticação
+        console.log(`[AuthContext] Loading definido como false. Usuário atual: ${session?.user?.id}, cargo: ${role}`);
       }
     );
 
-    // Check for existing session on initial load
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfileAndRole(session.user.id); // Fetch immediately
-      }
-      setLoading(false); // Set loading to false after initial state is determined
-    });
+    return () => {
+      console.log('[AuthContext] Inscrição de estado de autenticação cancelada.');
+      subscription.unsubscribe();
+    };
+  }, []); // Array de dependências vazio significa que isso é executado uma vez na montagem
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Set up realtime listeners for profile and role changes
+  // Configurar listeners em tempo real para mudanças de perfil e cargo
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('[AuthContext] ID de usuário não disponível para listeners em tempo real, ignorando.');
+      return;
+    }
+    console.log(`[AuthContext] Configurando listeners em tempo real para o usuário: ${user.id}`);
 
-    // Listen for profile changes
+    // Ouvir mudanças de perfil
     const profileChannel = supabase
       .channel('profile-changes')
       .on(
@@ -112,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Profile updated:', payload);
+          console.log('[AuthContext] Tempo real: Perfil atualizado:', payload);
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setProfile(payload.new as Profile);
           }
@@ -120,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
       .subscribe();
 
-    // Listen for role changes
+    // Ouvir mudanças de cargo
     const roleChannel = supabase
       .channel('role-changes')
       .on(
@@ -132,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Role updated:', payload);
+          console.log('[AuthContext] Tempo real: Cargo atualizado:', payload);
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setRole((payload.new as any).role as UserRole);
           } else if (payload.eventType === 'DELETE') {
@@ -143,30 +152,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
 
     return () => {
+      console.log('[AuthContext] Listeners em tempo real cancelados.');
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(roleChannel);
     };
-  }, [user?.id]);
+  }, [user?.id]); // Reexecutar quando user.id muda
 
   const signIn = async (email: string, password: string) => {
+    console.log('[AuthContext] Tentando fazer login...');
+    setLoading(true); // Define loading como true na tentativa de login
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      if (error) {
+        console.error('[AuthContext] Erro no login:', error);
+        setLoading(false); // Redefine loading em caso de erro
+      }
       return { error };
     } catch (error) {
+      console.error('[AuthContext] Exceção inesperada no login:', error);
+      setLoading(false); // Redefine loading em caso de exceção
       return { error: error as Error };
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string, userRole: UserRole) => {
+    console.log('[AuthContext] Tentando cadastrar...');
+    setLoading(true); // Define loading como true na tentativa de cadastro
     try {
-      // Validate signup data
+      // Validar dados de cadastro
       try {
         signupSchema.parse({ email, password, full_name: fullName });
       } catch (error) {
         if (error instanceof z.ZodError) {
+          setLoading(false); // Redefine loading em caso de erro de validação
           return { error: new Error(error.errors[0].message) };
         }
       }
@@ -184,25 +205,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      if (error) return { error };
+      if (error) {
+        console.error('[AuthContext] Erro no cadastro:', error);
+        setLoading(false); // Redefine loading em caso de erro
+        return { error };
+      }
 
-      // Create user role if signup was successful
+      // Criar cargo do usuário se o cadastro foi bem-sucedido
       if (data.user && userRole) {
         const { error: roleError } = await supabase
           .from('user_roles')
-          .insert({ user_id: data.user.id, role: userRole });
+          .insert([{ user_id: data.user.id, role: userRole }]);
         
-        if (roleError) return { error: roleError as unknown as Error };
+        if (roleError) {
+          console.error('[AuthContext] Erro ao inserir cargo:', roleError);
+          setLoading(false); // Redefine loading em caso de erro de cargo
+          return { error: roleError as unknown as Error };
+        }
       }
-
+      // setLoading(false) será tratado por onAuthStateChange após o cadastro bem-sucedido
       return { error: null };
     } catch (error) {
+      console.error('[AuthContext] Exceção inesperada no cadastro:', error);
+      setLoading(false); // Redefine loading em caso de exceção
       return { error: error as Error };
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    console.log('[AuthContext] Tentando sair...');
+    setLoading(true); // Define loading como true na tentativa de sair
+    try {
+      await supabase.auth.signOut();
+      // setLoading(false) será tratado por onAuthStateChange após a saída bem-sucedida
+    } catch (error) {
+      console.error('[AuthContext] Erro ao sair:', error);
+      setLoading(false); // Redefine loading em caso de erro
+    }
   };
 
   const hasPermission = (requiredRoles: UserRole[]) => {
