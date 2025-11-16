@@ -108,13 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Initial session check and setup
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => { // Renomeado para initialSession
       if (!isMounted) return;
-      console.log(`[AuthContext] getSession().then: Session: ${session ? 'present' : 'null'}`);
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfileAndRole(session.user.id);
+      console.log(`[AuthContext] getSession().then: Session: ${initialSession ? 'present' : 'null'}`);
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      if (initialSession?.user) {
+        await fetchProfileAndRole(initialSession.user.id);
       } else {
         setProfile(null);
         setRole(null);
@@ -129,9 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }).finally(() => {
       if (isMounted) {
-        console.log(`[AuthContext] getSession().finally: Chamando setLoading(false).`);
-        setLoading(false);
-        console.log(`[AuthContext] getSession().finally: Loading agora é ${false}. Usuário: ${user?.id}`);
+        console.log("[AuthContext] inicialização concluída");
+        // loading só deve parar aqui SE não houver sessão
+        // se houver, quem desliga é o onAuthStateChange
+        if (!session?.user) setLoading(false); // Usar o estado 'session' atualizado
       }
     });
 
