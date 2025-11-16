@@ -102,8 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setRole(null);
       }
-      // setLoading(false) is handled by the initial getSession call's finally block
-      // or by signIn/signUp/signOut functions.
+
+      // ⭐ AQUI ESTAVA FALTANDO ⭐
+      setLoading(false);
+      console.log(`[AuthContext] onAuthStateChange: Loading agora é ${false}. Usuário: ${currentSession?.user?.id}, cargo: ${role}`);
     };
 
     // Initial session check and setup
