@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileAndRole = async (userId: string) => {
     console.log(`[AuthContext] Buscando perfil e cargo para o usuário: ${userId}`);
     try {
+      // Fetch profile
       console.log('[AuthContext] Tentando buscar perfil...');
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -46,13 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileError) {
-        console.error('[AuthContext] Erro ao buscar perfil:', profileError);
-        setProfile(null); // Garante que o perfil seja nulo em caso de erro
-      } else {
+        console.error('[AuthContext] Erro ao buscar perfil:', profileError.message);
+        setProfile(null);
+      } else if (profileData) {
         setProfile(profileData);
         console.log('[AuthContext] Perfil carregado:', profileData);
+      } else {
+        console.warn('[AuthContext] Perfil não encontrado para o usuário:', userId);
+        setProfile(null);
       }
 
+      // Fetch role
       console.log('[AuthContext] Tentando buscar cargo...');
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -63,11 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (roleError && roleError.code !== 'PGRST116') { // PGRST116 significa que nenhuma linha foi encontrada, o que é aceitável se o usuário ainda não tiver um cargo
-        console.error('[AuthContext] Erro ao buscar cargo:', roleError);
-        setRole(null); // Garante que o cargo seja nulo em caso de erro
+        console.error('[AuthContext] Erro ao buscar cargo:', roleError.message);
+        setRole(null);
+      } else if (roleData) {
+        setRole(roleData.role as UserRole ?? null);
+        console.log('[AuthContext] Cargo carregado:', roleData.role);
       } else {
-        setRole(roleData?.role as UserRole ?? null);
-        console.log('[AuthContext] Cargo carregado:', roleData?.role);
+        console.warn('[AuthContext] Cargo não encontrado para o usuário:', userId);
+        setRole(null);
       }
     } catch (error) {
       console.error('[AuthContext] Erro inesperado em fetchProfileAndRole:', error);
