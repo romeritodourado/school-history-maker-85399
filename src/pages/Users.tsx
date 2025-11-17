@@ -54,7 +54,7 @@ export default function Users() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { role, profile } = useAuth();
+  const { role, profile, session } = useAuth(); // Obter a sessão para o token JWT
 
   useEffect(() => {
     fetchSchools();
@@ -299,20 +299,49 @@ export default function Users() {
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+  // Função para chamar a Edge Function de exclusão
+  const deleteUserFromEdgeFunction = async (userId: string, token: string) => {
+    const SUPABASE_PROJECT_ID = "krypnmbthyjyyzyetakb"; // Seu ID de projeto Supabase
+    const response = await fetch(`https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/delete-user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Erro ao excluir usuário via Edge Function.");
+    }
+    return response.json();
+  };
+
+  const handleDelete = async (userId: string, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)) return;
+
+    if (!session?.access_token) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Sessão de usuário não encontrada. Por favor, faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      await deleteUserFromEdgeFunction(userId, session.access_token);
 
-      if (error) throw error;
-      toast({ title: 'Usuário excluído com sucesso!' });
+      toast({
+        title: "Sucesso",
+        description: "Usuário excluído com sucesso",
+      });
       fetchUsers();
     } catch (error) {
       toast({
-        title: 'Erro ao excluir usuário',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        title: "Erro",
+        description: error instanceof Error ? error.message : 'Erro desconhecido ao excluir usuário',
+        variant: "destructive",
       });
     }
   };
@@ -526,7 +555,7 @@ export default function Users() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(user.id)}
+                      onClick={() => handleDelete(user.id, user.full_name)}
                       disabled={user.id === profile?.id || !canEditUser(user)}
                       title={user.id === profile?.id ? "Você não pode excluir seu próprio perfil" : (!canEditUser(user) ? "Você não tem permissão para excluir este usuário" : "Excluir usuário")}
                     >
