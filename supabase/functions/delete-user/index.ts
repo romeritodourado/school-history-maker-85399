@@ -1,12 +1,13 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS OPTIONS request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,7 +30,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ message: 'Não autorizado: Token de autenticação ausente.' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
@@ -40,14 +41,21 @@ serve(async (req) => {
       console.error('Erro ao autenticar usuário na Edge Function:', userAuthError?.message);
       return new Response(JSON.stringify({ message: 'Não autorizado: Token inválido ou expirado.' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
     // Create Supabase Admin client using the service role key (bypasses RLS)
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey) {
+      return new Response(JSON.stringify({ message: 'SERVICE_ROLE_KEY não configurada.' }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceKey
     );
 
     // Fetch the role of the authenticated user
@@ -61,7 +69,7 @@ serve(async (req) => {
       console.error('Erro ao buscar cargo do usuário autenticado:', authUserRoleError?.message);
       return new Response(JSON.stringify({ message: 'Permissão negada: Cargo do usuário autenticado não encontrado.' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
     const authenticatedUserRole = authUserRoleData.role;
@@ -72,7 +80,7 @@ serve(async (req) => {
     if (!targetUserId) {
       return new Response(JSON.stringify({ message: 'ID do usuário a ser excluído é obrigatório.' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
@@ -80,7 +88,7 @@ serve(async (req) => {
     if (user.id === targetUserId) {
       return new Response(JSON.stringify({ message: 'Você não pode excluir seu próprio usuário.' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
@@ -95,7 +103,7 @@ serve(async (req) => {
       .eq('id', targetUserId)
       .single();
 
-    if (targetUserProfileError && targetUserProfileError.code !== 'PGRST116') {
+    if (targetUserProfileError && targetUserProfileError.code !== 'PGRST116') { // PGRST116 means no rows found
       console.error('Erro ao buscar perfil do usuário alvo:', targetUserProfileError?.message);
       throw targetUserProfileError;
     }
@@ -140,30 +148,40 @@ serve(async (req) => {
     if (!canDelete) {
       return new Response(JSON.stringify({ message: 'Permissão negada: Você não tem autorização para excluir este usuário.' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
-    // Perform the deletion
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+    // Perform the deletion using the Admin API endpoint
+    const response = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${targetUserId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    if (deleteError) {
-      console.error('Erro ao excluir usuário via Supabase Admin:', deleteError?.message);
-      return new Response(JSON.stringify({ message: deleteError.message || 'Erro ao excluir usuário.' }), {
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Erro ao excluir usuário via Supabase Admin API:', errorData);
+      return new Response(JSON.stringify({ message: errorData.message || 'Erro ao excluir usuário.' }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
-    return new Response(JSON.stringify({ message: 'Usuário excluído com sucesso.' }), {
+    return new Response(JSON.stringify({ success: true, message: 'Usuário excluído com sucesso.' }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error('Erro inesperado na função Edge delete-user:', error);
     return new Response(JSON.stringify({ message: error.message || 'Erro interno do servidor.' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 });
