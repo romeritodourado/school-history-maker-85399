@@ -44,23 +44,8 @@ export default function InitialSetup() {
 
         if (roleError) throw roleError;
 
-        // Ensure profile exists (in case trigger was not active)
-        const { data: existingProfile, error: fetchProfileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (fetchProfileError && fetchProfileError.code !== 'PGRST116') { // PGRST116 means no rows found, which is expected if profile doesn't exist
-          throw fetchProfileError;
-        }
-
-        if (!existingProfile) {
-          const { error: profileInsertError } = await supabase
-            .from('profiles')
-            .insert([{ id: authData.user.id, full_name: fullName }]);
-          if (profileInsertError) throw profileInsertError;
-        }
+        // O perfil é criado automaticamente pelo trigger 'handle_new_user' no Supabase
+        // A inserção manual ou verificação aqui não é mais necessária.
 
         toast({
           title: 'Conta SuperAdmin criada com sucesso!',
