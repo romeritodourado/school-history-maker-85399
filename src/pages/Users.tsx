@@ -77,6 +77,7 @@ export default function Users() {
 
   const fetchUsers = async () => {
     try {
+      // Fetch all profiles with their roles and school information
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -84,30 +85,49 @@ export default function Users() {
           full_name,
           school_id,
           status,
-          schools:school_id (name)
+          schools:school_id (name),
+          user_roles:user_id (role)
         `)
         .order('full_name');
 
       if (profilesError) throw profilesError;
 
-      const usersWithRoles = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', profile.id)
-            .single();
+      // Fetch all auth users using admin API
+      const { data: authUsersData, error: authUsersError } = await supabase.auth.admin.listUsers();
 
-          const { data: authData } = await supabase.auth.admin.getUserById(profile.id);
-
+      if (authUsersError) {
+        console.error('Error fetching auth users:', authUsersError);
+        // If we can't fetch auth users, we'll just use empty array for emails
+        const usersWithRoles = (profilesData || []).map((profile) => {
+          const userRole = (profile.user_roles as any)?.[0]?.role as UserRole || null;
+          
           return {
             ...profile,
-            email: authData.user?.email || '',
-            role: roleData?.role as UserRole ?? null,
+            email: '', // We can't fetch email without auth permissions
+            role: userRole,
             school_name: (profile.schools as any)?.name,
+            user_roles: undefined // Remove this to avoid confusion
           };
-        })
-      );
+        });
+        
+        setUsers(usersWithRoles);
+        setLoading(false);
+        return;
+      }
+
+      // Combine all data
+      const usersWithRoles = (profilesData || []).map((profile) => {
+        const userRole = (profile.user_roles as any)?.[0]?.role as UserRole || null;
+        const authUser = authUsersData?.data?.find(u => u.id === profile.id);
+        
+        return {
+          ...profile,
+          email: authUser?.email || '',
+          role: userRole,
+          school_name: (profile.schools as any)?.name,
+          user_roles: undefined // Remove this to avoid confusion
+        };
+      });
 
       setUsers(usersWithRoles);
     } catch (error) {
@@ -189,6 +209,7 @@ export default function Users() {
       }
 
       if (editingUser) {
+        // Update user data
         if (formData.email !== editingUser.email) {
           const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
             email: formData.email,
@@ -221,6 +242,7 @@ export default function Users() {
         toast({ title: 'Usuário atualizado com sucesso!' });
 
       } else {
+        // Create new user
         const redirectUrl = `${window.location.origin}/`;
         
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -550,7 +572,7 @@ export default function Users() {
                 <div className="space-y-2 text-sm">
                   <p className="flex items-center gap-2 text-muted-foreground">
                     <Mail className="h-4 w-4" />
-                    {user.email}
+                    {user.email || 'Email não disponível'}
                   </p>
                   <p className="text-muted-foreground">
                     Cargo: {getRoleLabel(user.role)}
