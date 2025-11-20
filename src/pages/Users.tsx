@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { signupSchema } from '@/lib/validationSchemas'; // Importando o schema de validação
+import { signupSchema } from '@/lib/validationSchemas';
 import { z } from 'zod';
 
 type UserRole = 'superadmin' | 'adminrede' | 'diretor' | 'secretario' | 'assistente';
@@ -41,7 +41,7 @@ export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Estado de carregamento para o formulário
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
@@ -54,7 +54,7 @@ export default function Users() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { role, profile, session } = useAuth(); // Obter a sessão para o token JWT
+  const { role, profile, session } = useAuth();
 
   useEffect(() => {
     fetchSchools();
@@ -126,7 +126,7 @@ export default function Users() {
     setFormData({
       id: user.id,
       email: user.email,
-      password: '', // Senha não pode ser pré-preenchida por segurança
+      password: '',
       full_name: user.full_name,
       role: user.role || 'assistente',
       school_id: user.school_id || '',
@@ -152,11 +152,10 @@ export default function Users() {
     setIsSubmitting(true);
 
     try {
-      // Validação dos campos principais
       let validationError: z.ZodError | null = null;
       try {
         const schemaToValidate = editingUser
-          ? signupSchema.pick({ email: true, full_name: true }).partial() // Permite atualização parcial para usuário existente
+          ? signupSchema.pick({ email: true, full_name: true }).partial()
           : signupSchema.pick({ email: true, password: true, full_name: true });
 
         schemaToValidate.parse({
@@ -165,11 +164,9 @@ export default function Users() {
           full_name: formData.full_name,
         });
 
-        // Validação adicional para senha se estiver editando e uma nova senha for fornecida
         if (editingUser && formData.password) {
           signupSchema.pick({ password: true }).parse({ password: formData.password });
         } else if (!editingUser && !formData.password) {
-          // Para novos usuários, a senha é obrigatória
           throw new z.ZodError([{ path: ['password'], message: 'Senha é obrigatória para novos usuários' }]);
         }
 
@@ -177,7 +174,7 @@ export default function Users() {
         if (error instanceof z.ZodError) {
           validationError = error;
         } else {
-          throw error; // Re-lança outros erros
+          throw error;
         }
       }
 
@@ -188,12 +185,10 @@ export default function Users() {
           variant: "destructive",
         });
         console.log("Erro de validação, retornando. isSubmitting deve ser resetado pelo finally.");
-        return; // Sai cedo se a validação falhar
+        return;
       }
 
       if (editingUser) {
-        // --- ATUALIZAR USUÁRIO EXISTENTE ---
-        // 1. Atualizar email em auth.users (se alterado)
         if (formData.email !== editingUser.email) {
           const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
             email: formData.email,
@@ -201,7 +196,6 @@ export default function Users() {
           if (authUpdateError) throw authUpdateError;
         }
 
-        // 2. Atualizar tabela profiles
         const { error: profileUpdateError } = await supabase
           .from('profiles')
           .update({
@@ -211,14 +205,12 @@ export default function Users() {
           .eq('id', editingUser.id);
         if (profileUpdateError) throw profileUpdateError;
 
-        // 3. Atualizar tabela user_roles
         const { error: roleUpdateError } = await supabase
           .from('user_roles')
           .update({ role: formData.role })
           .eq('user_id', editingUser.id);
         if (roleUpdateError) throw roleUpdateError;
 
-        // 4. Atualizar senha se fornecida
         if (formData.password) {
           const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
             password: formData.password,
@@ -229,7 +221,6 @@ export default function Users() {
         toast({ title: 'Usuário atualizado com sucesso!' });
 
       } else {
-        // --- CRIAR NOVO USUÁRIO ---
         const redirectUrl = `${window.location.origin}/`;
         
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -252,7 +243,6 @@ export default function Users() {
 
           if (roleError) throw roleError;
 
-          // Ensure profile exists (in case trigger was not active or for direct profile updates)
           const { data: existingProfile, error: fetchProfileError } = await supabase
             .from('profiles')
             .select('id')
@@ -270,7 +260,6 @@ export default function Users() {
             if (profileInsertError) throw profileInsertError;
           }
 
-          // Update school_id if provided (this part was already there)
           if (formData.school_id) {
             const { error: profileUpdateError } = await supabase
               .from('profiles')
@@ -295,13 +284,12 @@ export default function Users() {
       console.error("Erro no handleSubmit:", error);
     } finally {
       console.log("Bloco finally executado: definindo isSubmitting para false.");
-      setIsSubmitting(false); // Sempre reseta o estado de carregamento
+      setIsSubmitting(false);
     }
   };
 
-  // Função para chamar a Edge Function de exclusão
   const deleteUserFromEdgeFunction = async (userId: string, token: string) => {
-    const SUPABASE_PROJECT_ID = "krypnmbthyjyyzyetakb"; // Seu ID de projeto Supabase
+    const SUPABASE_PROJECT_ID = "krypnmbthyjyyzyetakb";
     const response = await fetch(`https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/delete-user`, {
       method: "POST",
       headers: {
@@ -358,13 +346,10 @@ export default function Users() {
   };
 
   const canEditUser = (targetUser: UserProfile) => {
-    // Superadmin pode editar qualquer um, exceto a si mesmo
     if (role === 'superadmin') return targetUser.id !== profile?.id;
     
-    // Admin da Rede pode editar qualquer um, exceto superadmin e a si mesmo
     if (role === 'adminrede' && targetUser.role !== 'superadmin') return targetUser.id !== profile?.id;
     
-    // Diretor pode editar secretários e assistentes da sua própria escola, exceto a si mesmo
     if (role === 'diretor' && ['secretario', 'assistente'].includes(targetUser.role || '') && targetUser.school_id === profile?.school_id) return targetUser.id !== profile?.id;
     
     return false;
@@ -380,21 +365,18 @@ export default function Users() {
     if (role === 'diretor') {
       return ['secretario', 'assistente'];
     }
-    return ['assistente']; // Default or fallback
+    return ['assistente'];
   };
 
   const getAvailableRolesForEdit = (targetUserRole: UserRole | null): UserRole[] => {
     let availableRoles = getAvailableRolesForCreation();
     
-    // Garante que o cargo atual do usuário sendo editado esteja sempre disponível,
-    // mesmo que o usuário logado não tenha permissão para *criar* esse cargo.
     if (targetUserRole && !availableRoles.includes(targetUserRole)) {
       availableRoles = [...availableRoles, targetUserRole];
     }
     
-    // Filtra quaisquer valores nulos/indefinidos e garante roles únicos, depois ordena.
     const uniqueAndSortedRoles = Array.from(new Set(availableRoles.filter((r): r is UserRole => r !== null && r !== undefined))).sort();
-    console.log("Available roles for edit:", uniqueAndSortedRoles); // Log para depuração
+    console.log("Available roles for edit:", uniqueAndSortedRoles);
     return uniqueAndSortedRoles;
   };
 
@@ -417,7 +399,7 @@ export default function Users() {
             setDialogOpen(open);
             if (!open) {
               resetForm();
-              setIsSubmitting(false); // Reset explícito do isSubmitting ao fechar o diálogo
+              setIsSubmitting(false);
               console.log("Diálogo fechado, isSubmitting resetado para false.");
             } else {
               console.log("Diálogo aberto, estado de isSubmitting:", isSubmitting);
@@ -487,7 +469,7 @@ export default function Users() {
                     </SelectTrigger>
                     <SelectContent>
                       {getAvailableRolesForEdit(editingUser?.role).map((r) => {
-                        console.log("Rendering SelectItem for role:", r, "with label:", getRoleLabel(r)); // Log para depuração
+                        console.log("Rendering SelectItem for role:", r, "with label:", getRoleLabel(r));
                         return (
                           <SelectItem key={r} value={r}>
                             {getRoleLabel(r)}

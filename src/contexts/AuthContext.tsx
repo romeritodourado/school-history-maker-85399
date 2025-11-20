@@ -32,12 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true); // Start as true
+  const [loading, setLoading] = useState(true);
 
   const fetchProfileAndRole = async (userId: string) => {
     console.log(`[AuthContext] fetchProfileAndRole INICIADO para o usuário: ${userId}`);
     try {
-      // Fetch profile
       console.log('[AuthContext] fetchProfileAndRole: Tentando buscar perfil...');
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -56,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
       }
 
-      // Fetch role
       console.log('[AuthContext] fetchProfileAndRole: Tentando buscar cargo...');
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -66,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .limit(1)
         .single();
 
-      if (roleError && roleError.code !== 'PGRST116') { // PGRST116 means no rows found, which is acceptable if the user doesn't have a role yet
+      if (roleError && roleError.code !== 'PGRST116') {
         console.error('[AuthContext] fetchProfileAndRole: Erro ao buscar cargo:', roleError.message);
         setRole(null);
       } else if (roleData) {
@@ -82,12 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       setRole(null);
     }
-    // No finally here, as the caller (useEffect) will handle overall loading state
   };
 
   useEffect(() => {
     console.log('[AuthContext] useEffect inicial sendo executado...');
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+    let isMounted = true;
 
     const handleAuthStateChange = async (event: string, currentSession: Session | null) => {
       console.log(`[AuthContext] onAuthStateChange: Evento: ${event}, Session: ${currentSession ? 'present' : 'null'}`);
@@ -107,8 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log(`[AuthContext] onAuthStateChange: Loading agora é ${false}. Usuário: ${currentSession?.user?.id}, cargo: ${role}`);
     };
 
-    // Initial session check and setup
-    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => { // Renomeado para initialSession
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!isMounted) return;
       console.log(`[AuthContext] getSession().then: Session: ${initialSession ? 'present' : 'null'}`);
       setSession(initialSession);
@@ -130,23 +126,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }).finally(() => {
       if (isMounted) {
         console.log("[AuthContext] inicialização concluída");
-        // loading só deve parar aqui SE não houver sessão
-        // se houver, quem desliga é o onAuthStateChange
-        if (!session?.user) setLoading(false); // Usar o estado 'session' atualizado
+        if (!session?.user) setLoading(false);
       }
     });
 
-    // Set up real-time auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => {
-      isMounted = false; // Cleanup: component is unmounted
+      isMounted = false;
       console.log('[AuthContext] Auth state subscription unsubscribed.');
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array to run once on mount
+  }, []);
 
-  // Real-time listeners for profile and role changes (separate useEffect for clarity and dependency management)
   useEffect(() => {
     if (!user?.id) {
       console.log('[AuthContext] ID de usuário não disponível para listeners em tempo real de perfil/cargo, ignorando.');
@@ -189,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(roleChannel);
     };
-  }, [user?.id]); // Re-run when user.id changes
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     console.log('[AuthContext] Tentando fazer login...');
@@ -202,13 +194,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('[AuthContext] Erro no login:', error);
-        setLoading(false); // Reset loading on error
+        setLoading(false);
       }
-      // Se der certo, o onAuthStateChange cuida do resto (setLoading(false))
       return { error };
     } catch (error) {
       console.error('[AuthContext] Exceção inesperada no login:', error);
-      setLoading(false); // Reset loading on unexpected exception
+      setLoading(false);
       return { error: error as Error };
     }
   };
@@ -217,7 +208,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] Tentando cadastrar...');
     setLoading(true);
     try {
-      // Validate signup data
       try {
         signupSchema.parse({ email, password, full_name: fullName });
       } catch (error) {
@@ -246,7 +236,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error };
       }
 
-      // Create user role if signup was successful
       if (data.user && userRole) {
         const { error: roleError } = await supabase
           .from('user_roles')
@@ -258,7 +247,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { error: roleError as unknown as Error };
         }
       }
-      // The onAuthStateChange listener will handle setting user, session, profile, role, and loading=false
       return { error: null };
     } catch (error) {
       console.error('[AuthContext] Exceção inesperada no cadastro:', error);
@@ -272,7 +260,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       await supabase.auth.signOut();
-      // The onAuthStateChange listener will handle setting user, session, profile, role, and loading=false
     } catch (error) {
       console.error('[AuthContext] Erro ao sair:', error);
       setLoading(false);
