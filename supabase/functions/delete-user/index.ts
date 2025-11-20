@@ -142,10 +142,14 @@ Deno.serve(async (req) => {
     // Permission check logic (mirroring RLS for DELETE on profiles/user_roles)
     let canDelete = false;
     if (authenticatedUserRole === 'superadmin') {
+      console.log('Edge Function: Usuário autenticado é superadmin. Permissão concedida.');
       canDelete = true;
     } else if (authenticatedUserRole === 'adminrede') {
       if (targetUserRole !== 'superadmin') {
+        console.log('Edge Function: Usuário autenticado é adminrede e alvo não é superadmin. Permissão concedida.');
         canDelete = true;
+      } else {
+        console.log('Edge Function: Usuário autenticado é adminrede, mas alvo é superadmin. Permissão negada.');
       }
     } else if (authenticatedUserRole === 'diretor') {
       if (
@@ -154,10 +158,13 @@ Deno.serve(async (req) => {
         targetUserSchoolId &&
         authenticatedUserSchoolId === targetUserSchoolId
       ) {
+        console.log('Edge Function: Usuário autenticado é diretor, alvo é secretario/assistente na mesma escola. Permissão concedida.');
         canDelete = true;
+      } else {
+        console.log('Edge Function: Usuário autenticado é diretor, mas alvo não é secretario/assistente ou não está na mesma escola. Permissão negada.');
       }
     }
-    console.log('Edge Function: Permissão para deletar:', canDelete);
+    console.log('Edge Function: Resultado final da permissão para deletar:', canDelete);
 
     if (!canDelete) {
       return new Response(JSON.stringify({ message: 'Permissão negada: Você não tem autorização para excluir este usuário.' }), {
@@ -167,6 +174,7 @@ Deno.serve(async (req) => {
     }
 
     // Perform the deletion using the Admin API endpoint
+    console.log('Edge Function: Tentando excluir usuário via Supabase Admin API...');
     const response = await fetch(
       `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${targetUserId}`,
       {
@@ -180,7 +188,7 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Edge Function: Erro ao excluir usuário via Supabase Admin API:', errorData);
+      console.error('Edge Function: Erro ao excluir usuário via Supabase Admin API:', response.status, errorData);
       return new Response(JSON.stringify({ message: errorData.message || 'Erro ao excluir usuário.' }), {
         status: 500,
         headers: corsHeaders,
