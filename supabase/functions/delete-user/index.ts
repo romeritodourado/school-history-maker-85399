@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { jwtVerify } from 'https://esm.sh/jose@5.6.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,17 +17,6 @@ Deno.serve(async (req) => {
   try {
     console.log('Edge Function delete-user: Requisição recebida.');
 
-    // Create a Supabase client for the authenticated user (with anon key)
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
-    );
-
     // Get the authenticated user from the JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -38,17 +28,30 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    console.log('Edge Function: Token JWT recebido (parcial):', token.substring(0, 10) + '...'); // Log parcial do token
-    const { data: { user }, error: userAuthError } = await supabaseClient.auth.getUser(token);
+    console.log('Edge Function: Token JWT recebido (parcial):', token.substring(0, 10) + '...');
 
-    if (userAuthError || !user) {
-      console.error('Edge Function: Erro ao autenticar usuário com JWT:', userAuthError?.message || 'Usuário não encontrado.');
+    // Get JWT secret from environment variables
+    const jwtSecret = Deno.env.get('JWT_SECRET');
+    if (!jwtSecret) {
+      console.error('Edge Function: JWT_SECRET não configurada nas variáveis de ambiente da função.');
+      return new Response(JSON.stringify({ message: 'JWT_SECRET não configurada.' }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    let user;
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(jwtSecret));
+      user = payload;
+      console.log('Edge Function: Token JWT verificado com sucesso. Payload do usuário:', user.sub);
+    } catch (jwtError) {
+      console.error('Edge Function: Erro ao verificar token JWT:', jwtError);
       return new Response(JSON.stringify({ message: 'Não autorizado: Token inválido ou expirado.' }), {
         status: 401,
         headers: corsHeaders,
       });
     }
-    console.log('Edge Function: Usuário autenticado com sucesso:', user.id, user.email);
 
     // Create Supabase Admin client using the service role key (bypasses RLS)
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -69,7 +72,7 @@ Deno.serve(async (req) => {
     const { data: authUserRoleData, error: authUserRoleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', user.sub) // Use user.sub (subject) as the user ID from the JWT payload
       .single();
 
     if (authUserRoleError || !authUserRoleData) {
@@ -95,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     // Prevent user from deleting themselves
-    if (user.id === targetUserId) {
+    if (user.sub === targetUserId) {
       console.log('Edge Function: Tentativa de auto-exclusão bloqueada.');
       return new Response(JSON.stringify({ message: 'Você não pode excluir seu próprio usuário.' }), {
         status: 403,
@@ -129,7 +132,7 @@ Deno.serve(async (req) => {
       const { data: authUserProfileData, error: authUserProfileError } = await supabaseAdmin
         .from('profiles')
         .select('school_id')
-        .eq('id', user.id)
+        .eq('id', user.sub)
         .single();
       if (authUserProfileError) {
         console.error('Edge Function: Erro ao buscar school_id do diretor autenticado:', authUserProfileError?.message);
