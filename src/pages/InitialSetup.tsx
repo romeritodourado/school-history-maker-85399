@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,20 @@ export default function InitialSetup() {
   const [password, setPassword] = useState('StrongPass123!'); // Senha padrão mais forte
   const [fullName, setFullName] = useState('Administrador do Sistema');
   const [loading, setLoading] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false); // Novo estado
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIsUserLoggedIn(true);
+        navigate('/'); // Redireciona para o dashboard se já estiver logado
+      }
+    };
+    checkUser();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +76,10 @@ export default function InitialSetup() {
       setLoading(false);
     }
   };
+
+  if (isUserLoggedIn) {
+    return null; // Não renderiza nada enquanto redireciona
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
