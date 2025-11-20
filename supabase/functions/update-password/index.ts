@@ -73,8 +73,72 @@ Deno.serve(async (req) => {
     );
 
     // Obtém os dados do corpo da requisição
-    const { new_password } = await req.json();
+    const { new_password, user_id } = await req.json();
     console.log('Edge Function: Nova senha recebida (parcial):', new_password ? new_password.substring(0, 3) + '...' : 'null');
+    console.log('Edge Function: User ID recebido:', user_id);
+
+    // Se não foi fornecido um user_id, assume que é para atualizar a senha do próprio usuário
+    const targetUserId = user_id || user.sub;
+    
+    // Se foi fornecido um user_id, verifica se o usuário tem permissão para atualizar a senha de outro usuário
+    if (user_id && user_id !== user.sub) {
+      // Verifica se o usuário tem permissão para atualizar a senha de outro usuário
+      const { data: authUserRoleData, error: authUserRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.sub)
+        .single();
+
+      if (authUserRoleError || !authUserRoleData) {
+        console.error('Edge Function: Erro ao buscar cargo do usuário autenticado:', authUserRoleError?.message);
+        return new Response(JSON.stringify({ message: 'Permissão negada: Cargo do usuário autenticado não encontrado.' }), {
+          status: 403,
+          headers: corsHeaders,
+        });
+      }
+
+      const authenticatedUserRole = authUserRoleData.role;
+      console.log('Edge Function: Cargo do usuário autenticado:', authenticatedUserRole);
+
+      // Verifica se o usuário tem permissão para atualizar a senha de outro usuário
+      if (authenticatedUserRole !== 'superadmin' && authenticatedUserRole !== 'adminrede') {
+        console.log('Edge Function: Usuário não tem permissão para atualizar a senha de outro usuário.');
+        return new Response(JSON.stringify({ message: 'Permissão negada: Você não tem autorização para atualizar a senha de outro usuário.' }), {
+          status: 403,
+          headers: corsHeaders,
+        });
+      }
+
+      // Se for um superadmin tentando atualizar outro superadmin, verifica se é permitido
+      if (authenticatedUserRole === 'superadmin') {
+        // Superadmins podem atualizar qualquer usuário
+        console.log('Edge Function: Superadmin tem permissão para atualizar qualquer usuário.');
+      } else if (authenticatedUserRole === 'adminrede') {
+        // Admins de rede não podem atualizar superadmins
+        const { data: targetUserRoleData, error: targetUserRoleError } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user_id)
+          .single();
+
+        if (targetUserRoleError || !targetUserRoleData) {
+          console.error('Edge Function: Erro ao buscar cargo do usuário alvo:', targetUserRoleError?.message);
+          return new Response(JSON.stringify({ message: 'Permissão negada: Cargo do usuário alvo não encontrado.' }), {
+            status: 403,
+            headers: corsHeaders,
+          });
+        }
+
+        const targetUserRole = targetUserRoleData.role;
+        if (targetUserRole === 'superadmin') {
+          console.log('Edge Function: Admin de rede não pode atualizar superadmin.');
+          return new Response(JSON.stringify({ message: 'Permissão negada: Você não tem autorização para atualizar a senha de um superadmin.' }), {
+            status: 403,
+            headers: corsHeaders,
+          });
+        }
+      }
+    }
 
     if (!new_password) {
       console.log('Edge Function: Nova senha ausente no body.');
@@ -87,7 +151,7 @@ Deno.serve(async (req) => {
     // Atualiza a senha do usuário usando a API de administração
     console.log('Edge Function: Tentando atualizar senha do usuário via Supabase Admin API...');
     const response = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${user.sub}`,
+      `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${targetUserId}`,
       {
         method: "PUT",
         headers: {
@@ -109,7 +173,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log('Edge Function: Senha atualizada com sucesso para o usuário:', user.sub);
+    console.log('Edge Function: Senha atualizada com sucesso para o usuário:', targetUserId);
     return new Response(JSON.stringify({ success: true, message: 'Senha atualizada com sucesso.' }), {
       status: 200,
       headers: corsHeaders,
