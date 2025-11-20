@@ -93,6 +93,7 @@ export default function InitialSetup() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
+              {/* Alterado para minLength 8 */}
               <Input
                 id="password"
                 type="password"
@@ -100,7 +101,7 @@ export default function InitialSetup() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 required
-                minLength={8} {/* Alterado para minLength 8 */}
+                minLength={8}
               />
               <p className="text-xs text-muted-foreground">
                 Senha provisória pré-definida. Por favor, use uma senha forte. Você pode alterá-la depois.
