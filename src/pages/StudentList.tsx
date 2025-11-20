@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Eye, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import schoolLogo from "@/assets/school-logo.png";
 
@@ -57,27 +57,6 @@ const StudentList = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o histórico de ${name}?`)) return;
-
-    try {
-      const { error } = await supabase.from("students").delete().eq("id", id);
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Histórico excluído com sucesso",
-      });
-      fetchStudents();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o histórico",
-        variant: "destructive",
-      });
     }
   };
 
@@ -159,14 +138,6 @@ const StudentList = () => {
                         Editar
                       </Button>
                     </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(student.id, student.full_name)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Excluir
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

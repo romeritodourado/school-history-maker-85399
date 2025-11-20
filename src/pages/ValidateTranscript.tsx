@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 
 interface TranscriptValidation {
   student_name: string;
@@ -125,8 +126,8 @@ export default function ValidateTranscript() {
             <p className="text-muted-foreground mb-4">
               {error || 'O histórico solicitado não foi encontrado ou não possui assinatura digital.'}
             </p>
-            <Link to="/" className="text-primary hover:underline">
-              Voltar para o sistema
+            <Link to="/">
+              <Button>Voltar para o sistema</Button>
             </Link>
           </CardContent>
         </Card>
