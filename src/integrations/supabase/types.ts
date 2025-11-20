@@ -122,123 +122,38 @@ export type Database = {
           },
         ]
       }
-      profiles: {
-        Row: {
-          created_at: string
-          full_name: string
-          id: string
-          school_id: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          full_name: string
-          id: string
-          school_id?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          full_name?: string
-          id?: string
-          school_id?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       schools: {
         Row: {
           address: string | null
           city: string
           created_at: string
-          director_id: string | null
           id: string
           inep_code: string | null
           name: string
           state: string
-          status: string
           updated_at: string
         }
         Insert: {
           address?: string | null
           city?: string
           created_at?: string
-          director_id?: string | null
           id?: string
           inep_code?: string | null
           name: string
           state?: string
-          status?: string
           updated_at?: string
         }
         Update: {
           address?: string | null
           city?: string
           created_at?: string
-          director_id?: string | null
           id?: string
           inep_code?: string | null
           name?: string
           state?: string
-          status?: string
           updated_at?: string
         }
         Relationships: []
-      }
-      signatures: {
-        Row: {
-          algorithm: string
-          created_at: string
-          id: string
-          ip_address: string | null
-          pdf_hash: string
-          school_id: string
-          signed_at: string
-          transcript_id: string
-          user_id: string
-        }
-        Insert: {
-          algorithm?: string
-          created_at?: string
-          id?: string
-          ip_address?: string | null
-          pdf_hash: string
-          school_id: string
-          signed_at?: string
-          transcript_id: string
-          user_id: string
-        }
-        Update: {
-          algorithm?: string
-          created_at?: string
-          id?: string
-          ip_address?: string | null
-          pdf_hash?: string
-          school_id?: string
-          signed_at?: string
-          transcript_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "signatures_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       students: {
         Row: {
@@ -254,10 +169,7 @@ export type Database = {
           mother_name: string
           observations: string | null
           school_id: string | null
-          signed_at: string | null
-          status: string
           student_status: string | null
-          transcript_status: string | null
           updated_at: string | null
         }
         Insert: {
@@ -273,10 +185,7 @@ export type Database = {
           mother_name: string
           observations?: string | null
           school_id?: string | null
-          signed_at?: string | null
-          status?: string
           student_status?: string | null
-          transcript_status?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -292,10 +201,7 @@ export type Database = {
           mother_name?: string
           observations?: string | null
           school_id?: string | null
-          signed_at?: string | null
-          status?: string
           student_status?: string | null
-          transcript_status?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -346,24 +252,6 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       workload_configurations: {
         Row: {
           academic_year: number
@@ -402,30 +290,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      get_user_school_id: { Args: { _user_id: string }; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      promote_to_superadmin: {
-        Args: { user_email: string }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role:
-        | "superadmin"
-        | "adminrede"
-        | "diretor"
-        | "secretario"
-        | "assistente"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,7 +378,7 @@ export type Enums<
     ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  ? Database[PublicTableNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicTableNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicTableNameOrOptions]
     : never
