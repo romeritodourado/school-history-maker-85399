@@ -10,7 +10,7 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 
 export default function InitialSetup() {
   const [email] = useState('romeritorms@hotmail.com');
-  const [password, setPassword] = useState('12345');
+  const [password, setPassword] = useState('StrongPass123!'); // Senha padrão mais forte
   const [fullName, setFullName] = useState('Administrador do Sistema');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -100,10 +100,10 @@ export default function InitialSetup() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 required
-                minLength={5}
+                minLength={8} {/* Alterado para minLength 8 */}
               />
               <p className="text-xs text-muted-foreground">
-                Senha provisória pré-definida. Você pode alterá-la depois.
+                Senha provisória pré-definida. Por favor, use uma senha forte. Você pode alterá-la depois.
               </p>
             </div>
             <div className="space-y-2">
