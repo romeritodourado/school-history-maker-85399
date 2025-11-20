@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   FileText, 
   Users, 
-  Download, 
   Clock, 
-  School
+  School, 
+  UserCog,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -30,6 +31,24 @@ export default function Dashboard() {
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
+    },
+    {
+      title: 'Gerenciar Escolas',
+      description: 'Administrar escolas da rede',
+      icon: School,
+      path: '/escolas',
+    },
+    {
+      title: 'Gerenciar Usuários',
+      description: 'Criar e editar usuários',
+      icon: UserCog,
+      path: '/usuarios',
+    },
+    {
+      title: 'Validar Histórico',
+      description: 'Validar autenticidade de um histórico',
+      icon: ShieldCheck,
+      path: '/validar',
     },
   ];
 
