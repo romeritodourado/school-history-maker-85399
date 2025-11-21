@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
-import correctLogo from "@/assets/correct-logo.png"; // Importar a nova logo
+import correctLogo from "/correct-logo.png"; // Importar a nova logo da pasta public
 
 const Index = () => {
   return (

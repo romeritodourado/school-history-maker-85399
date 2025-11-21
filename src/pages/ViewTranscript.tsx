@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "@/assets/correct-logo.png"; // Atualizar para a nova logo
+import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 

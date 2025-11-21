@@ -8,7 +8,7 @@ import {
   School, 
   ShieldCheck
 } from 'lucide-react';
-import placeholderLogo from "/placeholder.svg"; // Usar um placeholder para teste
+import correctLogo from "/correct-logo.png"; // Importar a logo da pasta public
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ export default function Dashboard() {
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={placeholderLogo} alt="Placeholder Logo" className="h-10 w-10" />
+            <img src={correctLogo} alt="Correct Logo" className="h-10 w-10" />
             <div>
               <h1 className="text-2xl font-bold">Correct - Sistema de Históricos Escolares</h1>
               <p className="text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-        </div>
+        </div >
       </header>
 
       <main className="container mx-auto px-4 py-8">

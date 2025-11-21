@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import correctLogo from "@/assets/correct-logo.png"; // Importar a nova logo
+import correctLogo from "/correct-logo.png"; // Importar a nova logo da pasta public
 
 interface School {
   id: string;

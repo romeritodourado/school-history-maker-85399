@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import correctLogo from "@/assets/correct-logo.png"; // Usar a nova logo
+import correctLogo from "/correct-logo.png"; // Usar a nova logo da pasta public
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {

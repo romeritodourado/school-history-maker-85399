@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import correctLogo from "@/assets/correct-logo.png"; // Usar a nova logo
+import correctLogo from "/correct-logo.png"; // Usar a nova logo da pasta public
 
 interface StudentData {
   full_name: string;

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "@/assets/correct-logo.png"; // Atualizar para a nova logo
+import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
 
 interface Student {
   id: string;

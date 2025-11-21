@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import correctLogo from "@/assets/correct-logo.png"; // Importar a nova logo
+import correctLogo from "/correct-logo.png"; // Importar a nova logo da pasta public
 
 interface TranscriptValidation {
   student_name: string;
@@ -179,7 +179,7 @@ export default function ValidateTranscript() {
             {/* Removed Digital Signature Info section */}
 
             {validation.is_valid ? (
-              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
                   Este histórico é autêntico.

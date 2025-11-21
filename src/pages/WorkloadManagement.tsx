@@ -7,7 +7,7 @@ import { ArrowLeft, Trash2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "@/assets/correct-logo.png"; // Atualizar para a nova logo
+import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WORKLOAD_BY_GRADE, SUBJECT_CATEGORIES } from "@/lib/workloadData";
