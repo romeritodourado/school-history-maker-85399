@@ -10,23 +10,14 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "../../public/correct-logo.png"; // Importação da nova logo
 import { GradesTable } from "@/components/transcript/GradesTable";
 import { TrimesterGradesTable } from "@/components/transcript/TrimesterGradesTable";
 import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";
 import { WORKLOAD_BY_GRADE } from "@/lib/workloadData";
-import { studentSchema, gradeSchema } from "@/lib/validationSchemas";
+import { studentSchema } from "@/lib/validationSchemas";
 import { z } from 'zod';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+// Removido imports do AlertDialog
 
 const SUBJECTS = [
   "Língua Portuguesa",
@@ -52,6 +43,10 @@ export interface AcademicYear {
   shift: string;
   class_name: string;
   reclassified?: boolean;
+  school_period_start?: string | null;
+  school_period_end?: string | null;
+  trimester_year?: string | null;
+  trimester_shift?: string | null;
 }
 
 export interface Grade {
@@ -74,9 +69,7 @@ const CreateTranscript = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!id);
-  const [showStatusChangeDialog, setShowStatusChangeDialog] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState("");
-  const [previousStatus, setPreviousStatus] = useState("cursando");
+  // Removido showStatusChangeDialog, pendingStatus e previousStatus
 
   // Student data
   const [studentData, setStudentData] = useState({
@@ -119,7 +112,7 @@ const CreateTranscript = () => {
     return initial;
   });
 
-  // Custom subjects per grade level
+  // Custom subjects per grade level (not directly used in this simplified version, but kept for structure)
   const [customSubjects, setCustomSubjects] = useState<{ [key: string]: string[] }>({});
 
   // Trimester grades for current year
@@ -136,7 +129,7 @@ const CreateTranscript = () => {
   // Observations
   const [observations, setObservations] = useState("");
   
-  // Store the latest academic year ID for trimester grades
+  // Store the latest academic year ID for trimester grades (not directly used in this simplified version)
   const [latestAcademicYearId, setLatestAcademicYearId] = useState<string | null>(null);
 
   // Update workload configurations from database when available
@@ -227,21 +220,20 @@ const CreateTranscript = () => {
 
       if (studentError) throw studentError;
 
-      const status = (studentData as any).student_status || "cursando";
+      // student_status and grade_series are now simple fields, not tied to auth roles
       setStudentData({
         full_name: studentData.full_name,
         mother_name: studentData.mother_name,
         father_name: studentData.father_name || "",
         birth_date: studentData.birth_date,
         birth_place: studentData.birth_place,
-        birth_state: (studentData as any).birth_state || "BA",
-        student_status: status,
-        grade_series: (studentData as any).grade_series || "",
+        birth_state: studentData.birth_state || "BA",
+        student_status: studentData.student_status || "cursando",
+        grade_series: studentData.grade_series || "",
       });
-      setPreviousStatus(status);
       
       // Load observations
-      setObservations((studentData as any).observations || "");
+      setObservations(studentData.observations || "");
 
       // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
@@ -262,7 +254,11 @@ const CreateTranscript = () => {
             state: year.state,
             shift: year.shift || "",
             class_name: year.class_name || "",
-            reclassified: (year as any).reclassified || false,
+            reclassified: year.reclassified || false,
+            school_period_start: year.school_period_start,
+            school_period_end: year.school_period_end,
+            trimester_year: year.trimester_year,
+            trimester_shift: year.trimester_shift,
           }))
         );
 
@@ -309,10 +305,10 @@ const CreateTranscript = () => {
           
           // Load school period data
           setSchoolPeriod({
-            startDate: (latestYear as any).school_period_start || "",
-            endDate: (latestYear as any).school_period_end || "",
-            gradeClass: (latestYear as any).trimester_year || "",
-            shift: (latestYear as any).trimester_shift || "",
+            startDate: latestYear.school_period_start || "",
+            endDate: latestYear.school_period_end || "",
+            gradeClass: latestYear.trimester_year || "",
+            shift: latestYear.trimester_shift || "",
           });
         }
         
@@ -343,33 +339,6 @@ const CreateTranscript = () => {
     } finally {
       setLoadingData(false);
     }
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    if (previousStatus === "cursando" && newStatus === "concluído") {
-      setPendingStatus(newStatus);
-      setShowStatusChangeDialog(true);
-    } else {
-      setStudentData({ ...studentData, student_status: newStatus });
-      setPreviousStatus(newStatus);
-    }
-  };
-
-  const confirmStatusChange = () => {
-    setStudentData({ ...studentData, student_status: pendingStatus });
-    setPreviousStatus(pendingStatus);
-    setTrimesterGrades([]);
-    setSchoolPeriod({ startDate: "", endDate: "", gradeClass: "", shift: "" });
-    setShowStatusChangeDialog(false);
-    toast({
-      title: "Notas trimestrais apagadas",
-      description: "As notas trimestrais foram removidas pois o aluno mudou para status concluído.",
-    });
-  };
-
-  const cancelStatusChange = () => {
-    setShowStatusChangeDialog(false);
-    setPendingStatus("");
   };
 
   const handleSave = async () => {
@@ -522,7 +491,7 @@ const CreateTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">
                 {id ? "Editar Histórico Escolar" : "Novo Histórico Escolar"}
@@ -665,7 +634,7 @@ const CreateTranscript = () => {
                     <select
                       id="student_status"
                       value={studentData.student_status}
-                      onChange={(e) => handleStatusChange(e.target.value)}
+                      onChange={(e) => setStudentData({ ...studentData, student_status: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <option value="cursando">Cursando</option>
@@ -801,23 +770,7 @@ const CreateTranscript = () => {
         </div>
       </main>
 
-      <AlertDialog open={showStatusChangeDialog} onOpenChange={setShowStatusChangeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar mudança de status</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está alterando o status do aluno de "Cursando" para "Concluído". 
-              Isso irá apagar todas as notas trimestrais e essas informações não aparecerão no histórico escolar em PDF.
-              <br /><br />
-              Deseja realmente fazer essa alteração?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelStatusChange}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange}>Confirmar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Removido AlertDialog */}
     </div>
   );
 };

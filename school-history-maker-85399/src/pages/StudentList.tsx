@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Eye, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 
 interface Student {
   id: string;
@@ -60,33 +60,14 @@ const StudentList = () => {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o histórico de ${name}?`)) return;
-
-    try {
-      const { error } = await supabase.from("students").delete().eq("id", id);
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Histórico excluído com sucesso",
-      });
-      fetchStudents();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o histórico",
-        variant: "destructive",
-      });
-    }
-  };
+  // Removido handleDelete, pois a exclusão não será permitida sem autenticação.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Lista de Alunos</h1>
               <p className="text-muted-foreground">Gerenciar históricos escolares</p>
@@ -159,14 +140,7 @@ const StudentList = () => {
                         Editar
                       </Button>
                     </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(student.id, student.full_name)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Excluir
-                    </Button>
+                    {/* Botão de exclusão removido */}
                   </div>
                 </CardContent>
               </Card>
