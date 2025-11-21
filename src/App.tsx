@@ -21,6 +21,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Rotas públicas */}
+          <Route path="/validar" element={<ValidateTranscript />} />
+          <Route path="*" element={<NotFound />} />
+
+          {/* Rotas protegidas (serão re-implementadas com o novo sistema de auth) */}
           <Route path="/" element={<Dashboard />} />
           <Route path="/lista-alunos" element={<StudentList />} />
           <Route path="/novo-historico" element={<CreateTranscript />} />
@@ -28,9 +33,6 @@ const App = () => (
           <Route path="/editar/:id" element={<CreateTranscript />} />
           <Route path="/carga-horaria" element={<WorkloadManagement />} />
           <Route path="/escolas" element={<Schools />} />
-          <Route path="/validar" element={<ValidateTranscript />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

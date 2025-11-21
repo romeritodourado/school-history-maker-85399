@@ -122,87 +122,173 @@ export type Database = {
           },
         ]
       }
-      schools: {
+      audit_logs: {
         Row: {
-          address: string | null
-          city: string
-          created_at: string
+          action: string | null
+          actor_id: string | null
+          actor_role: Database["public"]["Enums"]["app_role"] | null
+          created_at: string | null
           id: string
-          inep_code: string | null
-          name: string
-          state: string
-          updated_at: string
+          payload: Json | null
+          target_id: string | null
+          target_table: string | null
         }
         Insert: {
-          address?: string | null
-          city?: string
-          created_at?: string
+          action?: string | null
+          actor_id?: string | null
+          actor_role?: Database["public"]["Enums"]["app_role"] | null
+          created_at?: string | null
           id?: string
-          inep_code?: string | null
-          name: string
-          state?: string
-          updated_at?: string
+          payload?: Json | null
+          target_id?: string | null
+          target_table?: string | null
         }
         Update: {
-          address?: string | null
-          city?: string
-          created_at?: string
+          action?: string | null
+          actor_id?: string | null
+          actor_role?: Database["public"]["Enums"]["app_role"] | null
+          created_at?: string | null
           id?: string
-          inep_code?: string | null
+          payload?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      municipalities: {
+        Row: {
+          cnpj: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
           name?: string
-          state?: string
-          updated_at?: string
         }
         Relationships: []
       }
-      students: {
+      profiles: {
         Row: {
-          birth_date: string
-          birth_place: string
-          birth_state: string
-          completion_year: number | null
           created_at: string | null
-          father_name: string | null
-          full_name: string
-          grade_series: string | null
+          email: string | null
           id: string
-          mother_name: string
-          observations: string | null
+          municipality_id: string | null
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"]
           school_id: string | null
-          student_status: string | null
-          updated_at: string | null
         }
         Insert: {
-          birth_date: string
-          birth_place: string
-          birth_state?: string
-          completion_year?: number | null
           created_at?: string | null
-          father_name?: string | null
-          full_name: string
-          grade_series?: string | null
-          id?: string
-          mother_name: string
-          observations?: string | null
+          email?: string | null
+          id: string
+          municipality_id?: string | null
+          name?: string | null
+          role: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
-          student_status?: string | null
-          updated_at?: string | null
         }
         Update: {
-          birth_date?: string
-          birth_place?: string
-          birth_state?: string
-          completion_year?: number | null
           created_at?: string | null
-          father_name?: string | null
-          full_name?: string
-          grade_series?: string | null
+          email?: string | null
           id?: string
-          mother_name?: string
-          observations?: string | null
+          municipality_id?: string | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
-          student_status?: string | null
-          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_municipality_id_fkey"
+            columns: ["municipality_id"]
+            isOneToOne: false
+            referencedRelation: "municipalities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          created_at: string | null
+          id: string
+          inep: string | null
+          municipality_id: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inep?: string | null
+          municipality_id?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inep?: string | null
+          municipality_id?: string | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schools_municipality_id_fkey"
+            columns: ["municipality_id"]
+            isOneToOne: false
+            referencedRelation: "municipalities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          birthdate: string | null
+          created_at: string | null
+          id: string
+          name: string | null
+          school_id: string | null
+        }
+        Insert: {
+          birthdate?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          school_id?: string | null
+        }
+        Update: {
+          birthdate?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          school_id?: string | null
         }
         Relationships: [
           {
@@ -210,6 +296,58 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transcripts: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          municipality_id: string
+          school_id: string
+          student_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          municipality_id: string
+          school_id: string
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          municipality_id?: string
+          school_id?: string
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_municipality_id_fkey"
+            columns: ["municipality_id"]
+            isOneToOne: false
+            referencedRelation: "municipalities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcripts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcripts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -293,7 +431,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "municipal_admin"
+        | "school_admin"
+        | "secretary"
+        | "teacher"
     }
     CompositeTypes: {
       [_ in never]: never
