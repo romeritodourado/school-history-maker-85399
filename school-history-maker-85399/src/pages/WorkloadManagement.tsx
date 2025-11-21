@@ -257,7 +257,7 @@ const WorkloadManagement = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-16 w-16" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-20 w-20" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">
                 Gerenciamento de Carga Horária
@@ -503,7 +503,7 @@ const WorkloadManagement = () => {
                                           handleUpdateWorkload(
                                             config.id!,
                                             parseInt(e.target.value) || 0
-                                          )
+                                                                                  )
                                         }
                                         className="w-24 mx-auto"
                                         min="0"

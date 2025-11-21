@@ -84,7 +84,7 @@ export const exportToPDF = async (
   // Add logo
   try {
     const correctLogoBase64 = await getImageAsBase64("/correct-logo.png"); // Usando o caminho direto
-    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 10, 10, 20, 20); // Centralizar a nova logo
+    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 15, 10, 30, 30); // Centralizar e aumentar a nova logo
   } catch (error) {
     console.error("Error loading logo:", error);
   }
@@ -92,19 +92,19 @@ export const exportToPDF = async (
   // Header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 35, { align: "center" }); // Novo nome do sistema
+  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 45, { align: "center" }); // Novo nome do sistema
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 42, { align: "center" }); // Nova descrição
+  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 52, { align: "center" }); // Nova descrição
   
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 55, { align: "center" });
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 65, { align: "center" });
 
   // Student info
   doc.setFontSize(10);
-  let yPos = 65;
+  let yPos = 75;
   doc.setFont("helvetica", "normal");
   doc.text(`ALUNO (A): `, 15, yPos);
   doc.setFont("helvetica", "bold");

@@ -75,7 +75,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
           <div className="flex items-center justify-between gap-4">
             {/* Removido cityLogo, usando apenas correctLogo centralizado */}
             <div className="flex-1 text-center">
-              <img src="/correct-logo.png" alt="Correct Logo" className="h-20 w-20 object-contain mx-auto mb-2" />
+              <img src="/correct-logo.png" alt="Correct Logo" className="h-24 w-24 object-contain mx-auto mb-2" />
               <h2 className="text-sm font-bold text-primary">Correct - Sistema de Histórico Escolar</h2>
               <h3 className="text-sm font-bold text-primary">Gestão simplificada de históricos escolares</h3>
               <p className="text-xs text-muted-foreground">Versão 1.0</p>

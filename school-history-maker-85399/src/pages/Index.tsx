@@ -9,7 +9,7 @@ const Index = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-16 w-16" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-20 w-20" />
             <div>
               <h1 className="text-2xl font-bold text-primary">Correct - Sistema de Histórico Escolar</h1>
               <p className="text-muted-foreground">Gestão simplificada de históricos escolares</p>

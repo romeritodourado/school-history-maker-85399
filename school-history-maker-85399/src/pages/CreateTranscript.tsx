@@ -491,7 +491,7 @@ const CreateTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-16 w-16" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-20 w-20" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">
                 {id ? "Editar Histórico Escolar" : "Novo Histórico Escolar"}

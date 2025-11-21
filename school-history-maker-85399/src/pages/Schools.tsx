@@ -148,7 +148,7 @@ export default function Schools() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-8 w-8" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-10 w-10" />
             <h1 className="text-3xl font-bold flex items-center gap-2">
               Gerenciar Escolas
             </h1>
