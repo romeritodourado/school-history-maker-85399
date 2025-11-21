@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
+// Removido: import correctLogo from "../../public/correct-logo.png";
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -83,7 +83,7 @@ export const exportToPDF = async (
 
   // Add logo
   try {
-    const correctLogoBase64 = await getImageAsBase64(correctLogo);
+    const correctLogoBase64 = await getImageAsBase64("/correct-logo.png"); // Usando o caminho direto
     doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 10, 10, 20, 20); // Centralizar a nova logo
   } catch (error) {
     console.error("Error loading logo:", error);

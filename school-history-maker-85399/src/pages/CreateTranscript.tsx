@@ -10,7 +10,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "../../public/correct-logo.png"; // Importação da nova logo
+// Removido: import correctLogo from "../../public/correct-logo.png";
 import { GradesTable } from "@/components/transcript/GradesTable";
 import { TrimesterGradesTable } from "@/components/transcript/TrimesterGradesTable";
 import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";
@@ -491,7 +491,7 @@ const CreateTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">
                 {id ? "Editar Histórico Escolar" : "Novo Histórico Escolar"}

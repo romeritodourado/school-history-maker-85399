@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
+// Removido: import correctLogo from "../../public/correct-logo.png";
 
 interface TranscriptValidation {
   student_name: string;
@@ -106,7 +106,7 @@ export default function ValidateTranscript() {
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
+                <img src="/correct-logo.png" alt="Correct Logo" className="h-8 w-8" />
                 Validação de Histórico Escolar
               </CardTitle>
               <Badge 
