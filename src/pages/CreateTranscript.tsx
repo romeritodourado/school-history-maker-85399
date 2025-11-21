@@ -10,12 +10,12 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "@/assets/correct-logo.png"; // Atualizar para a nova logo
+import correctLogo from "@/assets/correct-logo.png";
 import { GradesTable } from "@/components/transcript/GradesTable";
 import { TrimesterGradesTable } from "@/components/transcript/TrimesterGradesTable";
 import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";
 import { WORKLOAD_BY_GRADE } from "@/lib/workloadData";
-import { studentSchema } from "@/lib/validationSchemas"; // Removido gradeSchema pois não é usado diretamente aqui
+import { studentSchema } from "@/lib/validationSchemas";
 import { z } from 'zod';
 
 const SUBJECTS = [
@@ -73,7 +73,7 @@ const CreateTranscript = () => {
     birth_date: "",
     birth_place: "",
     birth_state: "BA",
-    student_status: "cursando", // Manter status padrão, mas sem a lógica de diálogo
+    student_status: "cursando",
     grade_series: "",
   });
 
