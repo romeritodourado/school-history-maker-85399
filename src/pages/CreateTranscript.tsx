@@ -17,16 +17,7 @@ import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";
 import { WORKLOAD_BY_GRADE } from "@/lib/workloadData";
 import { studentSchema } from "@/lib/validationSchemas";
 import { z } from 'zod';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+// Removido imports do AlertDialog
 
 const SUBJECTS = [
   "Língua Portuguesa",
@@ -78,8 +69,7 @@ const CreateTranscript = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!id);
-  // Removido showStatusChangeDialog e pendingStatus, pois a lógica de autenticação foi removida
-  // e a mudança de status não precisa de confirmação especial que apague dados.
+  // Removido showStatusChangeDialog, pendingStatus e previousStatus
 
   // Student data
   const [studentData, setStudentData] = useState({
@@ -779,6 +769,8 @@ const CreateTranscript = () => {
           </Button>
         </div>
       </main>
+
+      {/* Removido AlertDialog */}
     </div>
   );
 };
