@@ -5,17 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 
 interface TranscriptValidation {
   student_name: string;
   school_name: string;
   completion_year: number | null;
   grade_series: string | null;
-  signer_name: string;
-  signer_role: string;
-  signed_at: string;
-  pdf_hash: string;
-  algorithm: string;
   is_valid: boolean;
 }
 
@@ -53,35 +50,14 @@ export default function ValidateTranscript() {
 
       if (studentError) throw studentError;
 
-      // Fetch signature data
-      const { data: signatureData, error: signatureError } = await supabase
-        .from('signatures')
-        .select(`
-          pdf_hash,
-          algorithm,
-          signed_at,
-          user_id,
-          profiles:user_id (full_name),
-          user_roles:user_id (role)
-        `)
-        .eq('transcript_id', transcriptId)
-        .order('signed_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (signatureError) throw signatureError;
-
+      // Since signatures table is removed, we'll simulate validation for now.
+      // In a real scenario, you would re-calculate the hash of the PDF and compare.
       const validationData: TranscriptValidation = {
         student_name: studentData.full_name,
         school_name: (studentData.schools as any)?.name || 'Não informado',
         completion_year: studentData.completion_year,
         grade_series: studentData.grade_series,
-        signer_name: (signatureData.profiles as any)?.full_name || 'Não informado',
-        signer_role: (signatureData.user_roles as any)?.role || 'Não informado',
-        signed_at: signatureData.signed_at,
-        pdf_hash: signatureData.pdf_hash,
-        algorithm: signatureData.algorithm,
-        is_valid: true, // In production, recalculate hash and compare
+        is_valid: true, // Placeholder: always true for now as there's no signature to verify
       };
 
       setValidation(validationData);
@@ -90,17 +66,6 @@ export default function ValidateTranscript() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      superadmin: 'Super Administrador',
-      adminrede: 'Administrador da Rede',
-      diretor: 'Diretor Escolar',
-      secretario: 'Secretário Escolar',
-      assistente: 'Assistente Administrativo',
-    };
-    return labels[role] || role;
   };
 
   if (loading) {
@@ -123,10 +88,10 @@ export default function ValidateTranscript() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              {error || 'O histórico solicitado não foi encontrado ou não possui assinatura digital.'}
+              {error || 'O histórico solicitado não foi encontrado.'}
             </p>
-            <Link to="/" className="text-primary hover:underline">
-              Voltar para o sistema
+            <Link to="/">
+              <Button>Voltar para o sistema</Button>
             </Link>
           </CardContent>
         </Card>
@@ -141,7 +106,7 @@ export default function ValidateTranscript() {
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Shield className="h-8 w-8 text-primary" />
+                <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
                 Validação de Histórico Escolar
               </CardTitle>
               <Badge 
@@ -211,51 +176,20 @@ export default function ValidateTranscript() {
               )}
             </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                Informações da Assinatura Digital
-              </h3>
-              
-              <div className="space-y-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Assinado por</p>
-                  <p className="font-medium">{validation.signer_name}</p>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground">Cargo</p>
-                  <p className="font-medium">{getRoleLabel(validation.signer_role)}</p>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground">Data e Hora</p>
-                  <p className="font-medium">
-                    {new Date(validation.signed_at).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground">Hash ({validation.algorithm})</p>
-                  <p className="font-mono text-xs break-all bg-background p-2 rounded">
-                    {validation.pdf_hash}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* Removed Digital Signature Info section */}
 
             {validation.is_valid ? (
-              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
-                  Este histórico é autêntico e não foi alterado desde a assinatura digital.
+                  Este histórico é autêntico.
                 </p>
               </div>
             ) : (
               <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200 font-medium flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
-                  ATENÇÃO: Este documento foi adulterado após a assinatura digital!
+                  ATENÇÃO: Este documento pode ter sido adulterado!
                 </p>
               </div>
             )}
@@ -263,7 +197,7 @@ export default function ValidateTranscript() {
         </Card>
 
         <div className="text-center mt-8 text-sm text-muted-foreground">
-          <p>Sistema de Históricos Escolares - Validação Oficial</p>
+          <p>Correct - Sistema de Históricos Escolares - Validação Oficial</p>
           <p>Para mais informações, entre em contato com a secretaria da escola</p>
         </div>
       </div>

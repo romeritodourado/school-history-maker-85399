@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
@@ -31,6 +31,11 @@ interface AcademicYearData {
   shift: string;
   class_name: string;
   reclassified?: boolean;
+  // Novos campos adicionados
+  school_period_start?: string | null;
+  school_period_end?: string | null;
+  trimester_year?: string | null;
+  trimester_shift?: string | null;
 }
 
 interface GradeData {
@@ -104,10 +109,10 @@ const ViewTranscript = () => {
         
         // Load school period data
         setSchoolPeriod({
-          startDate: (latestYear as any).school_period_start || "",
-          endDate: (latestYear as any).school_period_end || "",
-          gradeClass: (latestYear as any).trimester_year || "",
-          shift: (latestYear as any).trimester_shift || "",
+          startDate: latestYear.school_period_start || "",
+          endDate: latestYear.school_period_end || "",
+          gradeClass: latestYear.trimester_year || "",
+          shift: latestYear.trimester_shift || "",
         });
         
         const { data: trimesterData, error: trimesterError } = await supabase
@@ -183,7 +188,7 @@ const ViewTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Histórico Escolar</h1>
               <p className="text-muted-foreground">{student.full_name}</p>

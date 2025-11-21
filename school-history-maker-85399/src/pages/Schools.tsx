@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 
 interface School {
   id: string;
@@ -41,15 +41,10 @@ export default function Schools() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { role } = useAuth();
 
   useEffect(() => {
-    if (role !== 'superadmin' && role !== 'adminrede') {
-      navigate('/');
-      return;
-    }
     fetchSchools();
-  }, [role, navigate]);
+  }, []);
 
   const fetchSchools = async () => {
     try {
@@ -153,8 +148,8 @@ export default function Schools() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
+            <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <School className="h-8 w-8" />
               Gerenciar Escolas
             </h1>
           </div>

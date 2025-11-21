@@ -7,7 +7,7 @@ import { ArrowLeft, Trash2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WORKLOAD_BY_GRADE, SUBJECT_CATEGORIES } from "@/lib/workloadData";
@@ -257,7 +257,7 @@ const WorkloadManagement = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">
                 Gerenciamento de Carga Horária

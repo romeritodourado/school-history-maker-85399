@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import schoolLogo from "@/assets/school-logo.png";
-import cityLogo from "@/assets/city-logo.png";
+import correctLogo from "../../../public/correct-logo.png"; // Atualizado para caminho relativo
 
 interface StudentData {
   full_name: string;
@@ -74,15 +73,15 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
       <Card>
         <CardHeader className="border-b bg-primary/5">
           <div className="flex items-center justify-between gap-4">
-            <img src={cityLogo} alt="Brasão do Município" className="h-20 w-20 object-contain" />
+            {/* Removido cityLogo, usando apenas correctLogo centralizado */}
             <div className="flex-1 text-center">
-              <h2 className="text-sm font-bold text-primary">PREFEITURA MUNICIPAL DE LUÍS EDUARDO MAGALHÃES</h2>
-              <h3 className="text-sm font-bold text-primary">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
-              <h3 className="text-sm font-bold text-primary">ESCOLA MUNICIPAL ALDORI LUIZ TOLAZZI</h3>
-              <p className="text-xs text-muted-foreground">Autorização: 1247/2008 - D.O.: 1.247/2008</p>
+              <img src={correctLogo} alt="Correct Logo" className="h-20 w-20 object-contain mx-auto mb-2" />
+              <h2 className="text-sm font-bold text-primary">Correct - Sistema de Histórico Escolar</h2>
+              <h3 className="text-sm font-bold text-primary">Gestão simplificada de históricos escolares</h3>
+              <p className="text-xs text-muted-foreground">Versão 1.0</p>
               <h2 className="mt-2 text-lg font-bold text-primary">HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL</h2>
             </div>
-            <img src={schoolLogo} alt="Logo da Escola" className="h-20 w-20 object-contain" />
+            {/* Removido schoolLogo */}
           </div>
         </CardHeader>
         <CardContent className="pt-6">

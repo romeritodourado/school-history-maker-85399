@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "../../public/correct-logo.png"; // Atualizado para caminho relativo
 
 const Index = () => {
   return (
@@ -9,10 +9,10 @@ const Index = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Escola Municipal Aldori Luiz Tolazzi" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div>
-              <h1 className="text-2xl font-bold text-primary">Sistema de Histórico Escolar</h1>
-              <p className="text-muted-foreground">Escola Municipal Aldori Luiz Tolazzi</p>
+              <h1 className="text-2xl font-bold text-primary">Correct - Sistema de Histórico Escolar</h1>
+              <p className="text-muted-foreground">Gestão simplificada de históricos escolares</p>
             </div>
           </div>
         </div>
