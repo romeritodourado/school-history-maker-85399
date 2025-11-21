@@ -8,7 +8,7 @@ import {
   School, 
   ShieldCheck
 } from 'lucide-react';
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 
 export default function Dashboard() {
   const navigate = useNavigate();

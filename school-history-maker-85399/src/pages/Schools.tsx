@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 
 interface School {
   id: string;

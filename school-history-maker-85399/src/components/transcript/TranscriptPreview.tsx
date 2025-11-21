@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// Removido: import correctLogo from "../../../public/correct-logo.png";
+
 
 interface StudentData {
   full_name: string;

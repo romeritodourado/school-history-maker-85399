@@ -10,7 +10,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 import { GradesTable } from "@/components/transcript/GradesTable";
 import { TrimesterGradesTable } from "@/components/transcript/TrimesterGradesTable";
 import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";

@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -265,7 +265,7 @@ export const exportToPDF = async (
       headerRow1.push({ 
         content: "", 
         colSpan: regularYears.length * 3, 
-        styles: { border: { top: { width: 0 }, left: { width: 0 }, right: { width: 0 }, bottom: { width: 0 } } }
+        styles: { border: { top: 0, left: 0, right: 0, bottom: 0 } }
       });
     }
 

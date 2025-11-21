@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 

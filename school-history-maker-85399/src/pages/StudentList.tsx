@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 
 interface Student {
   id: string;

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
-// Removido: import correctLogo from "../../public/correct-logo.png";
+
 
 const Index = () => {
   return (
