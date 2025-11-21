@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-// Removido: import correctLogo from "/correct-logo.png"; // Esta linha será removida
+// A linha abaixo foi removida: import correctLogo from "/correct-logo.png";
 
 interface TranscriptValidation {
   student_name: string;
