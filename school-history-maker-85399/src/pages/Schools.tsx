@@ -93,7 +93,7 @@ export default function Schools() {
         name: '',
         inep_code: '',
         address: '',
-        city: 'Luís Eduardo Magalhães',
+        city: 'Luís Eduardo Magigalhães',
         state: 'BA',
       });
       fetchSchools();
