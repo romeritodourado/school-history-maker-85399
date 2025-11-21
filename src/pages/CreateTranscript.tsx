@@ -10,13 +10,23 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "/correct-logo.png";
+import correctLogo from "/correct-logo.png"; // Importação da nova logo
 import { GradesTable } from "@/components/transcript/GradesTable";
 import { TrimesterGradesTable } from "@/components/transcript/TrimesterGradesTable";
 import { AcademicYearsTable } from "@/components/transcript/AcademicYearsTable";
 import { WORKLOAD_BY_GRADE } from "@/lib/workloadData";
 import { studentSchema } from "@/lib/validationSchemas";
 import { z } from 'zod';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const SUBJECTS = [
   "Língua Portuguesa",
@@ -42,7 +52,6 @@ export interface AcademicYear {
   shift: string;
   class_name: string;
   reclassified?: boolean;
-  // Novos campos adicionados
   school_period_start?: string | null;
   school_period_end?: string | null;
   trimester_year?: string | null;
@@ -69,6 +78,8 @@ const CreateTranscript = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!id);
+  // Removido showStatusChangeDialog e pendingStatus, pois a lógica de autenticação foi removida
+  // e a mudança de status não precisa de confirmação especial que apague dados.
 
   // Student data
   const [studentData, setStudentData] = useState({
