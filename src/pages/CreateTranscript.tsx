@@ -42,6 +42,11 @@ export interface AcademicYear {
   shift: string;
   class_name: string;
   reclassified?: boolean;
+  // Novos campos adicionados
+  school_period_start?: string | null;
+  school_period_end?: string | null;
+  trimester_year?: string | null;
+  trimester_shift?: string | null;
 }
 
 export interface Grade {
@@ -249,6 +254,10 @@ const CreateTranscript = () => {
             shift: year.shift || "",
             class_name: year.class_name || "",
             reclassified: year.reclassified || false,
+            school_period_start: year.school_period_start,
+            school_period_end: year.school_period_end,
+            trimester_year: year.trimester_year,
+            trimester_shift: year.trimester_shift,
           }))
         );
 

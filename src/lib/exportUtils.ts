@@ -45,6 +45,11 @@ interface AcademicYearData {
   city: string;
   state: string;
   reclassified?: boolean;
+  // Novos campos adicionados
+  school_period_start?: string | null;
+  school_period_end?: string | null;
+  trimester_year?: string | null;
+  trimester_shift?: string | null;
 }
 
 interface GradeData {
