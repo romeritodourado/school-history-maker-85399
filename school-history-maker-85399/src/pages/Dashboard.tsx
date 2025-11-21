@@ -51,7 +51,7 @@ export default function Dashboard() {
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-18 w-18" />
+            <img src="/correct-logo.png" alt="Correct Logo" className="h-32 w-32" />
             <div>
               <h1 className="text-2xl font-bold">Correct - Sistema de Históricos Escolares</h1>
               <p className="text-sm text-muted-foreground">
