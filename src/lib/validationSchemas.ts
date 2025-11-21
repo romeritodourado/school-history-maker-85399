@@ -43,7 +43,7 @@ export const studentSchema = z.object({
     .or(z.literal('')),
 });
 
-// Grade validation schema
+// Grade validation schema (mantido, mas não usado diretamente em CreateTranscript)
 export const gradeSchema = z.object({
   grade: z.number()
     .min(0, 'Nota não pode ser negativa')

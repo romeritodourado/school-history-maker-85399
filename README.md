@@ -1,4 +1,4 @@
-# Sistema de Histórico Escolar
+# Correct - Sistema de Histórico Escolar
 
 Sistema completo para criação, gerenciamento e exportação de históricos escolares do Ensino Fundamental.
 
@@ -17,7 +17,7 @@ Sistema completo para criação, gerenciamento e exportação de históricos esc
 - Vite
 - Tailwind CSS
 - shadcn/ui
-- Supabase (banco de dados e storage)
+- Supabase (banco de dados) - **Autenticação removida**
 - jsPDF (geração de PDFs)
 - XLSX (geração de Excel)
 
@@ -34,13 +34,7 @@ cd sistema-historico-escolar
 npm install
 ```
 
-3. Configure as variáveis de ambiente:
-```bash
-cp .env.example .env
-# Edite o arquivo .env com as credenciais do Supabase
-```
-
-4. Inicie o servidor de desenvolvimento:
+3. Inicie o servidor de desenvolvimento:
 ```bash
 npm run dev
 ```

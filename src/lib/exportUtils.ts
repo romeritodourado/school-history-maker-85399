@@ -1,8 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import schoolLogo from "@/assets/school-logo.png";
-import cityLogo from "@/assets/city-logo.png";
+import correctLogo from "@/assets/correct-logo.png"; // Usar a nova logo
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -77,35 +76,30 @@ export const exportToPDF = async (
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Add logos
+  // Add logo
   try {
-    const schoolLogoBase64 = await getImageAsBase64(schoolLogo);
-    const cityLogoBase64 = await getImageAsBase64(cityLogo);
-    
-    doc.addImage(schoolLogoBase64, "PNG", 15, 10, 20, 20);
-    doc.addImage(cityLogoBase64, "PNG", pageWidth - 35, 10, 20, 20);
+    const correctLogoBase64 = await getImageAsBase64(correctLogo);
+    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 10, 10, 20, 20); // Centralizar a nova logo
   } catch (error) {
-    console.error("Error loading logos:", error);
+    console.error("Error loading logo:", error);
   }
 
   // Header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("PREFEITURA MUNICIPAL DE LUÍS EDUARDO MAGALHÃES", pageWidth / 2, 15, { align: "center" });
-  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, 22, { align: "center" });
-  doc.text("ESCOLA MUNICIPAL ALDORI LUIZ TOLAZZI", pageWidth / 2, 29, { align: "center" });
+  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 35, { align: "center" }); // Novo nome do sistema
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("Autorização: 1247/2008 - D.O.: 1.247/2008", pageWidth / 2, 35, { align: "center" });
+  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 42, { align: "center" }); // Nova descrição
   
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 45, { align: "center" });
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 55, { align: "center" });
 
   // Student info
   doc.setFontSize(10);
-  let yPos = 55;
+  let yPos = 65;
   doc.setFont("helvetica", "normal");
   doc.text(`ALUNO (A): `, 15, yPos);
   doc.setFont("helvetica", "bold");
@@ -651,12 +645,9 @@ export const exportToExcel = (
 
   // Student info sheet
   const studentInfo = [
-    ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
+    ["Correct - Sistema de Histórico Escolar"], // Novo nome do sistema
     [""],
-    ["PREFEITURA MUNICIPAL DE LUÍS EDUARDO MAGALHÃES"],
-    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"],
-    ["ESCOLA MUNICIPAL ALDORI LUIZ TOLAZZI"],
-    ["Autorização: 1247/2008 - D.O.: 1.247/2008"],
+    ["Gestão simplificada de históricos escolares"], // Nova descrição
     [""],
     ["DADOS DO ALUNO"],
     ["Nome Completo:", student.full_name],

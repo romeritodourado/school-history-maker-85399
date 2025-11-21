@@ -6,13 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import correctLogo from "@/assets/correct-logo.png"; // Importar a nova logo
 
 interface TranscriptValidation {
   student_name: string;
   school_name: string;
   completion_year: number | null;
   grade_series: string | null;
-  // Removed signer_name, signer_role, signed_at, pdf_hash, algorithm as signatures table is removed
   is_valid: boolean;
 }
 
@@ -106,7 +106,7 @@ export default function ValidateTranscript() {
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Shield className="h-8 w-8 text-primary" />
+                <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
                 Validação de Histórico Escolar
               </CardTitle>
               <Badge 
@@ -197,7 +197,7 @@ export default function ValidateTranscript() {
         </Card>
 
         <div className="text-center mt-8 text-sm text-muted-foreground">
-          <p>Sistema de Históricos Escolares - Validação Oficial</p>
+          <p>Correct - Sistema de Históricos Escolares - Validação Oficial</p>
           <p>Para mais informações, entre em contato com a secretaria da escola</p>
         </div>
       </div>

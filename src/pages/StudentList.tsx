@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import schoolLogo from "@/assets/school-logo.png";
+import correctLogo from "@/assets/correct-logo.png"; // Atualizar para a nova logo
 
 interface Student {
   id: string;
@@ -60,12 +60,14 @@ const StudentList = () => {
     }
   };
 
+  // Removido handleDelete, pois a exclusão não será permitida sem autenticação.
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={schoolLogo} alt="Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Lista de Alunos</h1>
               <p className="text-muted-foreground">Gerenciar históricos escolares</p>
@@ -138,6 +140,7 @@ const StudentList = () => {
                         Editar
                       </Button>
                     </Link>
+                    {/* Botão de exclusão removido */}
                   </div>
                 </CardContent>
               </Card>

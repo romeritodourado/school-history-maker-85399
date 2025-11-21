@@ -6,9 +6,9 @@ import {
   Users, 
   Clock, 
   School, 
-  UserCog,
   ShieldCheck
 } from 'lucide-react';
+import correctLogo from "@/assets/correct-logo.png"; // Importar a nova logo
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -39,12 +39,6 @@ export default function Dashboard() {
       path: '/escolas',
     },
     {
-      title: 'Gerenciar Usuários',
-      description: 'Criar e editar usuários',
-      icon: UserCog,
-      path: '/usuarios',
-    },
-    {
       title: 'Validar Histórico',
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
@@ -56,11 +50,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Sistema de Históricos Escolares</h1>
-            <p className="text-sm text-muted-foreground">
-              Sistema de Histórico Escolar - Escola Municipal Aldori Luiz Tolazzi
-            </p>
+          <div className="flex items-center gap-4">
+            <img src={correctLogo} alt="Correct Logo" className="h-10 w-10" />
+            <div>
+              <h1 className="text-2xl font-bold">Correct - Sistema de Históricos Escolares</h1>
+              <p className="text-sm text-muted-foreground">
+                Gestão simplificada de históricos escolares
+              </p>
+            </div>
           </div>
         </div>
       </header>

@@ -8,6 +8,7 @@ import StudentList from "./pages/StudentList";
 import CreateTranscript from "./pages/CreateTranscript";
 import ViewTranscript from "./pages/ViewTranscript";
 import WorkloadManagement from "./pages/WorkloadManagement";
+import Schools from "./pages/Schools";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/visualizar/:id" element={<ViewTranscript />} />
           <Route path="/editar/:id" element={<CreateTranscript />} />
           <Route path="/carga-horaria" element={<WorkloadManagement />} />
+          <Route path="/escolas" element={<Schools />} />
           <Route path="/validar" element={<ValidateTranscript />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
