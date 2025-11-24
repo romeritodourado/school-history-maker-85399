@@ -161,17 +161,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name,
-            role,
-            municipality_id: municipalityId,
-            school_id: schoolId,
-          },
-        },
+        // No options.data here, as we will insert into profiles manually
       });
 
       if (error) return { error };
+
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            name: name,
+            role: role,
+            municipality_id: municipalityId || null,
+            school_id: schoolId || null,
+          });
+
+        if (profileError) throw profileError;
+      }
 
       return { error: null };
     } catch (error) {
