@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Importar Link
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2, ShieldCheck, UploadCloud, Trash2 } from 'lucide-react';
+import { Loader2, Building2, ShieldCheck, UploadCloud, Trash2, ArrowLeft } from 'lucide-react'; // Importar ArrowLeft
 import { z } from 'zod';
 import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
@@ -193,15 +193,24 @@ const MunicipalNetworkSetup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <Building2 className="h-12 w-12 text-primary" />
+          <div className="flex items-center justify-between mb-4"> {/* Adicionado flex para alinhar o botão */}
+            <Link to="/"> {/* Botão de voltar */}
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div className="flex-1 text-center"> {/* Centralizar o título */}
+              <Building2 className="h-12 w-12 text-primary mx-auto mb-2" />
+              <CardTitle className="text-2xl font-bold">
+                Cadastro de Rede Municipal
+              </CardTitle>
+              <CardDescription>
+                Preencha os dados da rede municipal e do seu primeiro administrador.
+              </CardDescription>
+            </div>
+            <div className="w-[70px]"></div> {/* Espaçador para manter o alinhamento */}
           </div>
-          <CardTitle className="text-2xl font-bold text-center">
-            Cadastro de Rede Municipal
-          </CardTitle>
-          <CardDescription className="text-center">
-            Preencha os dados da rede municipal e do seu primeiro administrador.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
