@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Importar Link
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2, ShieldCheck, UploadCloud, Trash2, ArrowLeft } from 'lucide-react'; // Importar ArrowLeft
+import { Loader2, Building2, ShieldCheck, UploadCloud, Trash2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +26,7 @@ const MunicipalNetworkSetup = () => {
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Este é para o envio do formulário
   const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -114,7 +114,7 @@ const MunicipalNetworkSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoading(true); // Define loading como true APENAS na submissão do formulário
 
     try {
       // 1. Validate municipality data
@@ -157,7 +157,7 @@ const MunicipalNetworkSetup = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // Define loading como false APENAS após a submissão do formulário
     }
   };
 
@@ -193,14 +193,14 @@ const MunicipalNetworkSetup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between mb-4"> {/* Adicionado flex para alinhar o botão */}
-            <Link to="/"> {/* Botão de voltar */}
+          <div className="flex items-center justify-between mb-4">
+            <Link to="/">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>
             </Link>
-            <div className="flex-1 text-center"> {/* Centralizar o título */}
+            <div className="flex-1 text-center">
               <Building2 className="h-12 w-12 text-primary mx-auto mb-2" />
               <CardTitle className="text-2xl font-bold">
                 Cadastro de Rede Municipal
@@ -209,7 +209,7 @@ const MunicipalNetworkSetup = () => {
                 Preencha os dados da rede municipal e do seu primeiro administrador.
               </CardDescription>
             </div>
-            <div className="w-[70px]"></div> {/* Espaçador para manter o alinhamento */}
+            <div className="w-[70px]"></div>
           </div>
         </CardHeader>
         <CardContent>
@@ -307,8 +307,8 @@ const MunicipalNetworkSetup = () => {
               </div>
             </fieldset>
 
-            <Button type="submit" className="w-full" disabled={loading || uploading}>
-              {loading || uploading ? (
+            <Button type="submit" className="w-full" disabled={loading}> {/* Alterado para desabilitar apenas com 'loading' */}
+              {loading ? ( {/* Alterado para mostrar 'Salvando...' apenas com 'loading' */}
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
