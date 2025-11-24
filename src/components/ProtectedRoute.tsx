@@ -23,9 +23,15 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   }
 
   if (!user) {
+    // Allow access to /municipal-dashboard/:id if user is super_admin and not logged in yet,
+    // but the AuthContext is still loading. This is handled by AuthRedirectHandler.
+    // For now, if no user, redirect to login.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // If requiredRoles are specified, check if the user's role is included.
+  // For super_admin accessing /municipal-dashboard/:id, the requiredRoles will be ['super_admin'].
+  // For other roles, the check is straightforward.
   if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(role as AppRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

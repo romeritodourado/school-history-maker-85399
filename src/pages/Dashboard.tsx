@@ -9,33 +9,53 @@ import {
   ShieldCheck,
   Building2,
   UserCog,
-  LogOut
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface Municipality {
+  id: string;
+  name: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { signOut, user, profile, role, loading } = useAuth();
+  const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin } = useAuth();
+  const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [hasMunicipalities, setHasMunicipalities] = useState(false);
 
   useEffect(() => {
     if (!loading && user && role === 'super_admin') {
-      checkMunicipalities();
+      fetchMunicipalities();
     }
   }, [loading, user, role]);
 
-  const checkMunicipalities = async () => {
+  const fetchMunicipalities = async () => {
     const { data, error } = await supabase
       .from('municipalities')
-      .select('id')
-      .limit(1);
+      .select('id, name')
+      .order('name');
     
-    if (data && data.length > 0) {
-      setHasMunicipalities(true);
-    } else {
-      setHasMunicipalities(false);
+    if (error) {
+      console.error('Error fetching municipalities:', error);
+      return;
+    }
+    
+    setMunicipalities(data || []);
+    setHasMunicipalities(data && data.length > 0);
+  };
+
+  const handleSelectMunicipality = (municipalityId: string) => {
+    setActiveMunicipalityIdForSuperAdmin(municipalityId);
+  };
+
+  const handleGoToMunicipalDashboard = () => {
+    if (activeMunicipalityIdForSuperAdmin) {
+      navigate(`/municipal-dashboard/${activeMunicipalityIdForSuperAdmin}`);
     }
   };
 
@@ -45,35 +65,35 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_admin', 'school_admin', 'secretary', 'teacher'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_admin', 'school_admin', 'secretary', 'teacher'],
     },
     {
       title: 'Carga Horária',
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary'],
+      roles: ['municipal_admin', 'school_admin', 'secretary'],
     },
     {
       title: 'Gerenciar Escolas',
       description: 'Administrar escolas da rede',
       icon: School,
       path: '/escolas',
-      roles: ['super_admin', 'municipal_admin'],
+      roles: ['municipal_admin'],
     },
     {
       title: 'Gerenciar Usuários',
       description: 'Criar e editar contas de usuários',
       icon: UserCog,
       path: '/usuarios',
-      roles: ['super_admin', 'municipal_admin', 'school_admin'],
+      roles: ['municipal_admin', 'school_admin'],
     },
     {
       title: 'Validar Histórico',
@@ -120,51 +140,82 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {role === 'super_admin' && !hasMunicipalities && (
-          <Card className="mb-6 border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Configurar Rede Municipal
-              </CardTitle>
-              <CardDescription>
-                Parece que nenhuma rede municipal foi cadastrada ainda. Comece por aqui para configurar a primeira rede e seu administrador.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate('/municipal-network-setup')}>
-                Cadastrar Rede Municipal
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            // Only render cards if the user has the required role, or if it's a public route
-            if (card.roles && role && card.roles.includes(role)) {
-              return (
-                <Card 
-                  key={card.path}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                  onClick={() => navigate(card.path)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <Icon className="h-6 w-6 text-primary" />
+        {role === 'super_admin' ? (
+          <div className="space-y-6">
+            <Card className="mb-6 border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Gerenciar Redes Municipais
+                </CardTitle>
+                <CardDescription>
+                  Como Super Administrador, você pode gerenciar as redes municipais ou selecionar uma para operar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!hasMunicipalities && (
+                  <p className="text-muted-foreground">
+                    Nenhuma rede municipal cadastrada ainda. Comece por aqui para configurar a primeira rede.
+                  </p>
+                )}
+                <Button onClick={() => navigate('/municipal-network-setup')}>
+                  Cadastrar Nova Rede Municipal
+                </Button>
+                {hasMunicipalities && (
+                  <div className="space-y-2">
+                    <Label htmlFor="select-municipality">Selecionar Rede Municipal</Label>
+                    <Select
+                      value={activeMunicipalityIdForSuperAdmin || ""}
+                      onValueChange={handleSelectMunicipality}
+                    >
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue placeholder="Selecione uma rede municipal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {municipalities.map((municipality) => (
+                          <SelectItem key={municipality.id} value={municipality.id}>
+                            {municipality.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {activeMunicipalityIdForSuperAdmin && (
+                  <Button onClick={handleGoToMunicipalDashboard} className="mt-4">
+                    Ir para o Dashboard Municipal
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              if (card.roles && role && card.roles.includes(role)) {
+                return (
+                  <Card 
+                    key={card.path}
+                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+                    onClick={() => navigate(card.path)}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Icon className="h-6 w-6 text-primary" />
+                        </div>
+                        <CardTitle>{card.title}</CardTitle>
                       </div>
-                      <CardTitle>{card.title}</CardTitle>
-                    </div>
-                    <CardDescription>{card.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              );
-            }
-            return null;
-          })}
-        </div>
+                      <CardDescription>{card.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                );
+              }
+              return null;
+            })}
+          </div>
+        )}
       </main>
     </div>
   );

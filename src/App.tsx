@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
 import MunicipalNetworkSetup from "./pages/MunicipalNetworkSetup";
 import Dashboard from "./pages/Dashboard";
+import MunicipalDashboard from "./pages/MunicipalDashboard"; // Importar o novo dashboard municipal
 import StudentList from "./pages/StudentList";
 import CreateTranscript from "./pages/CreateTranscript";
 import ViewTranscript from "./pages/ViewTranscript";
@@ -30,7 +31,10 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     if (!loading && !user) {
       const publicPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup', '/validar'];
-      if (!publicPaths.includes(location.pathname)) {
+      // Check if the current path starts with /municipal-dashboard/ to allow it for super_admin
+      const isMunicipalDashboardRoute = location.pathname.startsWith('/municipal-dashboard/');
+      
+      if (!publicPaths.includes(location.pathname) && !isMunicipalDashboardRoute) {
         navigate('/login', { replace: true });
       }
     }
@@ -56,6 +60,11 @@ const App = () => (
             <Route path="/" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/municipal-dashboard/:municipalityId" element={ // Nova rota para o dashboard municipal
+              <ProtectedRoute requiredRoles={['super_admin']}>
+                <MunicipalDashboard />
               </ProtectedRoute>
             } />
             <Route path="/lista-alunos" element={
