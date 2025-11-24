@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,17 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2, ShieldCheck } from 'lucide-react';
+import { Loader2, Building2, ShieldCheck, UploadCloud, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
+import { Progress } from '@/components/ui/progress';
 
 type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'teacher';
 
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
   const [cnpj, setCnpj] = useState('');
-  const [emblemUrl, setEmblemUrl] = useState('');
+  const [emblemFile, setEmblemFile] = useState<File | null>(null);
+  const [uploadedEmblemUrl, setUploadedEmblemUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -42,13 +48,77 @@ const MunicipalNetworkSetup = () => {
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setEmblemFile(file);
+      await uploadEmblem(file);
+    }
+  };
+
+  const uploadEmblem = async (file: File) => {
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadedEmblemUrl(null); // Clear previous URL
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `emblems/${fileName}`;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('municipality_emblems')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          onUploadProgress: (event) => {
+            if (event.totalBytes > 0) {
+              setUploadProgress(Math.round((event.loaded / event.totalBytes) * 100));
+            }
+          },
+        });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('municipality_emblems')
+        .getPublicUrl(filePath);
+
+      setUploadedEmblemUrl(publicUrlData.publicUrl);
+      toast({
+        title: 'Upload de brasão concluído!',
+        description: 'A imagem foi enviada com sucesso.',
+      });
+    } catch (error: any) {
+      console.error('Error uploading emblem:', error);
+      toast({
+        title: 'Erro no upload do brasão',
+        description: error.message || 'Não foi possível enviar a imagem.',
+        variant: 'destructive',
+      });
+      setEmblemFile(null);
+      setUploadedEmblemUrl(null);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const removeEmblem = () => {
+    setEmblemFile(null);
+    setUploadedEmblemUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Clear the file input
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       // 1. Validate municipality data
-      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: emblemUrl });
+      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '' });
 
       // 2. Validate admin user data
       signupSchema.parse({ email: adminEmail, password: adminPassword, name: adminName });
@@ -56,7 +126,7 @@ const MunicipalNetworkSetup = () => {
       // 3. Create Municipality
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
-        .insert([{ name: municipalityName, cnpj, emblem_url: emblemUrl }])
+        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl }])
         .select()
         .single();
 
@@ -157,16 +227,34 @@ const MunicipalNetworkSetup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="emblemUrl">URL do Brasão/Logo</Label>
-                <Input
-                  id="emblemUrl"
-                  type="url"
-                  value={emblemUrl}
-                  onChange={(e) => setEmblemUrl(e.target.value)}
-                  placeholder="Ex: https://seusite.com/brasao.png"
-                />
+                <Label htmlFor="emblemFile">Brasão/Logo da Rede Municipal</Label>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    id="emblemFile"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    ref={fileInputRef}
+                    className="flex-1"
+                    disabled={uploading}
+                  />
+                  {uploadedEmblemUrl && (
+                    <Button variant="destructive" size="icon" onClick={removeEmblem} disabled={uploading}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {uploading && (
+                  <Progress value={uploadProgress} className="w-full mt-2" />
+                )}
+                {uploadedEmblemUrl && (
+                  <div className="mt-4 flex items-center space-x-4">
+                    <img src={uploadedEmblemUrl} alt="Brasão da Rede Municipal" className="h-20 w-20 object-contain border rounded-md" />
+                    <p className="text-sm text-muted-foreground">Imagem carregada: {emblemFile?.name}</p>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  (Opcional) URL de uma imagem para o brasão ou logo da rede municipal.
+                  (Opcional) Faça o upload de uma imagem para o brasão ou logo da rede municipal.
                 </p>
               </div>
             </fieldset>
@@ -210,8 +298,8 @@ const MunicipalNetworkSetup = () => {
               </div>
             </fieldset>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={loading || uploading}>
+              {loading || uploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
