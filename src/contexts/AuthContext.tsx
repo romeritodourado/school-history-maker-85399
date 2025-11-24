@@ -123,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Redirection is now handled by AuthRedirectHandler in App.tsx
   };
 
   const hasPermission = (requiredRoles: AppRole[]) => {
