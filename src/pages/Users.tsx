@@ -241,7 +241,7 @@ export default function Users() {
     const labels: Record<AppRole, string> = {
       super_admin: 'Super Administrador',
       municipal_admin: 'Administrador Municipal',
-      school_admin: 'Administrador Escolar',
+      school_admin: 'Diretor Escolar',
       secretary: 'Secretário(a)',
       assistente_administrativo: 'Assistente Administrativo',
     };
