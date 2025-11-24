@@ -26,7 +26,7 @@ const MunicipalNetworkSetup = () => {
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [loading, setLoading] = useState(false); // Este é para o envio do formulário
+  const [loading, setLoading] = useState(false);
   const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -59,7 +59,7 @@ const MunicipalNetworkSetup = () => {
   const uploadEmblem = async (file: File) => {
     setUploading(true);
     setUploadProgress(0);
-    setUploadedEmblemUrl(null); // Clear previous URL
+    setUploadedEmblemUrl(null);
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
@@ -108,31 +108,41 @@ const MunicipalNetworkSetup = () => {
     setEmblemFile(null);
     setUploadedEmblemUrl(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // Clear the file input
+      fileInputRef.current.value = '';
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); // Define loading como true APENAS na submissão do formulário
+    setLoading(true);
 
     try {
       // 1. Validate municipality data
+      console.log('Validando dados da rede municipal...');
       municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '' });
+      console.log('Dados da rede municipal validados.');
 
       // 2. Validate admin user data
+      console.log('Validando dados do administrador...');
       signupSchema.parse({ email: adminEmail, password: adminPassword, name: adminName });
+      console.log('Dados do administrador validados.');
 
       // 3. Create Municipality
+      console.log('Criando rede municipal no Supabase...');
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
         .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl }])
         .select()
         .single();
 
-      if (municipalityError) throw municipalityError;
+      if (municipalityError) {
+        console.error('Erro ao criar rede municipal:', municipalityError);
+        throw new Error(municipalityError.message || 'Erro desconhecido ao criar rede municipal.');
+      }
+      console.log('Rede municipal criada:', municipalityData);
 
       // 4. Sign up Municipal Admin user
+      console.log('Criando usuário administrador municipal...');
       const { error: signUpError } = await signUp(
         adminEmail,
         adminPassword,
@@ -141,7 +151,11 @@ const MunicipalNetworkSetup = () => {
         municipalityData.id
       );
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('Erro ao cadastrar administrador municipal:', signUpError);
+        throw new Error(signUpError.message || 'Erro desconhecido ao cadastrar administrador municipal.');
+      }
+      console.log('Administrador municipal cadastrado com sucesso.');
 
       toast({
         title: 'Rede Municipal e Administrador criados com sucesso!',
@@ -151,13 +165,15 @@ const MunicipalNetworkSetup = () => {
       navigate('/login');
 
     } catch (error) {
+      console.error('Erro geral no handleSubmit:', error);
       toast({
         title: 'Erro ao configurar Rede Municipal',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
-      setLoading(false); // Define loading como false APENAS após a submissão do formulário
+      setLoading(false);
+      console.log('handleSubmit finalizado, loading set to false.');
     }
   };
 
