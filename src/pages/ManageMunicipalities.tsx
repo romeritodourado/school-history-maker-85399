@@ -141,27 +141,38 @@ const ManageMunicipalities = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    console.log('Attempting to save municipality. Current formData:', formData);
-    console.log('Editing municipality:', editingMunicipality);
+    console.log('handleSubmit: Attempting to save municipality. Current formData:', formData);
+    console.log('handleSubmit: Editing municipality:', editingMunicipality);
 
     try {
       municipalitySchema.parse(formData);
-      console.log('Form data validated successfully.');
+      console.log('handleSubmit: Form data validated successfully.');
 
       if (editingMunicipality) {
-        console.log('Updating existing municipality with ID:', editingMunicipality.id);
-        const { error } = await supabase
+        console.log('handleSubmit: Updating existing municipality with ID:', editingMunicipality.id);
+        const { data, error, count } = await supabase
           .from('municipalities')
           .update(formData)
-          .eq('id', editingMunicipality.id);
+          .eq('id', editingMunicipality.id)
+          .select(); // Adiciona .select() para obter os dados atualizados e o count
 
         if (error) {
-          console.error('Supabase update error:', error);
+          console.error('handleSubmit: Supabase update error:', error);
           throw error;
         }
-        toast({ title: 'Rede municipal atualizada com sucesso!' });
-        console.log('Municipality updated successfully. Closing dialog...');
-        setDialogOpen(false); // Fechar o diálogo diretamente aqui
+
+        if (!data || data.length === 0) {
+          console.warn('handleSubmit: Supabase update did not affect any rows. Data:', data, 'Count:', count);
+          // This could indicate RLS issues or that the data was identical
+          toast({
+            title: 'Aviso',
+            description: 'Nenhuma alteração foi salva ou a rede municipal não foi encontrada. Verifique as permissões.',
+            variant: 'default', // Pode ser 'default' ou 'warning'
+          });
+        } else {
+          toast({ title: 'Rede municipal atualizada com sucesso!' });
+          console.log('handleSubmit: Municipality updated successfully. Data:', data);
+        }
       } else {
         toast({
           title: 'Erro',
@@ -170,8 +181,14 @@ const ManageMunicipalities = () => {
         });
         return;
       }
+
+      // Recarrega a lista e fecha o diálogo
+      await fetchMunicipalities(); 
+      setDialogOpen(false);
+      resetForm(); // Resetar o formulário após o fechamento do diálogo
+      console.log('handleSubmit: Dialog closed and form reset.');
     } catch (error) {
-      console.error('Error during municipality save:', error);
+      console.error('handleSubmit: Error during municipality save:', error);
       toast({
         title: 'Erro ao salvar rede municipal',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
@@ -179,8 +196,7 @@ const ManageMunicipalities = () => {
       });
     } finally {
       setLoading(false);
-      console.log('Loading state reset to false.');
-      console.log('handleSubmit function finished.');
+      console.log('handleSubmit: Loading state reset to false.');
     }
   };
 
