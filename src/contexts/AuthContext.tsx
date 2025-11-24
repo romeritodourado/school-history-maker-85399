@@ -58,31 +58,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('AuthContext: Initializing...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('AuthContext: onAuthStateChange event:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('AuthContext: User found, fetching profile...');
           await fetchProfile(session.user.id);
+          console.log('AuthContext: Profile fetched.');
         } else {
+          console.log('AuthContext: No user in session.');
           setProfile(null);
           setRole(null);
         }
         setLoading(false);
+        console.log('AuthContext: Loading set to false after onAuthStateChange.');
       }
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('AuthContext: getSession resolved.');
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        console.log('AuthContext: User found in getSession, fetching profile...');
         await fetchProfile(session.user.id);
+        console.log('AuthContext: Profile fetched after getSession.');
       }
       setLoading(false);
+      console.log('AuthContext: Loading set to false after getSession.');
+    }).catch(error => {
+      console.error('AuthContext: getSession failed:', error);
+      setLoading(false); // Ensure loading is false even on error
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('AuthContext: Unsubscribing from auth state changes.');
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
