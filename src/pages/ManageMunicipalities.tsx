@@ -136,7 +136,8 @@ const ManageMunicipalities = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setLoading(true); // Inicia o estado de carregamento
+
     try {
       municipalitySchema.parse(formData);
 
@@ -146,11 +147,13 @@ const ManageMunicipalities = () => {
           .update(formData)
           .eq('id', editingMunicipality.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase update error:', error); // Log do erro do Supabase
+          throw error;
+        }
         toast({ title: 'Rede municipal atualizada com sucesso!' });
       } else {
         // This page is for managing existing ones, creation is in MunicipalNetworkSetup
-        // This branch should ideally not be reached if the UI is correctly set up.
         toast({
           title: 'Erro',
           description: 'Funcionalidade de criação não disponível aqui. Use a página de configuração inicial.',
@@ -169,6 +172,8 @@ const ManageMunicipalities = () => {
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false); // Garante que o estado de carregamento seja redefinido
     }
   };
 
@@ -395,7 +400,7 @@ const ManageMunicipalities = () => {
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={uploading}>
+              <Button type="submit" disabled={loading || uploading}> {/* Desabilita se estiver carregando ou fazendo upload */}
                 {editingMunicipality ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
