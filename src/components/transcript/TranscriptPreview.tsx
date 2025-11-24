@@ -44,6 +44,7 @@ interface TranscriptPreviewProps {
 }
 
 export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod }: TranscriptPreviewProps) => {
+  // Este é um comentário para forçar a atualização do arquivo e resolver possíveis problemas de cache.
   const formatDate = (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString("pt-BR");
@@ -302,5 +303,3 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     </div>
   );
 };
-
-export default ViewTranscript;
