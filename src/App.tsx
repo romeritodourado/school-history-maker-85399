@@ -17,6 +17,7 @@ import WorkloadManagement from "./pages/WorkloadManagement";
 import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
+import AccountSettings from "./pages/AccountSettings"; // Importar a nova página
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -100,6 +101,11 @@ const App = () => (
             <Route path="/usuarios" element={
               <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin']}>
                 <Users />
+              </ProtectedRoute>
+            } />
+            <Route path="/account-settings" element={ {/* Nova rota para configurações da conta */}
+              <ProtectedRoute>
+                <AccountSettings />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

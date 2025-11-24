@@ -168,3 +168,17 @@ export const municipalitySchema = z.object({
     .optional()
     .or(z.literal('')),
 });
+
+// Password change schema
+export const passwordChangeSchema = z.object({
+  newPassword: z.string()
+    .min(8, 'A nova senha deve ter pelo menos 8 caracteres')
+    .max(72, 'A nova senha deve ter no máximo 72 caracteres')
+    .regex(/[a-z]/, 'A nova senha deve conter pelo menos uma letra minúscula')
+    .regex(/[A-Z]/, 'A nova senha deve conter pelo menos uma letra maiúscula')
+    .regex(/[0-9]/, 'A nova senha deve conter pelo menos um número'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
+});
