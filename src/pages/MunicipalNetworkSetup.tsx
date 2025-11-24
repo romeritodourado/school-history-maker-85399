@@ -307,8 +307,8 @@ const MunicipalNetworkSetup = () => {
               </div>
             </fieldset>
 
-            <Button type="submit" className="w-full" disabled={loading}> {/* Alterado para desabilitar apenas com 'loading' */}
-              {loading ? ( {/* Alterado para mostrar 'Salvando...' apenas com 'loading' */}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
