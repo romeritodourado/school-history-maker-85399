@@ -1,9 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { loginSchema, signupSchema } from '@/lib/validationSchemas'; // Assuming these schemas will be created
+import { loginSchema, signupSchema } from '@/lib/validationSchemas';
 
 type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'teacher';
 
@@ -37,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -108,8 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) return { error };
 
-      // The handle_new_user trigger will create the profile with the default 'teacher' role.
-      // We need to update it to the specified role and link municipality/school if provided.
       if (data.user) {
         const { error: updateError } = await supabase
           .from('profiles')
@@ -127,7 +123,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    navigate('/login');
   };
 
   const hasPermission = (requiredRoles: AppRole[]) => {

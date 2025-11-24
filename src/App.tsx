@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
@@ -17,8 +17,27 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
+
+// Componente para lidar com redirecionamento de autenticação
+const AuthRedirectHandler = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      const publicPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup', '/validar'];
+      if (!publicPaths.includes(location.pathname)) {
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [user, loading, navigate, location.pathname]);
+
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -27,6 +46,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AuthRedirectHandler /> {/* Adicionado o handler de redirecionamento */}
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
