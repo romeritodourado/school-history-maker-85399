@@ -12,7 +12,7 @@ import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
@@ -141,25 +141,25 @@ const MunicipalNetworkSetup = () => {
       }
       console.log('Rede municipal criada:', municipalityData);
 
-      // 4. Sign up Municipal Admin user
-      console.log('Criando usuário administrador municipal...');
+      // 4. Sign up Municipal Admin user (now municipal_secretary)
+      console.log('Criando usuário Secretário de Educação Municipal...');
       const { error: signUpError } = await signUp(
         adminEmail,
         adminPassword,
         adminName,
-        'municipal_admin',
+        'municipal_secretary', // Assigning municipal_secretary role
         municipalityData.id
       );
 
       if (signUpError) {
-        console.error('Erro ao cadastrar administrador municipal:', signUpError);
-        throw new Error(signUpError.message || 'Erro desconhecido ao cadastrar administrador municipal.');
+        console.error('Erro ao cadastrar Secretário de Educação Municipal:', signUpError);
+        throw new Error(signUpError.message || 'Erro desconhecido ao cadastrar Secretário de Educação Municipal.');
       }
-      console.log('Administrador municipal cadastrado com sucesso.');
+      console.log('Secretário de Educação Municipal cadastrado com sucesso.');
 
       toast({
-        title: 'Rede Municipal e Administrador criados com sucesso!',
-        description: 'Você já pode fazer login com a conta do Administrador Municipal.',
+        title: 'Rede Municipal e Secretário de Educação criados com sucesso!',
+        description: 'Você já pode fazer login com a conta do Secretário de Educação Municipal.',
       });
 
       navigate('/login');
@@ -285,7 +285,7 @@ const MunicipalNetworkSetup = () => {
             </fieldset>
 
             <fieldset className="space-y-4 border p-4 rounded-lg">
-              <legend className="text-lg font-semibold px-2">Dados do Administrador Municipal (Secretário de Educação)</legend>
+              <legend className="text-lg font-semibold px-2">Dados do Secretário de Educação Municipal</legend>
               <div className="space-y-2">
                 <Label htmlFor="adminName">Nome Completo *</Label>
                 <Input
@@ -332,7 +332,7 @@ const MunicipalNetworkSetup = () => {
               ) : (
                 <>
                   <Building2 className="mr-2 h-4 w-4" />
-                  Cadastrar Rede e Administrador
+                  Cadastrar Rede e Secretário
                 </>
               )}
             </Button>

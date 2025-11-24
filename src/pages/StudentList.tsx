@@ -9,14 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import correctLogo from "/correct-logo.png";
 import { useAuth } from '@/contexts/AuthContext';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface Student {
   id: string;
-  full_name: string; // Changed from name
+  full_name: string;
   mother_name: string;
   father_name: string | null;
-  birth_date: string; // Changed from birthdate
+  birth_date: string;
   birth_place: string;
   birth_state: string;
   student_status: string | null;
@@ -69,9 +69,9 @@ const StudentList = () => {
           school_id,
           schools (name, municipality_id)
         `)
-        .order("full_name"); // Changed from name to full_name
+        .order("full_name");
 
-      if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
       } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') {
         query = query.eq('school_id', currentUserProfile?.school_id);
@@ -139,7 +139,7 @@ const StudentList = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do aluno ou mãe..." // Updated placeholder
+              placeholder="Buscar por nome do aluno ou mãe..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -193,7 +193,7 @@ const StudentList = () => {
                       </Button>
                     </Link>
                     {(currentUserRole === 'super_admin' || 
-                      (currentUserRole === 'municipal_admin' && student.schools?.municipality_id === currentUserProfile?.municipality_id) ||
+                      ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && student.schools?.municipality_id === currentUserProfile?.municipality_id) ||
                       ((currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') && student.school_id === currentUserProfile?.school_id)) && (
                       <Button variant="destructive" size="sm" onClick={() => handleDelete(student.id)}>
                         <Trash2 className="h-4 w-4" />

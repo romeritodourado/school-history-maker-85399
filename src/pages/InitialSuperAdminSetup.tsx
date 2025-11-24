@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 export default function InitialSuperAdminSetup() {
   const [email, setEmail] = useState('');

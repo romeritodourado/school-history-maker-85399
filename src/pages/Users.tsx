@@ -20,7 +20,7 @@ import {
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface UserProfile {
   id: string;
@@ -56,7 +56,7 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'assistente_administrativo' as AppRole,
+    role: 'assistente_administrativo' as AppRole, // Default role
     municipality_id: '',
     school_id: '',
   });
@@ -127,7 +127,7 @@ export default function Users() {
         `)
         .order('name');
 
-      if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.eq('municipality_id', currentUserProfile.municipality_id);
       } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
         query = query.eq('school_id', currentUserProfile.school_id);
@@ -240,18 +240,19 @@ export default function Users() {
   const getRoleLabel = (role: AppRole) => {
     const labels: Record<AppRole, string> = {
       super_admin: 'Super Administrador',
-      municipal_admin: 'Administrador Municipal',
+      municipal_secretary: 'Secretário(a) Municipal',
+      network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a)',
+      secretary: 'Secretário(a) Escolar',
       assistente_administrativo: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
 
   const getAvailableRoles = () => {
-    const allRoles: AppRole[] = ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'];
+    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'];
     if (currentUserRole === 'super_admin') return allRoles;
-    if (currentUserRole === 'municipal_admin') return allRoles.filter(r => r !== 'super_admin');
+    if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') return allRoles.filter(r => r !== 'super_admin');
     if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'assistente_administrativo');
     return [];
   };
@@ -349,7 +350,7 @@ export default function Users() {
                   <Select
                     value={formData.role}
                     onValueChange={(value: AppRole) => setFormData({ ...formData, role: value })}
-                    disabled={editingUser?.id === currentUserProfile?.id || !getAvailableRoles().includes(formData.role)} // Prevent changing own role or roles not allowed
+                    disabled={editingUser?.id === currentUserProfile?.id || !getAvailableRoles().includes(formData.role)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o cargo" />
@@ -363,13 +364,13 @@ export default function Users() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_admin' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
+                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
                       value={formData.municipality_id}
                       onValueChange={(value) => setFormData({ ...formData, municipality_id: value })}
-                      disabled={currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id !== formData.municipality_id}
+                      disabled={(currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id !== formData.municipality_id}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a rede municipal (opcional)" />
@@ -447,7 +448,7 @@ export default function Users() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(user.id)}
-                      disabled={user.id === currentUserProfile?.id} // Prevent deleting own account
+                      disabled={user.id === currentUserProfile?.id}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

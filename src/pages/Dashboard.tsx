@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface Municipality {
   id: string;
@@ -70,42 +70,42 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
     {
       title: 'Carga Horária',
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
-      roles: ['municipal_admin', 'school_admin', 'secretary'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
     },
     {
       title: 'Gerenciar Escolas',
       description: 'Administrar escolas da rede',
       icon: School,
       path: '/escolas',
-      roles: ['municipal_admin'],
+      roles: ['municipal_secretary', 'network_manager'],
     },
     {
       title: 'Gerenciar Usuários',
       description: 'Criar e editar contas de usuários',
       icon: UserCog,
       path: '/usuarios',
-      roles: ['municipal_admin', 'school_admin'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin'],
     },
     {
       title: 'Validar Histórico',
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
   ];
 

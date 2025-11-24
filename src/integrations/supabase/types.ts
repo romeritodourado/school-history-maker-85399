@@ -469,7 +469,8 @@ export type Database = {
     Enums: {
       app_role:
         | "super_admin"
-        | "municipal_admin"
+        | "municipal_secretary"
+        | "network_manager"
         | "school_admin"
         | "secretary"
         | "assistente_administrativo"

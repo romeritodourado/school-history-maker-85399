@@ -73,37 +73,37 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/lista-alunos" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <StudentList />
               </ProtectedRoute>
             } />
             <Route path="/novo-historico" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <CreateTranscript />
               </ProtectedRoute>
             } />
             <Route path="/visualizar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <ViewTranscript />
               </ProtectedRoute>
             } />
             <Route path="/editar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <CreateTranscript />
               </ProtectedRoute>
             } />
             <Route path="/carga-horaria" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
                 <WorkloadManagement />
               </ProtectedRoute>
             } />
             <Route path="/escolas" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
                 <Schools />
               </ProtectedRoute>
             } />
             <Route path="/usuarios" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin']}>
                 <Users />
               </ProtectedRoute>
             } />

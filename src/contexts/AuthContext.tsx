@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { loginSchema, signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface Profile {
   id: string;
@@ -28,8 +28,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   hasPermission: (requiredRoles: AppRole[]) => boolean;
   fetchProfile: (userId: string) => Promise<void>;
-  activeMunicipalityIdForSuperAdmin: string | null; // Novo estado
-  setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void; // Novo setter
+  activeMunicipalityIdForSuperAdmin: string | null;
+  setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null); // Inicializa como null
+  const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -77,13 +77,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('AuthContext: No user in session.');
             setProfile(null);
             setRole(null);
-            setActiveMunicipalityIdForSuperAdmin(null); // Limpa ao deslogar
+            setActiveMunicipalityIdForSuperAdmin(null);
           }
         } catch (error) {
           console.error('AuthContext: Error during auth state change processing:', error);
           setProfile(null);
           setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null); // Limpa em caso de erro
+          setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
           setLoading(false); 
           console.log('AuthContext: Loading set to false after onAuthStateChange.');
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext: Error during getSession profile fetch:', error);
         setProfile(null);
         setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null); // Limpa em caso de erro
+        setActiveMunicipalityIdForSuperAdmin(null);
       } finally {
         setLoading(false);
         console.log('AuthContext: Loading set to false after getSession.');
@@ -193,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setActiveMunicipalityIdForSuperAdmin(null); // Limpa ao deslogar
+    setActiveMunicipalityIdForSuperAdmin(null);
   };
 
   const hasPermission = (requiredRoles: AppRole[]) => {
