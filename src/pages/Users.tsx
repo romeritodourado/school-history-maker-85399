@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } => '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, UserCog, Trash2, Mail, Building2, School } from 'lucide-react';
+import { ArrowLeft, Plus, UserCog, Trash2, Mail, Building2, School, Loader2, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
