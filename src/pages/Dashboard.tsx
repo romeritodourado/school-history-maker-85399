@@ -10,15 +10,15 @@ import {
   Building2,
   UserCog,
   LogOut,
-  Settings, // Importar o ícone de configurações
-  User as UserIcon // Renomear User para evitar conflito com o tipo User do Supabase
+  Settings,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-// Removido imports do DropdownMenu
+import correctLogo from "/correct-logo.png";
 
 interface Municipality {
   id: string;
@@ -36,13 +36,6 @@ export default function Dashboard() {
       fetchMunicipalities();
     }
   }, [loading, user, role]);
-
-  // Debugging logs
-  useEffect(() => {
-    console.log('Dashboard - User:', user);
-    console.log('Dashboard - Profile:', profile);
-    console.log('Dashboard - Role:', role);
-  }, [user, profile, role]);
 
   const fetchMunicipalities = async () => {
     const { data, error } = await supabase
@@ -110,7 +103,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'], // Public route, but can be listed here
+      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'],
     },
   ];
 
@@ -127,7 +120,7 @@ export default function Dashboard() {
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 p-2 rounded">
-            <img src="/correct-logo.png" alt="Correct Logo" className="h-16 w-16" />
+            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div>
               <h1 className="text-2xl font-bold">Sistema de Históricos Escolares</h1>
               <p className="text-sm text-muted-foreground">
@@ -175,9 +168,16 @@ export default function Dashboard() {
                     Nenhuma rede municipal cadastrada ainda. Comece por aqui para configurar a primeira rede.
                   </p>
                 )}
-                <Button onClick={() => navigate('/municipal-network-setup')}>
-                  Cadastrar Nova Rede Municipal
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => navigate('/municipal-network-setup')}>
+                    Cadastrar Nova Rede Municipal
+                  </Button>
+                  {hasMunicipalities && (
+                    <Button onClick={() => navigate('/manage-municipalities')} variant="secondary">
+                      Gerenciar Redes Existentes
+                    </Button>
+                  )}
+                </div>
                 {hasMunicipalities && (
                   <div className="space-y-2">
                     <Label htmlFor="select-municipality">Selecionar Rede Municipal</Label>

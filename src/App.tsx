@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
 import MunicipalNetworkSetup from "./pages/MunicipalNetworkSetup";
 import Dashboard from "./pages/Dashboard";
-import MunicipalDashboard from "./pages/MunicipalDashboard"; // Importar o novo dashboard municipal
+import MunicipalDashboard from "./pages/MunicipalDashboard";
+import ManageMunicipalities from "./pages/ManageMunicipalities"; // Importar a nova página
 import StudentList from "./pages/StudentList";
 import CreateTranscript from "./pages/CreateTranscript";
 import ViewTranscript from "./pages/ViewTranscript";
@@ -17,13 +18,12 @@ import WorkloadManagement from "./pages/WorkloadManagement";
 import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
-import AccountSettings from "./pages/AccountSettings"; // Importar a nova página
+import AccountSettings from "./pages/AccountSettings";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-// Componente para lidar com redirecionamento de autenticação
 const AuthRedirectHandler = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -32,7 +32,6 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     if (!loading && !user) {
       const publicPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup', '/validar'];
-      // Check if the current path starts with /municipal-dashboard/ to allow it for super_admin
       const isMunicipalDashboardRoute = location.pathname.startsWith('/municipal-dashboard/');
       
       if (!publicPaths.includes(location.pathname) && !isMunicipalDashboardRoute) {
@@ -63,9 +62,14 @@ const App = () => (
                 <Dashboard />
               </ProtectedRoute>
             } />
-            <Route path="/municipal-dashboard/:municipalityId" element={ // Nova rota para o dashboard municipal
+            <Route path="/municipal-dashboard/:municipalityId" element={
               <ProtectedRoute requiredRoles={['super_admin']}>
                 <MunicipalDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/manage-municipalities" element={ {/* Nova rota */}
+              <ProtectedRoute requiredRoles={['super_admin']}>
+                <ManageMunicipalities />
               </ProtectedRoute>
             } />
             <Route path="/lista-alunos" element={
@@ -103,7 +107,7 @@ const App = () => (
                 <Users />
               </ProtectedRoute>
             } />
-            <Route path="/account-settings" element={ /* Nova rota para configurações da conta */
+            <Route path="/account-settings" element={
               <ProtectedRoute>
                 <AccountSettings />
               </ProtectedRoute>
