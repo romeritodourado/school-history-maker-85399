@@ -57,11 +57,11 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="p-4"> {/* Adicionado p-4 para um padding mínimo */}
+        <CardHeader> {/* Removido space-y-1 */}
           <div className="flex justify-center">
-            <img src={correctLogo} alt="Correct Logo" className="h-32 w-32 object-contain" /> {/* Reduzido o tamanho da logo */}
+            <img src={correctLogo} alt="Correct Logo" className="h-48 w-48 object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold text-center mt-0">Sistema de Históricos Escolares</CardTitle> {/* Adicionado mt-0 */}
+          <CardTitle className="text-2xl font-bold text-center">Sistema de Históricos Escolares</CardTitle>
           <CardDescription className="text-center">
             Entre com suas credenciais para acessar o sistema
           </CardDescription>
