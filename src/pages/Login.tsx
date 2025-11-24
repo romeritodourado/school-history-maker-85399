@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { loginSchema } from '@/lib/validationSchemas';
 import { z } from 'zod';
+import correctLogo from "/correct-logo.png"; // Importar a logo
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -57,6 +58,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4"> {/* Centralizar a logo */}
+            <img src={correctLogo} alt="Correct Logo" className="h-20 w-20 object-contain" />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Sistema de Históricos Escolares</CardTitle>
           <CardDescription className="text-center">
             Entre com suas credenciais para acessar o sistema
