@@ -10,7 +10,7 @@ import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
 import MunicipalNetworkSetup from "./pages/MunicipalNetworkSetup";
 import Dashboard from "./pages/Dashboard";
 import MunicipalDashboard from "./pages/MunicipalDashboard";
-import ManageMunicipalities from "./pages/ManageMunicipalities"; // Importar a nova página
+import ManageMunicipalities from "./pages/ManageMunicipalities";
 import StudentList from "./pages/StudentList";
 import CreateTranscript from "./pages/CreateTranscript";
 import ViewTranscript from "./pages/ViewTranscript";
@@ -67,7 +67,7 @@ const App = () => (
                 <MunicipalDashboard />
               </ProtectedRoute>
             } />
-            <Route path="/manage-municipalities" element={ {/* Nova rota */}
+            <Route path="/manage-municipalities" element={
               <ProtectedRoute requiredRoles={['super_admin']}>
                 <ManageMunicipalities />
               </ProtectedRoute>
