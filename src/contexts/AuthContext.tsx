@@ -67,8 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           console.log('AuthContext: User found, fetching profile...');
-          await fetchProfile(session.user.id);
-          console.log('AuthContext: Profile fetched.');
+          try {
+            await fetchProfile(session.user.id);
+            console.log('AuthContext: Profile fetched.');
+          } catch (profileError) {
+            console.error('AuthContext: Error fetching profile in onAuthStateChange:', profileError);
+            setProfile(null);
+            setRole(null);
+          }
         } else {
           console.log('AuthContext: No user in session.');
           setProfile(null);
@@ -85,14 +91,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         console.log('AuthContext: User found in getSession, fetching profile...');
-        await fetchProfile(session.user.id);
-        console.log('AuthContext: Profile fetched after getSession.');
+        try {
+          await fetchProfile(session.user.id);
+          console.log('AuthContext: Profile fetched after getSession.');
+        } catch (profileError) {
+          console.error('AuthContext: Error fetching profile in getSession:', profileError);
+          setProfile(null);
+          setRole(null);
+        }
       }
       setLoading(false);
       console.log('AuthContext: Loading set to false after getSession.');
     }).catch(error => {
       console.error('AuthContext: getSession failed:', error);
-      setLoading(false); // Ensure loading is false even on error
+      setLoading(false);
     });
 
     return () => {
