@@ -51,6 +51,7 @@ const ManageMunicipalities = () => {
   }, []);
 
   const fetchMunicipalities = async () => {
+    console.log('Fetching municipalities...');
     try {
       const { data, error } = await supabase
         .from('municipalities')
@@ -59,7 +60,9 @@ const ManageMunicipalities = () => {
 
       if (error) throw error;
       setMunicipalities(data || []);
+      console.log('Municipalities fetched successfully:', data);
     } catch (error) {
+      console.error('Error fetching municipalities:', error);
       toast({
         title: 'Erro ao carregar redes municipais',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -67,6 +70,7 @@ const ManageMunicipalities = () => {
       });
     } finally {
       setLoading(false);
+      console.log('Finished fetching municipalities, loading set to false.');
     }
   };
 
@@ -136,12 +140,11 @@ const ManageMunicipalities = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); // Inicia o estado de carregamento
+    setLoading(true);
     console.log('Attempting to save municipality. Current formData:', formData);
     console.log('Editing municipality:', editingMunicipality);
 
     try {
-      // Validate form data
       municipalitySchema.parse(formData);
       console.log('Form data validated successfully.');
 
@@ -153,13 +156,13 @@ const ManageMunicipalities = () => {
           .eq('id', editingMunicipality.id);
 
         if (error) {
-          console.error('Supabase update error:', error); // Log do erro do Supabase
+          console.error('Supabase update error:', error);
           throw error;
         }
         toast({ title: 'Rede municipal atualizada com sucesso!' });
-        console.log('Municipality updated successfully.');
+        console.log('Municipality updated successfully. Closing dialog...');
+        setDialogOpen(false); // Fechar o diálogo diretamente aqui
       } else {
-        // This page is for managing existing ones, creation is in MunicipalNetworkSetup
         toast({
           title: 'Erro',
           description: 'Funcionalidade de criação não disponível aqui. Use a página de configuração inicial.',
@@ -167,11 +170,6 @@ const ManageMunicipalities = () => {
         });
         return;
       }
-
-      setDialogOpen(false);
-      setEditingMunicipality(null);
-      resetForm();
-      fetchMunicipalities();
     } catch (error) {
       console.error('Error during municipality save:', error);
       toast({
@@ -180,8 +178,9 @@ const ManageMunicipalities = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false); // Garante que o estado de carregamento seja redefinido
+      setLoading(false);
       console.log('Loading state reset to false.');
+      console.log('handleSubmit function finished.');
     }
   };
 
@@ -189,7 +188,6 @@ const ManageMunicipalities = () => {
     if (!confirm('Tem certeza que deseja excluir esta rede municipal? Esta ação é irreversível e removerá todas as escolas, usuários e históricos associados a ela.')) return;
 
     try {
-      // Delete related profiles (municipal_admin, school_admin, secretary, teacher)
       const { data: profilesToDelete, error: profilesError } = await supabase
         .from('profiles')
         .select('id')
@@ -204,7 +202,6 @@ const ManageMunicipalities = () => {
         }
       }
 
-      // Delete related schools
       const { data: schoolsToDelete, error: schoolsError } = await supabase
         .from('schools')
         .select('id')
@@ -217,7 +214,6 @@ const ManageMunicipalities = () => {
         await supabase.from('schools').delete().in('id', schoolIdsToDelete);
       }
 
-      // Delete the municipality itself
       const { error } = await supabase
         .from('municipalities')
         .delete()
@@ -242,7 +238,7 @@ const ManageMunicipalities = () => {
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
     });
-    setEmblemFile(null); // Clear file input when editing
+    setEmblemFile(null);
     setDialogOpen(true);
   };
 
@@ -342,7 +338,10 @@ const ManageMunicipalities = () => {
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);
-        if (!open) resetForm();
+        if (!open) {
+          resetForm();
+          fetchMunicipalities(); // Recarrega a lista após o diálogo fechar
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -408,7 +407,7 @@ const ManageMunicipalities = () => {
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading || uploading}> {/* Desabilita se estiver carregando ou fazendo upload */}
+              <Button type="submit" disabled={loading || uploading}>
                 {editingMunicipality ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
