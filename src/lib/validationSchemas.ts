@@ -103,7 +103,7 @@ export const schoolSchema = z.object({
     .min(3, 'Nome da escola deve ter pelo menos 3 caracteres')
     .max(200, 'Nome da escola deve ter no máximo 200 caracteres'),
   
-  inep_code: z.string()
+  inep: z.string() // Changed from inep_code to inep
     .trim()
     .regex(/^\d{8}$/, 'Código INEP deve ter 8 dígitos')
     .optional()

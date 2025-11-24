@@ -3,8 +3,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import correctLogo from "/correct-logo.png";
 
 interface StudentData {
-  name: string;
-  birthdate: string;
+  id: string;
+  full_name: string; // Changed from name
+  mother_name: string;
+  father_name: string | null;
+  birth_date: string; // Changed from birthdate
+  birth_place: string;
+  birth_state: string;
+  student_status: string | null;
+  grade_series: string | null;
+  observations: string | null;
   school_id: string | null;
   schools: { name: string, municipality_id: string } | null;
 }
@@ -44,7 +52,6 @@ interface TranscriptPreviewProps {
 }
 
 export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod }: TranscriptPreviewProps) => {
-  // Este é um comentário para forçar a atualização do arquivo e resolver possíveis problemas de cache.
   const formatDate = (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString("pt-BR");
@@ -81,21 +88,30 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
           <div className="space-y-4">
             <div>
               <p className="text-sm">
-                <span className="font-semibold">ALUNO (A):</span> <span className="font-bold">{student.name}</span>
+                <span className="font-semibold">ALUNO (A):</span> <span className="font-bold">{student.full_name}</span>
               </p>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              {/* Mother's name, Father's name, Birth place, Birth state are not in the new student table */}
-              {/* These fields need to be added to the student table and fetched if required */}
               <p className="text-sm">
-                <span className="font-semibold">Data de Nascimento:</span> {formatDate(student.birthdate)}
+                <span className="font-semibold">Mãe:</span> {student.mother_name || "Não informado"}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Data de Nascimento:</span> {formatDate(student.birth_date)}
+              </p>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <p className="text-sm">
+                <span className="font-semibold">Pai:</span> {student.father_name || "Não informado"}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Naturalidade:</span> {student.birth_place || "Não informado"} - {student.birth_state || "BA"}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {trimesterGrades.length > 0 && (
+      {trimesterGrades.length > 0 && student.student_status === "cursando" && (
         <Card>
           <CardHeader>
             <h3 className="font-semibold">Rendimento Escolar por Trimestre</h3>
@@ -228,15 +244,22 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
       <Card>
         <CardHeader>
           <h3 className="font-semibold text-center">
-            {/* Student status is not in the new student table. This logic needs to be re-evaluated. */}
-            CERTIFICADO DE ESCOLARIDADE
+            {student.student_status === "concluído" && "CERTIFICADO DE CONCLUSÃO"}
+            {student.student_status === "cursando" && "CERTIFICADO DE ESCOLARIDADE"}
+            {student.student_status === "transferido" && "CERTIFICADO DE TRANSFERÊNCIA"}
+            {student.student_status === "conservado" && "CERTIFICADO DE MATRÍCULA CONSERVADA"}
+            {!student.student_status && "CERTIFICADO DE ESCOLARIDADE"} {/* Default if null */}
           </h3>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-center">
-            Certificamos que <span className="font-bold">{student.name}</span>
-            {` está cursando no ano de ${new Date().getFullYear()} o `}
-            <span className="font-bold">Ensino Fundamental</span>
+            Certificamos que <span className="font-bold">{student.full_name}</span>
+            {student.student_status === "concluído" && ` concluiu no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
+            {student.student_status === "cursando" && ` está cursando no ano de ${new Date().getFullYear()} o `}
+            {student.student_status === "transferido" && ` foi transferido no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
+            {student.student_status === "conservado" && ` está conservado no ano de ${new Date().getFullYear()} o `}
+            {!student.student_status && ` está cursando no ano de ${new Date().getFullYear()} o `} {/* Default if null */}
+            <span className="font-bold">{student.grade_series || "Ensino Fundamental"}</span>
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
           </p>
           
@@ -259,8 +282,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
         </CardContent>
       </Card>
 
-      {/* Observations are not in the new student table */}
-      {/* {student.observations && (
+      {student.observations && (
         <Card>
           <CardHeader>
             <h3 className="font-semibold">Observações</h3>
@@ -269,7 +291,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             <p className="text-sm whitespace-pre-wrap">{student.observations}</p>
           </CardContent>
         </Card>
-      )} */}
+      )}
 
       <Card>
         <CardContent className="pt-6">

@@ -10,8 +10,15 @@ import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 interface StudentData {
   id: string;
-  name: string;
-  birthdate: string;
+  full_name: string; // Changed from name
+  mother_name: string;
+  father_name: string | null;
+  birth_date: string; // Changed from birthdate
+  birth_place: string;
+  birth_state: string;
+  student_status: string | null;
+  grade_series: string | null;
+  observations: string | null;
   school_id: string | null;
   schools: { name: string, municipality_id: string } | null;
 }
@@ -188,7 +195,7 @@ const ViewTranscript = () => {
             <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Histórico Escolar</h1>
-              <p className="text-muted-foreground">{student.name}</p>
+              <p className="text-muted-foreground">{student.full_name}</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleExportPDF} variant="outline">

@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
+import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, School } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
@@ -12,6 +12,8 @@ interface TranscriptValidation {
   student_name: string;
   school_name: string;
   municipality_name: string;
+  completion_year: number | null; // Added
+  grade_series: string | null; // Added
   is_valid: boolean;
 }
 
@@ -42,7 +44,7 @@ export default function ValidateTranscript() {
           student_id,
           school_id,
           municipality_id,
-          students (name),
+          students (full_name, completion_year, grade_series),
           schools (name),
           municipalities (name)
         `)
@@ -52,9 +54,11 @@ export default function ValidateTranscript() {
       if (transcriptError) throw transcriptError;
 
       const validationData: TranscriptValidation = {
-        student_name: (transcriptData.students as { name: string } | null)?.name || 'Não informado',
+        student_name: (transcriptData.students as { full_name: string } | null)?.full_name || 'Não informado',
         school_name: (transcriptData.schools as { name: string } | null)?.name || 'Não informado',
         municipality_name: (transcriptData.municipalities as { name: string } | null)?.name || 'Não informado',
+        completion_year: (transcriptData.students as { completion_year: number | null } | null)?.completion_year || null,
+        grade_series: (transcriptData.students as { grade_series: string | null } | null)?.grade_series || null,
         is_valid: true, // Placeholder: always true for now as there's no signature to verify
       };
 
@@ -156,6 +160,32 @@ export default function ValidateTranscript() {
               </div>
 
               <Separator />
+
+              {validation.completion_year && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Ano de Conclusão</p>
+                      <p className="font-semibold">{validation.completion_year}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {validation.grade_series && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Série/Ano</p>
+                      <p className="font-semibold">{validation.grade_series}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
             </div>
 
             {validation.is_valid ? (

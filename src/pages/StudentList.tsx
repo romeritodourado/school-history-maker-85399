@@ -11,10 +11,17 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface Student {
   id: string;
-  name: string;
-  birthdate: string;
+  full_name: string; // Changed from name
+  mother_name: string;
+  father_name: string | null;
+  birth_date: string; // Changed from birthdate
+  birth_place: string;
+  birth_state: string;
+  student_status: string | null;
+  grade_series: string | null;
+  observations: string | null;
   school_id: string | null;
-  schools: { name: string } | null;
+  schools: { name: string, municipality_id: string } | null;
 }
 
 const StudentList = () => {
@@ -32,7 +39,8 @@ const StudentList = () => {
   useEffect(() => {
     if (searchTerm) {
       const filtered = students.filter((student) =>
-        student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.mother_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.schools?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredStudents(filtered);
@@ -47,12 +55,19 @@ const StudentList = () => {
         .from("students")
         .select(`
           id,
-          name,
-          birthdate,
+          full_name,
+          mother_name,
+          father_name,
+          birth_date,
+          birth_place,
+          birth_state,
+          student_status,
+          grade_series,
+          observations,
           school_id,
           schools (name, municipality_id)
         `)
-        .order("name");
+        .order("full_name"); // Changed from name to full_name
 
       if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
         query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
@@ -122,7 +137,7 @@ const StudentList = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do aluno ou escola..."
+              placeholder="Buscar por nome do aluno ou mãe..." // Updated placeholder
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -148,16 +163,19 @@ const StudentList = () => {
             {filteredStudents.map((student) => (
               <Card key={student.id} className="hover:shadow-school transition-shadow">
                 <CardHeader>
-                  <CardTitle className="text-xl">{student.name}</CardTitle>
+                  <CardTitle className="text-xl">{student.full_name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4 grid gap-2 text-sm">
+                    <p>
+                      <span className="font-semibold">Mãe:</span> {student.mother_name || 'N/A'}
+                    </p>
                     <p>
                       <span className="font-semibold">Escola:</span> {student.schools?.name || 'N/A'}
                     </p>
                     <p>
                       <span className="font-semibold">Data de Nascimento:</span>{" "}
-                      {student.birthdate ? new Date(student.birthdate + 'T00:00:00').toLocaleDateString("pt-BR") : 'N/A'}
+                      {student.birth_date ? new Date(student.birth_date + 'T00:00:00').toLocaleDateString("pt-BR") : 'N/A'}
                     </p>
                   </div>
                   <div className="flex gap-2">

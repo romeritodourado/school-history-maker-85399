@@ -13,6 +13,8 @@ interface Profile {
   municipality_id: string | null;
   school_id: string | null;
   role: AppRole;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface AuthContextType {
@@ -83,6 +85,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const profileChannel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Profile updated:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            setProfile(payload.new as Profile);
+            setRole((payload.new as Profile).role);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
+  }, [user?.id]);
+
+
   const signIn = async (email: string, password: string) => {
     try {
       loginSchema.parse({ email, password });
@@ -102,19 +133,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name,
-            role, // Passa o role para user_metadata
-            municipality_id: municipalityId, // Passa municipality_id para user_metadata
-            school_id: schoolId, // Passa school_id para user_metadata
+            role,
+            municipality_id: municipalityId,
+            school_id: schoolId,
           },
         },
       });
 
       if (error) return { error };
-
-      // A função do banco de dados (trigger) agora deve lidar com a criação completa do perfil
-      // com o role e IDs corretos, então a atualização explícita aqui é removida.
-      // Se houver necessidade de atualizar outros campos que não são tratados pelo trigger,
-      // essa lógica precisaria ser reavaliada.
 
       return { error: null };
     } catch (error) {

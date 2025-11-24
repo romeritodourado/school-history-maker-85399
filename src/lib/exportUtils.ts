@@ -27,8 +27,15 @@ const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
 
 interface StudentData {
   id: string;
-  name: string;
-  birthdate: string;
+  full_name: string; // Changed from name
+  mother_name: string;
+  father_name: string | null;
+  birth_date: string; // Changed from birthdate
+  birth_place: string;
+  birth_state: string;
+  student_status: string | null;
+  grade_series: string | null;
+  observations: string | null;
   school_id: string | null;
   schools: { name: string, municipality_id: string } | null;
 }
@@ -76,7 +83,6 @@ export const exportToPDF = async (
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Add logo
   try {
     const correctLogoBase64 = await getImageAsBase64(correctLogo);
     doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 15, 10, 30, 30);
@@ -84,7 +90,6 @@ export const exportToPDF = async (
     console.error("Error loading logo:", error);
   }
 
-  // Header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 45, { align: "center" });
@@ -97,23 +102,23 @@ export const exportToPDF = async (
   doc.setFont("helvetica", "bold");
   doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 65, { align: "center" });
 
-  // Student info
   doc.setFontSize(10);
   let yPos = 75;
   doc.setFont("helvetica", "normal");
   doc.text(`ALUNO (A): `, 15, yPos);
   doc.setFont("helvetica", "bold");
-  doc.text(student.name, 15 + doc.getTextWidth(`ALUNO (A): `), yPos);
+  doc.text(student.full_name, 15 + doc.getTextWidth(`ALUNO (A): `), yPos);
   doc.setFont("helvetica", "normal");
   yPos += 7;
-  // Mother's name, Father's name, Birth place, Birth state are not in the new student table
-  // These fields need to be added to the student table and fetched if required
-  const birthDate = new Date(student.birthdate + 'T00:00:00');
-  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, 15, yPos);
+  doc.text(`Mãe: ${student.mother_name || "Não informado"}`, 15, yPos);
+  const birthDate = new Date(student.birth_date + 'T00:00:00');
+  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, 120, yPos);
+  yPos += 7;
+  doc.text(`Pai: ${student.father_name || "Não informado"}`, 15, yPos);
+  doc.text(`Naturalidade: ${student.birth_place || "Não informado"} - ${student.birth_state || "BA"}`, 120, yPos);
   yPos += 10;
 
-  // Trimester grades table
-  if (trimesterGrades.length > 0) {
+  if (trimesterGrades.length > 0 && student.student_status === "cursando") {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("RENDIMENTO ESCOLAR POR TRIMESTRE", 15, yPos);
@@ -172,7 +177,6 @@ export const exportToPDF = async (
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Academic years table
   if (academicYears.length > 0) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -196,7 +200,6 @@ export const exportToPDF = async (
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Consolidated grades table - Matrix format (all years in one table)
   if (academicYears.length > 0) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -447,7 +450,6 @@ export const exportToPDF = async (
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Certificate and signatures
   if (yPos > 220) {
     doc.addPage();
     yPos = 20;
@@ -455,18 +457,41 @@ export const exportToPDF = async (
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  // Student status is not in the new student table. This logic needs to be re-evaluated.
-  const certificateTitle = "CERTIFICADO DE ESCOLARIDADE";
+  let certificateTitle = "";
+  if (student.student_status === "concluído") {
+    certificateTitle = "CERTIFICADO DE CONCLUSÃO";
+  } else if (student.student_status === "cursando") {
+    certificateTitle = "CERTIFICADO DE ESCOLARIDADE";
+  } else if (student.student_status === "transferido") {
+    certificateTitle = "CERTIFICADO DE TRANSFERÊNCIA";
+  } else if (student.student_status === "conservado") {
+    certificateTitle = "CERTIFICADO DE MATRÍCULA CONSERVADA";
+  } else {
+    certificateTitle = "CERTIFICADO DE ESCOLARIDADE"; // Default if status is null
+  }
   doc.text(certificateTitle, pageWidth / 2, yPos, { align: "center" });
   yPos += 10;
 
   doc.setFontSize(10);
   const currentYear = new Date().getFullYear();
-  const gradeInfo = "Ensino Fundamental";
+  const lastYear = academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : currentYear;
+  const gradeInfo = student.grade_series || "Ensino Fundamental";
   
   let certText1 = "Certificamos que ";
-  let certText2 = ` está cursando no ano de ${currentYear} o `;
+  let certText2 = "";
   let certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
+  
+  if (student.student_status === "concluído") {
+    certText2 = ` concluiu no ano de ${lastYear} o `;
+  } else if (student.student_status === "cursando") {
+    certText2 = ` está cursando no ano de ${currentYear} o `;
+  } else if (student.student_status === "transferido") {
+    certText2 = ` foi transferido no ano de ${lastYear} o `;
+  } else if (student.student_status === "conservado") {
+    certText2 = ` está conservado no ano de ${currentYear} o `;
+  } else {
+    certText2 = ` está cursando no ano de ${currentYear} o `; // Default if status is null
+  }
   
   doc.setFont("helvetica", "normal");
   let xPos = 20;
@@ -475,7 +500,7 @@ export const exportToPDF = async (
   doc.setFont("helvetica", "normal");
   const text1Width = doc.getTextWidth(certText1);
   doc.setFont("helvetica", "bold");
-  const nameTextWidth = doc.getTextWidth(student.name);
+  const nameTextWidth = doc.getTextWidth(student.full_name);
   doc.setFont("helvetica", "normal");
   const text2Width = doc.getTextWidth(certText2);
   doc.setFont("helvetica", "bold");
@@ -491,7 +516,7 @@ export const exportToPDF = async (
     doc.text(certText1, xPos, yPos);
     xPos += text1Width;
     doc.setFont("helvetica", "bold");
-    doc.text(student.name, xPos, yPos);
+    doc.text(student.full_name, xPos, yPos);
     xPos += nameTextWidth;
     doc.setFont("helvetica", "normal");
     doc.text(certText2, xPos, yPos);
@@ -504,13 +529,12 @@ export const exportToPDF = async (
     yPos += 20;
   } else {
     doc.setFont("helvetica", "normal");
-    const fullText = certText1 + student.name + certText2 + gradeInfo + certText3;
+    const fullText = certText1 + student.full_name + certText2 + gradeInfo + certText3;
     const wrappedText = doc.splitTextToSize(fullText, maxWidth);
     doc.text(wrappedText, pageWidth / 2, yPos, { align: "center" });
     yPos += wrappedText.length * 7 + 20;
   }
 
-  // Signatures
   const signatureY = yPos + 10;
   doc.line(30, signatureY, 90, signatureY);
   doc.line(120, signatureY, 180, signatureY);
@@ -526,27 +550,25 @@ export const exportToPDF = async (
   const dateStr = `${now.getDate().toString().padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
   doc.text(`Luís Eduardo Magalhães - BA, ${dateStr}`, pageWidth / 2, yPos, { align: "center" });
 
-  // Observations are not in the new student table
-  // if (student.observations) {
-  //   if (yPos > 230) {
-  //     doc.addPage();
-  //     yPos = 20;
-  //   } else {
-  //     yPos += 10;
-  //   }
+  if (student.observations) {
+    if (yPos > 230) {
+      doc.addPage();
+      yPos = 20;
+    } else {
+      yPos += 10;
+    }
     
-  //   doc.setFontSize(10);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("OBSERVAÇÕES:", 15, yPos);
-  //   yPos += 5;
-  //   doc.setFont("helvetica", "normal");
-  //   doc.setFontSize(8);
-  //   const obsLines = doc.splitTextToSize(student.observations, pageWidth - 30);
-  //   doc.text(obsLines, 15, yPos);
-  //   yPos += obsLines.length * 4 + 5;
-  // }
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("OBSERVAÇÕES:", 15, yPos);
+    yPos += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const obsLines = doc.splitTextToSize(student.observations, pageWidth - 30);
+    doc.text(obsLines, 15, yPos);
+    yPos += obsLines.length * 4 + 5;
+  }
 
-  // Legend
   if (yPos > 240) {
     doc.addPage();
     yPos = 20;
@@ -573,7 +595,7 @@ export const exportToPDF = async (
   const splitInfo = doc.splitTextToSize(infoText, pageWidth - 30);
   doc.text(splitInfo, 15, yPos);
 
-  doc.save(`historico_${student.name.replace(/ /g, "_")}.pdf`);
+  doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
 };
 
 export const exportToExcel = (
@@ -584,22 +606,26 @@ export const exportToExcel = (
 ) => {
   const wb = XLSX.utils.book_new();
 
-  // Student info sheet
   const studentInfo = [
     ["Correct - Sistema de Histórico Escolar"],
     [""],
     ["Gestão simplificada de históricos escolares"],
     [""],
     ["DADOS DO ALUNO"],
-    ["Nome Completo:", student.name],
-    // Mother's name, Father's name, Birth place, Birth state are not in the new student table
-    ["Data de Nascimento:", new Date(student.birthdate).toLocaleDateString("pt-BR")],
+    ["Nome Completo:", student.full_name],
+    ["Nome da Mãe:", student.mother_name || "Não informado"],
+    ["Nome do Pai:", student.father_name || "Não informado"],
+    ["Data de Nascimento:", new Date(student.birth_date).toLocaleDateString("pt-BR")],
+    ["Naturalidade:", student.birth_place || "Não informado"],
+    ["Estado:", student.birth_state || "BA"],
+    ["Status do Aluno:", student.student_status || "N/A"],
+    ["Séries Cursadas:", student.grade_series || "N/A"],
+    ["Observações:", student.observations || "N/A"],
     [""],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(studentInfo);
 
-  // Academic years
   let currentRow = studentInfo.length;
   XLSX.utils.sheet_add_aoa(ws, [["ESTUDOS REALIZADOS"]], { origin: { r: currentRow, c: 0 } });
   currentRow++;
@@ -619,7 +645,6 @@ export const exportToExcel = (
 
   currentRow += 2;
 
-  // Grades for each year
   academicYears.forEach((year) => {
     const yearGrades = grades[year.id] || [];
     if (yearGrades.length > 0) {
@@ -653,11 +678,23 @@ export const exportToExcel = (
     }
   });
 
-  // Certificate
-  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE ESCOLARIDADE"]], { origin: { r: currentRow, c: 0 } });
+  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
   currentRow++;
   
-  let statusText = `Certificamos que ${student.name} está cursando o Ensino Fundamental.`;
+  let statusText = "";
+  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
+  
+  if (student.student_status === "concluído") {
+    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
+  } else if (student.student_status === "cursando") {
+    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
+  } else if (student.student_status === "transferido") {
+    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
+  } else if (student.student_status === "conservado") {
+    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
+  } else {
+    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`; // Default
+  }
   
   XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
   currentRow += 2;
@@ -678,7 +715,6 @@ export const exportToExcel = (
   );
   currentRow += 2;
 
-  // Legend
   XLSX.utils.sheet_add_aoa(ws, [["LEGENDA"]], { origin: { r: currentRow, c: 0 } });
   currentRow++;
   XLSX.utils.sheet_add_aoa(
@@ -693,6 +729,6 @@ export const exportToExcel = (
     { origin: { r: currentRow, c: 0 } }
   );
 
-  XLSX.utils.book_append_sheet(wb, ws, "Histórico Escolar");
-  XLSX.writeFile(wb, `historico_${student.name.replace(/ /g, "_")}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, `Histórico Escolar - ${student.full_name}`);
+  XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
 };

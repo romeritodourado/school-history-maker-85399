@@ -83,8 +83,15 @@ const CreateTranscript = () => {
 
   // Student data
   const [studentData, setStudentData] = useState({
-    name: "",
-    birthdate: "",
+    full_name: "", // Changed from name
+    mother_name: "",
+    father_name: "",
+    birth_date: "", // Changed from birthdate
+    birth_place: "",
+    birth_state: "BA",
+    student_status: "cursando",
+    grade_series: "",
+    observations: "",
   });
 
   // Academic years
@@ -92,9 +99,9 @@ const CreateTranscript = () => {
     {
       calendar_year: new Date().getFullYear(),
       grade_level: "1º Ano",
-      school_name: "", // Will be set from selectedSchoolId
-      city: "", // Will be set from selectedSchoolId
-      state: "", // Will be set from selectedSchoolId
+      school_name: "",
+      city: "",
+      state: "",
       shift: "",
       class_name: "",
       reclassified: false,
@@ -131,8 +138,8 @@ const CreateTranscript = () => {
   });
 
   // Observations
-  const [observations, setObservations] = useState("");
-  
+  // const [observations, setObservations] = useState(""); // Moved into studentData
+
   // Store the latest academic year ID for trimester grades (not directly used in this simplified version)
   const [latestAcademicYearId, setLatestAcademicYearId] = useState<string | null>(null);
 
@@ -172,21 +179,17 @@ const CreateTranscript = () => {
   const updateAcademicYearsSchoolInfo = async (schoolId: string) => {
     const school = schools.find(s => s.id === schoolId);
     if (school) {
-      // For now, city and state are hardcoded in the school table, not dynamic.
-      // We'll need to fetch municipality details to get city/state if they become dynamic.
-      // For now, let's assume city/state are part of the school's context or fixed.
-      // For this example, we'll use placeholder values or fetch from municipality if available.
       const { data: municipality, error } = await supabase
         .from('municipalities')
-        .select('name, cnpj') // Assuming city/state are not directly in municipality table for now
+        .select('name')
         .eq('id', school.municipality_id)
         .single();
 
       setAcademicYears(prevYears => prevYears.map(year => ({
         ...year,
         school_name: school.name,
-        city: "Luís Eduardo Magalhães", // Placeholder, update if municipality has city field
-        state: "BA", // Placeholder, update if municipality has state field
+        city: municipality?.name || "Luís Eduardo Magalhães", // Use municipality name for city
+        state: "BA", // Assuming state is fixed for now
       })));
     }
   };
@@ -205,8 +208,15 @@ const CreateTranscript = () => {
       if (studentError) throw studentError;
 
       setStudentData({
-        name: student.name || "",
-        birthdate: student.birthdate || "",
+        full_name: student.full_name || "",
+        mother_name: student.mother_name || "",
+        father_name: student.father_name || "",
+        birth_date: student.birth_date || "",
+        birth_place: student.birth_place || "",
+        birth_state: student.birth_state || "BA",
+        student_status: student.student_status || "cursando",
+        grade_series: student.grade_series || "",
+        observations: student.observations || "",
       });
       setSelectedSchoolId(student.school_id);
 
@@ -258,7 +268,6 @@ const CreateTranscript = () => {
           }
         }
 
-        // Merge with default subjects and workload
         GRADE_LEVELS.forEach((level) => {
           if (!loadedYearGrades[level]) {
             const workloadData = WORKLOAD_BY_GRADE[level] || {};
@@ -273,12 +282,10 @@ const CreateTranscript = () => {
 
         setYearGrades(loadedYearGrades);
 
-        // Fetch trimester grades - get the latest academic year
         const latestYear = yearsData[yearsData.length - 1];
         if (latestYear) {
           setLatestAcademicYearId(latestYear.id);
           
-          // Load school period data
           setSchoolPeriod({
             startDate: latestYear.school_period_start || "",
             endDate: latestYear.school_period_end || "",
@@ -317,20 +324,8 @@ const CreateTranscript = () => {
   };
 
   const handleSave = async () => {
-    // Validate student data
     try {
-      studentSchema.parse({
-        full_name: studentData.name,
-        birth_date: studentData.birthdate,
-        // Temporarily remove mother_name, father_name, birth_place, birth_state, observations
-        // as they are not in the current studentData state.
-        // These fields need to be added back to the studentData state and form if required.
-        mother_name: "Nome da Mãe Padrão", // Placeholder
-        father_name: "", // Placeholder
-        birth_place: "Cidade Padrão", // Placeholder
-        birth_state: "BA", // Placeholder
-        observations: "", // Placeholder
-      });
+      studentSchema.parse(studentData);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -356,26 +351,24 @@ const CreateTranscript = () => {
       let studentId = id;
 
       if (id) {
-        // Update existing student
         const { error: studentError } = await supabase
           .from("students")
-          .update({ name: studentData.name, birthdate: studentData.birthdate, school_id: selectedSchoolId })
+          .update({ ...studentData, school_id: selectedSchoolId })
           .eq("id", id);
 
         if (studentError) throw studentError;
 
-        // Delete existing records to recreate
         await supabase.from("academic_years").delete().eq("student_id", id);
         await supabase.from("annual_grades").delete().eq("student_id", id);
-        await supabase.from("trimester_grades").delete().in(
-          "academic_year_id",
-          (await supabase.from("academic_years").select("id").eq("student_id", id)).data?.map(y => y.id) || []
-        );
+        
+        const existingTrimesterYears = (await supabase.from("academic_years").select("id").eq("student_id", id)).data?.map(y => y.id) || [];
+        if (existingTrimesterYears.length > 0) {
+          await supabase.from("trimester_grades").delete().in("academic_year_id", existingTrimesterYears);
+        }
       } else {
-        // Insert new student
         const { data: student, error: studentError } = await supabase
           .from("students")
-          .insert([{ name: studentData.name, birthdate: studentData.birthdate, school_id: selectedSchoolId }])
+          .insert([{ ...studentData, school_id: selectedSchoolId }])
           .select()
           .single();
 
@@ -383,12 +376,10 @@ const CreateTranscript = () => {
         studentId = student.id;
       }
 
-      // Insert academic years and grades
       for (let i = 0; i < academicYears.length; i++) {
         const year = academicYears[i];
         const isLatestYear = i === academicYears.length - 1;
         
-        // Add school period data to the latest academic year
         const yearData = isLatestYear 
           ? {
               ...year,
@@ -408,7 +399,6 @@ const CreateTranscript = () => {
 
         if (yearError) throw yearError;
 
-        // Insert annual grades for this year
         const gradesForYear = yearGrades[year.grade_level] || [];
         const gradesToInsert = gradesForYear
           .filter((g) => g.grade || g.workload || parseInt(g.absences) > 0)
@@ -428,10 +418,7 @@ const CreateTranscript = () => {
           if (gradesError) throw gradesError;
         }
 
-        // Insert trimester grades only for the latest year and only if student status is "cursando"
-        // NOTE: student_status is not in the new student table. This logic needs to be re-evaluated.
-        // For now, we'll assume trimester grades are always saved for the latest year.
-        if (isLatestYear) {
+        if (isLatestYear && studentData.student_status === "cursando") {
           const trimesterGradesToInsert = trimesterGrades
             .filter((g) => g.grade || parseInt(g.absences) > 0)
             .map((g) => ({
@@ -514,27 +501,153 @@ const CreateTranscript = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo *</Label>
+                  <Label htmlFor="full_name">Nome Completo *</Label>
                   <Input
-                    id="name"
-                    value={studentData.name}
+                    id="full_name"
+                    value={studentData.full_name}
                     onChange={(e) =>
-                      setStudentData({ ...studentData, name: e.target.value })
+                      setStudentData({ ...studentData, full_name: e.target.value })
                     }
                     placeholder="Nome completo do aluno"
                   />
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="mother_name">Nome da Mãe *</Label>
+                    <Input
+                      id="mother_name"
+                      value={studentData.mother_name}
+                      onChange={(e) =>
+                        setStudentData({ ...studentData, mother_name: e.target.value })
+                      }
+                      placeholder="Nome completo da mãe"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="father_name">Nome do Pai</Label>
+                    <Input
+                      id="father_name"
+                      value={studentData.father_name}
+                      onChange={(e) =>
+                        setStudentData({ ...studentData, father_name: e.target.value })
+                      }
+                      placeholder="Nome completo do pai"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="birthdate">Data de Nascimento *</Label>
+                  <Label htmlFor="birth_date">Data de Nascimento *</Label>
                   <Input
-                    id="birthdate"
+                    id="birth_date"
                     type="date"
-                    value={studentData.birthdate}
+                    value={studentData.birth_date}
                     onChange={(e) =>
-                      setStudentData({ ...studentData, birthdate: e.target.value })
+                      setStudentData({ ...studentData, birth_date: e.target.value })
                     }
                   />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_place">Naturalidade (Cidade) *</Label>
+                    <Input
+                      id="birth_place"
+                      value={studentData.birth_place}
+                      onChange={(e) =>
+                        setStudentData({ ...studentData, birth_place: e.target.value })
+                      }
+                      placeholder="Nome da cidade"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_state">Estado (UF) *</Label>
+                    <select
+                      id="birth_state"
+                      value={studentData.birth_state}
+                      onChange={(e) =>
+                        setStudentData({ ...studentData, birth_state: e.target.value })
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="AC">AC</option>
+                      <option value="AL">AL</option>
+                      <option value="AP">AP</option>
+                      <option value="AM">AM</option>
+                      <option value="BA">BA</option>
+                      <option value="CE">CE</option>
+                      <option value="DF">DF</option>
+                      <option value="ES">ES</option>
+                      <option value="GO">GO</option>
+                      <option value="MA">MA</option>
+                      <option value="MT">MT</option>
+                      <option value="MS">MS</option>
+                      <option value="MG">MG</option>
+                      <option value="PA">PA</option>
+                      <option value="PB">PB</option>
+                      <option value="PR">PR</option>
+                      <option value="PE">PE</option>
+                      <option value="PI">PI</option>
+                      <option value="RJ">RJ</option>
+                      <option value="RN">RN</option>
+                      <option value="RS">RS</option>
+                      <option value="RO">RO</option>
+                      <option value="RR">RR</option>
+                      <option value="SC">SC</option>
+                      <option value="SP">SP</option>
+                      <option value="SE">SE</option>
+                      <option value="TO">TO</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="student_status">Status do Aluno *</Label>
+                    <select
+                      id="student_status"
+                      value={studentData.student_status}
+                      onChange={(e) => setStudentData({ ...studentData, student_status: e.target.value })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="cursando">Cursando</option>
+                      <option value="transferido">Transferido</option>
+                      <option value="concluído">Concluído</option>
+                      <option value="conservado">Conservado</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grade_series">Séries Cursadas</Label>
+                    <select
+                      id="grade_series"
+                      value={studentData.grade_series}
+                      onChange={(e) =>
+                        setStudentData({ ...studentData, grade_series: e.target.value })
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="1º ao 5º ano">1º ao 5º ano</option>
+                      <option value="1º ao 4º ano">1º ao 4º ano</option>
+                      <option value="1º ao 3º ano">1º ao 3º ano</option>
+                      <option value="1º ao 2º ano">1º ao 2º ano</option>
+                      <option value="1º ano">1º ano</option>
+                      <option value="2º ao 5º ano">2º ao 5º ano</option>
+                      <option value="2º ao 4º ano">2º ao 4º ano</option>
+                      <option value="2º ao 3º ano">2º ao 3º ano</option>
+                      <option value="2º ano">2º ano</option>
+                      <option value="3º ao 5º ano">3º ao 5º ano</option>
+                      <option value="3º ao 4º ano">3º ao 4º ano</option>
+                      <option value="3º ano">3º ano</option>
+                      <option value="4º ao 5º ano">4º ao 5º ano</option>
+                      <option value="4º ano">4º ano</option>
+                      <option value="5º ano">5º ano</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -633,8 +746,8 @@ const CreateTranscript = () => {
                   <Label htmlFor="observations">Observações Adicionais</Label>
                   <Textarea
                     id="observations"
-                    value={observations}
-                    onChange={(e) => setObservations(e.target.value)}
+                    value={studentData.observations}
+                    onChange={(e) => setStudentData({ ...studentData, observations: e.target.value })}
                     placeholder="Digite aqui informações complementares sobre o histórico escolar do aluno..."
                     className="min-h-[150px]"
                   />
