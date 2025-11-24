@@ -103,7 +103,7 @@ const App = () => (
                 <Users />
               </ProtectedRoute>
             } />
-            <Route path="/account-settings" element={ {/* Nova rota para configurações da conta */}
+            <Route path="/account-settings" element={ /* Nova rota para configurações da conta */
               <ProtectedRoute>
                 <AccountSettings />
               </ProtectedRoute>
