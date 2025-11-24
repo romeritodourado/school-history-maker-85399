@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import correctLogo from "/correct-logo.png";
 import { useAuth } from '@/contexts/AuthContext';
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 interface Student {
   id: string;
   full_name: string; // Changed from name
@@ -71,7 +73,7 @@ const StudentList = () => {
 
       if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
         query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
-      } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'teacher') {
+      } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') {
         query = query.eq('school_id', currentUserProfile?.school_id);
       }
 
@@ -192,7 +194,7 @@ const StudentList = () => {
                     </Link>
                     {(currentUserRole === 'super_admin' || 
                       (currentUserRole === 'municipal_admin' && student.schools?.municipality_id === currentUserProfile?.municipality_id) ||
-                      ((currentUserRole === 'school_admin' || currentUserRole === 'secretary') && student.school_id === currentUserProfile?.school_id)) && (
+                      ((currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') && student.school_id === currentUserProfile?.school_id)) && (
                       <Button variant="destructive" size="sm" onClick={() => handleDelete(student.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -19,8 +19,8 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
-import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -73,22 +73,22 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/lista-alunos" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <StudentList />
               </ProtectedRoute>
             } />
             <Route path="/novo-historico" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <CreateTranscript />
               </ProtectedRoute>
             } />
             <Route path="/visualizar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <ViewTranscript />
               </ProtectedRoute>
             } />
             <Route path="/editar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo']}>
                 <CreateTranscript />
               </ProtectedRoute>
             } />

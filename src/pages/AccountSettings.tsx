@@ -11,6 +11,8 @@ import { Loader2, User, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { signupSchema, passwordChangeSchema } from '@/lib/validationSchemas';
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 export default function AccountSettings() {
   const { user, profile, fetchProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();

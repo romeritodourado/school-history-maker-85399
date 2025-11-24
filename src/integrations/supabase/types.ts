@@ -273,25 +273,58 @@ export type Database = {
       }
       students: {
         Row: {
-          birthdate: string | null
+          birth_date: string
+          birth_place: string
+          birth_state: string
+          completion_year: number | null
           created_at: string | null
+          father_name: string | null
+          full_name: string
+          grade_series: string | null
           id: string
-          name: string | null
+          mother_name: string
+          observations: string | null
           school_id: string | null
+          signed_at: string | null
+          student_status: string | null
+          transcript_status: string | null
+          updated_at: string | null
         }
         Insert: {
-          birthdate?: string | null
+          birth_date: string
+          birth_place: string
+          birth_state?: string
+          completion_year?: number | null
           created_at?: string | null
+          father_name?: string | null
+          full_name: string
+          grade_series?: string | null
           id?: string
-          name?: string | null
+          mother_name: string
+          observations?: string | null
           school_id?: string | null
+          signed_at?: string | null
+          student_status?: string | null
+          transcript_status?: string | null
+          updated_at?: string | null
         }
         Update: {
-          birthdate?: string | null
+          birth_date?: string
+          birth_place?: string
+          birth_state?: string
+          completion_year?: number | null
           created_at?: string | null
+          father_name?: string | null
+          full_name?: string
+          grade_series?: string | null
           id?: string
-          name?: string | null
+          mother_name?: string
+          observations?: string | null
           school_id?: string | null
+          signed_at?: string | null
+          student_status?: string | null
+          transcript_status?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -439,7 +472,7 @@ export type Database = {
         | "municipal_admin"
         | "school_admin"
         | "secretary"
-        | "teacher"
+        | "assistente_administrativo"
     }
     CompositeTypes: {
       [_ in never]: never

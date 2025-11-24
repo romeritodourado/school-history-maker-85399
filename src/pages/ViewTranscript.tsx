@@ -8,6 +8,8 @@ import correctLogo from "/correct-logo.png";
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 interface StudentData {
   id: string;
   full_name: string; // Changed from name

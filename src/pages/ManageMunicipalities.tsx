@@ -20,6 +20,8 @@ import { z } from 'zod';
 import { municipalitySchema } from '@/lib/validationSchemas';
 import correctLogo from "/correct-logo.png";
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 interface Municipality {
   id: string;
   name: string;

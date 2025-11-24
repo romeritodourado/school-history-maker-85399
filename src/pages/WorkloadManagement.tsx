@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { WORKLOAD_BY_GRADE, SUBJECT_CATEGORIES } from "@/lib/workloadData";
 import { useAuth } from '@/contexts/AuthContext';
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 const GRADE_LEVELS = ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"];
 const CATEGORIES = ["Base Nacional Comum", "Base Diversificada"];
 

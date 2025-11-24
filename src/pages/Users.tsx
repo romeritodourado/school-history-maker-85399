@@ -20,7 +20,7 @@ import {
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface UserProfile {
   id: string;
@@ -56,7 +56,7 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'teacher' as AppRole,
+    role: 'assistente_administrativo' as AppRole,
     municipality_id: '',
     school_id: '',
   });
@@ -243,16 +243,16 @@ export default function Users() {
       municipal_admin: 'Administrador Municipal',
       school_admin: 'Administrador Escolar',
       secretary: 'Secretário(a)',
-      teacher: 'Professor(a)',
+      assistente_administrativo: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
 
   const getAvailableRoles = () => {
-    const allRoles: AppRole[] = ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'];
+    const allRoles: AppRole[] = ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'];
     if (currentUserRole === 'super_admin') return allRoles;
     if (currentUserRole === 'municipal_admin') return allRoles.filter(r => r !== 'super_admin');
-    if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'teacher');
+    if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'assistente_administrativo');
     return [];
   };
 
@@ -261,7 +261,7 @@ export default function Users() {
       email: '',
       password: '',
       name: '',
-      role: 'teacher',
+      role: 'assistente_administrativo',
       municipality_id: '',
       school_id: '',
     });
@@ -363,7 +363,7 @@ export default function Users() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_admin' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
+                {(formData.role === 'municipal_admin' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
@@ -384,7 +384,7 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
-                {(formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
+                {(formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select

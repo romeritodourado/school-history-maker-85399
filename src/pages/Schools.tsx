@@ -20,6 +20,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { schoolSchema } from '@/lib/validationSchemas';
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 interface SchoolData {
   id: string;
   name: string;
@@ -122,7 +124,7 @@ export default function Schools() {
     e.preventDefault();
     
     try {
-      schoolSchema.parse({ name: formData.name, inep_code: formData.inep }); // Use inep_code for validation
+      schoolSchema.parse({ name: formData.name, inep: formData.inep }); // Use inep for validation
 
       if (!formData.municipality_id) {
         toast({

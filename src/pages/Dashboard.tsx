@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 
+type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
 interface Municipality {
   id: string;
   name: string;
@@ -68,14 +70,14 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_admin', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_admin', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
     {
       title: 'Carga Horária',
@@ -103,7 +105,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'teacher'],
+      roles: ['super_admin', 'municipal_admin', 'school_admin', 'secretary', 'assistente_administrativo'],
     },
   ];
 

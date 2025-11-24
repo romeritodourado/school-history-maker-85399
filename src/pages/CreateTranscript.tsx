@@ -164,7 +164,7 @@ const CreateTranscript = () => {
 
       if (role === 'municipal_admin' && profile?.municipality_id) {
         query = query.eq('municipality_id', profile.municipality_id);
-      } else if (role === 'school_admin' || role === 'secretary' || role === 'teacher') {
+      } else if (role === 'school_admin' || role === 'secretary' || role === 'assistente_administrativo') {
         query = query.eq('id', profile?.school_id);
       }
 
