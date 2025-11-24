@@ -64,6 +64,38 @@ export const gradeSchema = z.object({
     .nullable(),
 });
 
+// User signup validation schema
+export const signupSchema = z.object({
+  email: z.string()
+    .trim()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres'),
+  
+  password: z.string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .max(72, 'Senha deve ter no máximo 72 caracteres')
+    .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minúscula')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiúscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um número'),
+  
+  name: z.string()
+    .trim()
+    .min(3, 'Nome deve ter pelo menos 3 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres')
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
+});
+
+// Login validation schema
+export const loginSchema = z.object({
+  email: z.string()
+    .trim()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres'),
+  
+  password: z.string()
+    .min(1, 'Senha é obrigatória'),
+});
+
 // School validation schema
 export const schoolSchema = z.object({
   name: z.string()
@@ -115,4 +147,24 @@ export const academicYearSchema = z.object({
   state: z.string()
     .length(2, 'Estado deve ter 2 caracteres')
     .regex(/^[A-Z]{2}$/, 'Estado deve ser uma sigla válida (ex: BA)'),
+});
+
+// Municipality validation schema
+export const municipalitySchema = z.object({
+  name: z.string()
+    .trim()
+    .min(3, 'Nome da rede municipal deve ter pelo menos 3 caracteres')
+    .max(200, 'Nome da rede municipal deve ter no máximo 200 caracteres'),
+  
+  cnpj: z.string()
+    .trim()
+    .regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, 'CNPJ inválido (formato: 00.000.000/0001-00)')
+    .optional()
+    .or(z.literal('')),
+  
+  emblem_url: z.string()
+    .url('URL do brasão inválida')
+    .max(500, 'URL do brasão deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal('')),
 });

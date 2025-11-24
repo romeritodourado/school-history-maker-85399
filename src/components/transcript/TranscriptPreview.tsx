@@ -1,17 +1,12 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import correctLogo from "/correct-logo.png"; // Usar a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
 
 interface StudentData {
-  full_name: string;
-  mother_name: string;
-  father_name: string;
-  birth_date: string;
-  birth_place: string;
-  birth_state?: string;
-  student_status?: string;
-  grade_series?: string;
-  observations?: string;
+  name: string;
+  birthdate: string;
+  school_id: string | null;
+  schools: { name: string, municipality_id: string } | null;
 }
 
 interface AcademicYearData {
@@ -50,13 +45,12 @@ interface TranscriptPreviewProps {
 
 export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod }: TranscriptPreviewProps) => {
   const formatDate = (dateString: string) => {
-    // Fix date bug: parse date as UTC to avoid timezone offset issues
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString("pt-BR");
   };
 
   const formatGrade = (grade: number | null) => {
-    if (!grade) return "-";
+    if (grade === null) return "-";
     return grade.toFixed(1);
   };
 
@@ -73,7 +67,6 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
       <Card>
         <CardHeader className="border-b bg-primary/5">
           <div className="flex items-center justify-between gap-4">
-            {/* Removido cityLogo, usando apenas correctLogo centralizado */}
             <div className="flex-1 text-center">
               <img src={correctLogo} alt="Correct Logo" className="h-20 w-20 object-contain mx-auto mb-2" />
               <h2 className="text-sm font-bold text-primary">Correct - Sistema de Histórico Escolar</h2>
@@ -81,37 +74,27 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
               <p className="text-xs text-muted-foreground">Versão 1.0</p>
               <h2 className="mt-2 text-lg font-bold text-primary">HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL</h2>
             </div>
-            {/* Removido schoolLogo */}
           </div>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div>
               <p className="text-sm">
-                <span className="font-semibold">ALUNO (A):</span> <span className="font-bold">{student.full_name}</span>
+                <span className="font-semibold">ALUNO (A):</span> <span className="font-bold">{student.name}</span>
               </p>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
+              {/* Mother's name, Father's name, Birth place, Birth state are not in the new student table */}
+              {/* These fields need to be added to the student table and fetched if required */}
               <p className="text-sm">
-                <span className="font-semibold">Mãe:</span> {student.mother_name}
-              </p>
-              <p className="text-sm">
-                <span className="font-semibold">Data de Nascimento:</span> {formatDate(student.birth_date)}
-              </p>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <p className="text-sm">
-                <span className="font-semibold">Pai:</span> {student.father_name || "Não informado"}
-              </p>
-              <p className="text-sm">
-                <span className="font-semibold">Naturalidade:</span> {student.birth_place} - {student.birth_state || "BA"}
+                <span className="font-semibold">Data de Nascimento:</span> {formatDate(student.birthdate)}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {trimesterGrades.length > 0 && student.student_status === "cursando" && (
+      {trimesterGrades.length > 0 && (
         <Card>
           <CardHeader>
             <h3 className="font-semibold">Rendimento Escolar por Trimestre</h3>
@@ -244,20 +227,15 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
       <Card>
         <CardHeader>
           <h3 className="font-semibold text-center">
-            {student.student_status === "concluído" && "CERTIFICADO DE CONCLUSÃO"}
-            {student.student_status === "cursando" && "CERTIFICADO DE ESCOLARIDADE"}
-            {student.student_status === "transferido" && "CERTIFICADO DE TRANSFERÊNCIA"}
-            {student.student_status === "conservado" && "CERTIFICADO DE MATRÍCULA CONSERVADA"}
+            {/* Student status is not in the new student table. This logic needs to be re-evaluated. */}
+            CERTIFICADO DE ESCOLARIDADE
           </h3>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-center">
-            Certificamos que <span className="font-bold">{student.full_name}</span>
-            {student.student_status === "concluído" && ` concluiu no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
-            {student.student_status === "cursando" && ` está cursando no ano de ${new Date().getFullYear()} o `}
-            {student.student_status === "transferido" && ` foi transferido no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
-            {student.student_status === "conservado" && ` está conservado no ano de ${new Date().getFullYear()} o `}
-            <span className="font-bold">{student.grade_series || "Ensino Fundamental"}</span>
+            Certificamos que <span className="font-bold">{student.name}</span>
+            {` está cursando no ano de ${new Date().getFullYear()} o `}
+            <span className="font-bold">Ensino Fundamental</span>
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
           </p>
           
@@ -280,7 +258,8 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
         </CardContent>
       </Card>
 
-      {student.observations && (
+      {/* Observations are not in the new student table */}
+      {/* {student.observations && (
         <Card>
           <CardHeader>
             <h3 className="font-semibold">Observações</h3>
@@ -289,7 +268,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             <p className="text-sm whitespace-pre-wrap">{student.observations}</p>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       <Card>
         <CardContent className="pt-6">
@@ -323,3 +302,5 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     </div>
   );
 };
+
+export default ViewTranscript;

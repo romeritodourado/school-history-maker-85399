@@ -7,10 +7,11 @@ import { ArrowLeft, Trash2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WORKLOAD_BY_GRADE, SUBJECT_CATEGORIES } from "@/lib/workloadData";
+import { useAuth } from '@/contexts/AuthContext';
 
 const GRADE_LEVELS = ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"];
 const CATEGORIES = ["Base Nacional Comum", "Base Diversificada"];
@@ -37,6 +38,7 @@ const WorkloadManagement = () => {
     workload: 0,
     category: "Base Nacional Comum",
   });
+  const { role: currentUserRole, profile: currentUserProfile } = useAuth();
 
   useEffect(() => {
     loadAvailableYears();
@@ -57,7 +59,6 @@ const WorkloadManagement = () => {
       if (data && data.length > 0) {
         const years = [...new Set(data.map(d => d.academic_year))].sort((a, b) => b - a);
         
-        // Adiciona o ano atual se não existir
         if (!years.includes(currentYear)) {
           years.push(currentYear);
           years.sort((a, b) => b - a);
@@ -65,12 +66,11 @@ const WorkloadManagement = () => {
         
         setAvailableYears(years);
       } else {
-        // Se não há dados, usa apenas o ano atual
         setAvailableYears([currentYear]);
       }
     } catch (error: any) {
       console.error("Erro ao carregar anos:", error);
-      setAvailableYears([currentYear]); // Fallback para o ano atual
+      setAvailableYears([currentYear]);
     }
   };
 
@@ -186,7 +186,6 @@ const WorkloadManagement = () => {
   };
 
   const handleAddNewYear = () => {
-    const currentYear = new Date().getFullYear();
     const newYear = Math.max(...availableYears, currentYear) + 1;
     setAcademicYear(newYear);
     if (!availableYears.includes(newYear)) {

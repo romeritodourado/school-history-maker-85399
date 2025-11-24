@@ -167,18 +167,21 @@ export type Database = {
         Row: {
           cnpj: string | null
           created_at: string | null
+          emblem_url: string | null
           id: string
           name: string
         }
         Insert: {
           cnpj?: string | null
           created_at?: string | null
+          emblem_url?: string | null
           id?: string
           name: string
         }
         Update: {
           cnpj?: string | null
           created_at?: string | null
+          emblem_url?: string | null
           id?: string
           name?: string
         }

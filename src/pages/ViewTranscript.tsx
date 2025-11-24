@@ -4,21 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 interface StudentData {
   id: string;
-  full_name: string;
-  mother_name: string;
-  father_name: string;
-  birth_date: string;
-  birth_place: string;
-  birth_state?: string;
-  student_status?: string;
-  grade_series?: string;
-  observations?: string;
+  name: string;
+  birthdate: string;
+  school_id: string | null;
+  schools: { name: string, municipality_id: string } | null;
 }
 
 interface AcademicYearData {
@@ -31,7 +26,6 @@ interface AcademicYearData {
   shift: string;
   class_name: string;
   reclassified?: boolean;
-  // Novos campos adicionados
   school_period_start?: string | null;
   school_period_end?: string | null;
   trimester_year?: string | null;
@@ -73,7 +67,10 @@ const ViewTranscript = () => {
       // Fetch student
       const { data: studentData, error: studentError } = await supabase
         .from("students")
-        .select("*")
+        .select(`
+          *,
+          schools (name, municipality_id)
+        `)
         .eq("id", id)
         .single();
 
@@ -164,7 +161,7 @@ const ViewTranscript = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
@@ -191,7 +188,7 @@ const ViewTranscript = () => {
             <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Histórico Escolar</h1>
-              <p className="text-muted-foreground">{student.full_name}</p>
+              <p className="text-muted-foreground">{student.name}</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleExportPDF} variant="outline">

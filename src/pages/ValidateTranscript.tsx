@@ -6,13 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import correctLogo from "/correct-logo.png"; // Importar a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
 
 interface TranscriptValidation {
   student_name: string;
   school_name: string;
-  completion_year: number | null;
-  grade_series: string | null;
+  municipality_name: string;
   is_valid: boolean;
 }
 
@@ -35,28 +34,27 @@ export default function ValidateTranscript() {
 
   const validateTranscript = async () => {
     try {
-      // Fetch student data
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // Fetch transcript data
+      const { data: transcriptData, error: transcriptError } = await supabase
+        .from('transcripts')
         .select(`
-          full_name,
-          completion_year,
-          grade_series,
+          id,
+          student_id,
           school_id,
-          schools:school_id (name)
+          municipality_id,
+          students (name),
+          schools (name),
+          municipalities (name)
         `)
         .eq('id', transcriptId)
         .single();
 
-      if (studentError) throw studentError;
+      if (transcriptError) throw transcriptError;
 
-      // Since signatures table is removed, we'll simulate validation for now.
-      // In a real scenario, you would re-calculate the hash of the PDF and compare.
       const validationData: TranscriptValidation = {
-        student_name: studentData.full_name,
-        school_name: (studentData.schools as any)?.name || 'Não informado',
-        completion_year: studentData.completion_year,
-        grade_series: studentData.grade_series,
+        student_name: (transcriptData.students as { name: string } | null)?.name || 'Não informado',
+        school_name: (transcriptData.schools as { name: string } | null)?.name || 'Não informado',
+        municipality_name: (transcriptData.municipalities as { name: string } | null)?.name || 'Não informado',
         is_valid: true, // Placeholder: always true for now as there's no signature to verify
       };
 
@@ -140,7 +138,7 @@ export default function ValidateTranscript() {
               <Separator />
 
               <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-primary mt-0.5" />
+                <School className="h-5 w-5 text-primary mt-0.5" />
                 <div>
                   <p className="text-sm text-muted-foreground">Escola</p>
                   <p className="font-semibold">{validation.school_name}</p>
@@ -149,34 +147,16 @@ export default function ValidateTranscript() {
 
               <Separator />
 
-              {validation.completion_year && (
-                <>
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Ano de Conclusão</p>
-                      <p className="font-semibold">{validation.completion_year}</p>
-                    </div>
-                  </div>
-                  <Separator />
-                </>
-              )}
+              <div className="flex items-start gap-3">
+                <Building2 className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Rede Municipal</p>
+                  <p className="font-semibold">{validation.municipality_name}</p>
+                </div>
+              </div>
 
-              {validation.grade_series && (
-                <>
-                  <div className="flex items-start gap-3">
-                    <FileText className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Série/Ano</p>
-                      <p className="font-semibold">{validation.grade_series}</p>
-                    </div>
-                  </div>
-                  <Separator />
-                </>
-              )}
+              <Separator />
             </div>
-
-            {/* Removed Digital Signature Info section */}
 
             {validation.is_valid ? (
               <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-800 p-4 rounded-lg">

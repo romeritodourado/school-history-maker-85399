@@ -4,16 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Eye, Search } from "lucide-react";
+import { ArrowLeft, Eye, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "/correct-logo.png"; // Atualizar para a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Student {
   id: string;
-  full_name: string;
-  mother_name: string;
-  birth_date: string;
-  birth_place: string;
+  name: string;
+  birthdate: string;
+  school_id: string | null;
+  schools: { name: string } | null;
 }
 
 const StudentList = () => {
@@ -22,16 +23,17 @@ const StudentList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { role: currentUserRole, profile: currentUserProfile } = useAuth();
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [currentUserRole, currentUserProfile]);
 
   useEffect(() => {
     if (searchTerm) {
       const filtered = students.filter((student) =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.mother_name.toLowerCase().includes(searchTerm.toLowerCase())
+        student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.schools?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredStudents(filtered);
     } else {
@@ -41,10 +43,24 @@ const StudentList = () => {
 
   const fetchStudents = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("students")
-        .select("*")
-        .order("full_name");
+        .select(`
+          id,
+          name,
+          birthdate,
+          school_id,
+          schools (name, municipality_id)
+        `)
+        .order("name");
+
+      if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+        query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
+      } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'teacher') {
+        query = query.eq('school_id', currentUserProfile?.school_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setStudents(data || []);
@@ -60,7 +76,26 @@ const StudentList = () => {
     }
   };
 
-  // Removido handleDelete, pois a exclusão não será permitida sem autenticação.
+  const handleDelete = async (studentId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este aluno e todos os seus históricos? Esta ação é irreversível.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', studentId);
+
+      if (error) throw error;
+      toast({ title: 'Aluno excluído com sucesso!' });
+      fetchStudents();
+    } catch (error) {
+      toast({
+        title: 'Erro ao excluir aluno',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -87,7 +122,7 @@ const StudentList = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do aluno ou mãe..."
+              placeholder="Buscar por nome do aluno ou escola..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -113,19 +148,16 @@ const StudentList = () => {
             {filteredStudents.map((student) => (
               <Card key={student.id} className="hover:shadow-school transition-shadow">
                 <CardHeader>
-                  <CardTitle className="text-xl">{student.full_name}</CardTitle>
+                  <CardTitle className="text-xl">{student.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4 grid gap-2 text-sm">
                     <p>
-                      <span className="font-semibold">Mãe:</span> {student.mother_name}
+                      <span className="font-semibold">Escola:</span> {student.schools?.name || 'N/A'}
                     </p>
                     <p>
                       <span className="font-semibold">Data de Nascimento:</span>{" "}
-                      {new Date(student.birth_date + 'T00:00:00').toLocaleDateString("pt-BR")}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Naturalidade:</span> {student.birth_place}
+                      {student.birthdate ? new Date(student.birthdate + 'T00:00:00').toLocaleDateString("pt-BR") : 'N/A'}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -140,7 +172,13 @@ const StudentList = () => {
                         Editar
                       </Button>
                     </Link>
-                    {/* Botão de exclusão removido */}
+                    {(currentUserRole === 'super_admin' || 
+                      (currentUserRole === 'municipal_admin' && student.schools?.municipality_id === currentUserProfile?.municipality_id) ||
+                      ((currentUserRole === 'school_admin' || currentUserRole === 'secretary') && student.school_id === currentUserProfile?.school_id)) && (
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(student.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

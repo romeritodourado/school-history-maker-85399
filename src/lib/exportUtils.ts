@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import correctLogo from "/correct-logo.png"; // Usar a nova logo da pasta public
+import correctLogo from "/correct-logo.png";
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -26,15 +26,11 @@ const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
 };
 
 interface StudentData {
-  full_name: string;
-  mother_name: string;
-  father_name: string;
-  birth_date: string;
-  birth_place: string;
-  birth_state?: string;
-  student_status?: string;
-  grade_series?: string;
-  observations?: string;
+  id: string;
+  name: string;
+  birthdate: string;
+  school_id: string | null;
+  schools: { name: string, municipality_id: string } | null;
 }
 
 interface AcademicYearData {
@@ -45,7 +41,6 @@ interface AcademicYearData {
   city: string;
   state: string;
   reclassified?: boolean;
-  // Novos campos adicionados
   school_period_start?: string | null;
   school_period_end?: string | null;
   trimester_year?: string | null;
@@ -67,7 +62,7 @@ interface TrimesterGradeData {
 }
 
 const formatGrade = (grade: number | null) => {
-  if (!grade) return "-";
+  if (grade === null) return "-";
   return grade.toFixed(1);
 };
 
@@ -84,7 +79,7 @@ export const exportToPDF = async (
   // Add logo
   try {
     const correctLogoBase64 = await getImageAsBase64(correctLogo);
-    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 10, 10, 20, 20); // Centralizar a nova logo
+    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 15, 10, 30, 30);
   } catch (error) {
     console.error("Error loading logo:", error);
   }
@@ -92,42 +87,38 @@ export const exportToPDF = async (
   // Header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 35, { align: "center" }); // Novo nome do sistema
+  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 45, { align: "center" });
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 42, { align: "center" }); // Nova descrição
+  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 52, { align: "center" });
   
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 55, { align: "center" });
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 65, { align: "center" });
 
   // Student info
   doc.setFontSize(10);
-  let yPos = 65;
+  let yPos = 75;
   doc.setFont("helvetica", "normal");
   doc.text(`ALUNO (A): `, 15, yPos);
   doc.setFont("helvetica", "bold");
-  doc.text(student.full_name, 15 + doc.getTextWidth(`ALUNO (A): `), yPos);
+  doc.text(student.name, 15 + doc.getTextWidth(`ALUNO (A): `), yPos);
   doc.setFont("helvetica", "normal");
   yPos += 7;
-  doc.text(`Mãe: ${student.mother_name}`, 15, yPos);
-  // Fix date bug: parse date as UTC to avoid timezone offset issues
-  const birthDate = new Date(student.birth_date + 'T00:00:00');
-  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, 120, yPos);
-  yPos += 7;
-  doc.text(`Pai: ${student.father_name || "Não informado"}`, 15, yPos);
-  doc.text(`Naturalidade: ${student.birth_place} - ${student.birth_state || "BA"}`, 120, yPos);
+  // Mother's name, Father's name, Birth place, Birth state are not in the new student table
+  // These fields need to be added to the student table and fetched if required
+  const birthDate = new Date(student.birthdate + 'T00:00:00');
+  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, 15, yPos);
   yPos += 10;
 
-  // Trimester grades table - only show if student is "cursando"
-  if (trimesterGrades.length > 0 && student.student_status === "cursando") {
+  // Trimester grades table
+  if (trimesterGrades.length > 0) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("RENDIMENTO ESCOLAR POR TRIMESTRE", 15, yPos);
     yPos += 5;
     
-    // Add school period info
     if (schoolPeriod && (schoolPeriod.startDate || schoolPeriod.endDate || schoolPeriod.gradeClass || schoolPeriod.shift)) {
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
@@ -212,14 +203,12 @@ export const exportToPDF = async (
     doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", 15, yPos);
     yPos += 5;
 
-    // Sort years by grade level
     const sortedYears = [...academicYears].sort((a, b) => {
       const gradeA = parseInt(a.grade_level.match(/\d+/)?.[0] || "0");
       const gradeB = parseInt(b.grade_level.match(/\d+/)?.[0] || "0");
       return gradeA - gradeB;
     });
 
-    // Collect all unique subjects across all years and categorize them
     const subjectsByCategory = {
       "Base Nacional Comum": new Set<string>(),
       "Base Diversificada": new Set<string>(),
@@ -239,19 +228,19 @@ export const exportToPDF = async (
       });
     });
 
-    // Check if we have CBA years (1º and 2º ano)
-    const cbaYears = sortedYears.filter(y => y.grade_level === "1º Ano" || y.grade_level === "2º Ano");
-    const regularYears = sortedYears.filter(y => y.grade_level !== "1º Ano" && y.grade_level !== "2º Ano");
-
-    // Build unified table headers
+    const bncSubjects = Array.from(subjectsByCategory["Base Nacional Comum"]);
+    const bdSubjects = Array.from(subjectsByCategory["Base Diversificada"]);
+    const totalSubjectRows = bncSubjects.length + (bdSubjects.length > 0 ? bdSubjects.length : 0);
+    
     const tableHeaders: any[] = [];
     
-    // First header row: "Base Nacional Comum" + CBA span (if exists)
     const headerRow1: any[] = [
       { content: "Base Nacional Comum", rowSpan: 3, styles: { valign: 'middle', fontStyle: 'bold', halign: 'center', fontSize: 7 } }
     ];
     
-    // Add CBA header if exists
+    const cbaYears = sortedYears.filter(y => y.grade_level === "1º Ano" || y.grade_level === "2º Ano");
+    const regularYears = sortedYears.filter(y => y.grade_level !== "1º Ano" && y.grade_level !== "2º Ano");
+
     if (cbaYears.length > 0) {
       headerRow1.push({ 
         content: "CBA", 
@@ -260,16 +249,14 @@ export const exportToPDF = async (
       });
     }
     
-    // Add empty span for regular years to complete the row
     if (regularYears.length > 0) {
       headerRow1.push({ 
         content: "", 
         colSpan: regularYears.length * 3, 
-        styles: { border: { top: { width: 0 }, left: { width: 0 }, right: { width: 0 }, bottom: { width: 0 } } }
+        styles: { border: { top: 0, left: 0, right: 0, bottom: 0 } }
       });
     }
 
-    // Second row: Year labels (1º ANO, 2º ANO, 3º ANO, etc.)
     const headerRow2: any[] = [];
     sortedYears.forEach((year) => {
       const yearLabel = year.grade_level.toUpperCase();
@@ -280,9 +267,8 @@ export const exportToPDF = async (
       });
     });
 
-    // Third row: N, CH, F columns for each year
     const headerRow3: any[] = [];
-    sortedYears.forEach((year) => {
+    sortedYears.forEach(() => {
       headerRow3.push(
         { content: "N", styles: { fontSize: 6, fillColor: [0, 51, 153], textColor: 255 } }, 
         { content: "CH", styles: { fontSize: 6, fillColor: [0, 51, 153], textColor: 255 } }, 
@@ -292,34 +278,24 @@ export const exportToPDF = async (
 
     tableHeaders.push(headerRow1, headerRow2, headerRow3);
 
-    // Build table body
     const matrixBody: any[] = [];
     const yearTotals: number[] = new Array(sortedYears.length).fill(0);
     
-    // Calculate total subject rows for reclassified text spanning
-    const bncSubjects = Array.from(subjectsByCategory["Base Nacional Comum"]);
-    const bdSubjects = Array.from(subjectsByCategory["Base Diversificada"]);
-    const totalSubjectRows = bncSubjects.length + (bdSubjects.length > 0 ? bdSubjects.length : 0);
-    
-    // Track which reclassified columns have already been added
     const reclassifiedAdded: boolean[] = new Array(sortedYears.length).fill(false);
     
-    // Add "Componentes Curriculares" label row
     matrixBody.push([{
       content: "Componentes Curriculares",
       colSpan: 1 + (sortedYears.length * 3),
       styles: { fontStyle: 'bold', halign: 'left', fillColor: [240, 240, 240], fontSize: 7 }
     }]);
 
-    // Add "Áreas de Conhecimento" label row
     matrixBody.push([{
       content: "Áreas de Conhecimento",
       colSpan: 1 + (sortedYears.length * 3),
       styles: { fontStyle: 'italic', halign: 'left', fillColor: [250, 250, 250], fontSize: 6 }
     }]);
 
-    // Add Base Nacional Comum subjects
-    bncSubjects.forEach((subject, subjectIndex) => {
+    bncSubjects.forEach((subject) => {
       const row: any[] = [{ content: subject, styles: { fontStyle: 'normal', halign: 'left', fontSize: 6 } }];
       
       sortedYears.forEach((year, yearIndex) => {
@@ -327,10 +303,8 @@ export const exportToPDF = async (
         const gradeData = yearGrades.find((g) => g.subject_name === subject);
         
         if (year.reclassified && !reclassifiedAdded[yearIndex]) {
-          // First subject row: add vertical text in two columns spanning all subject rows
           reclassifiedAdded[yearIndex] = true;
           
-          // First column with first half of text
           row.push({ 
             content: "R\nE\nC\nL\nA\nS\nS\nI\nF\nI\nC\nA\nD\nO", 
             colSpan: 1,
@@ -346,7 +320,6 @@ export const exportToPDF = async (
             } 
           });
           
-          // Second column with second half of text
           row.push({ 
             content: "C\nO\nN\nF\nO\nR\nM\nE\n \nL\nE\nI\n \nN\nº\n9\n3\n9\n4\n/\n9\n6", 
             colSpan: 2,
@@ -364,7 +337,7 @@ export const exportToPDF = async (
         } else if (year.reclassified) {
           // Already added in first row, skip
         } else if (gradeData) {
-          const usesReport = (year.grade_level === "1º Ano" || year.grade_level === "2º Ano") && !gradeData.grade;
+          const usesReport = (year.grade_level === "1º Ano" || year.grade_level === "2º Ano") && gradeData.grade === null;
           const gradeCell = usesReport ? "S" : formatGrade(gradeData.grade);
           
           row.push(
@@ -386,25 +359,20 @@ export const exportToPDF = async (
       matrixBody.push(row);
     });
 
-    // Add Base Diversificada section
     if (bdSubjects.length > 0) {
-      // Build the Base Diversificada header row with proper styling
       const bdHeaderRow: any[] = [{ 
         content: "Base Diversificada", 
         styles: { fontStyle: 'bold', halign: 'left', fillColor: [240, 240, 240], fontSize: 7 } 
       }];
       
-      // Add cells for each year - white background for reclassified, gray for others
       sortedYears.forEach((year) => {
         if (year.reclassified) {
-          // White background for reclassified years
           bdHeaderRow.push({ 
             content: "", 
             colSpan: 3,
             styles: { fillColor: [255, 255, 255], lineWidth: 0 } 
           });
         } else {
-          // Gray background for normal years
           bdHeaderRow.push({ 
             content: "", 
             colSpan: 3,
@@ -415,14 +383,13 @@ export const exportToPDF = async (
       
       matrixBody.push(bdHeaderRow);
 
-      bdSubjects.forEach((subject, subjectIndex) => {
+      bdSubjects.forEach((subject) => {
         const row: any[] = [{ content: subject, styles: { fontStyle: 'normal', halign: 'left', fontSize: 6 } }];
         
         sortedYears.forEach((year, yearIndex) => {
           const yearGrades = grades[year.id] || [];
           const gradeData = yearGrades.find((g) => g.subject_name === subject);
           
-          // Skip reclassified columns as they were already added in BNC section
           if (year.reclassified) {
             // Already added in first BNC row, skip
           } else if (gradeData) {
@@ -448,11 +415,9 @@ export const exportToPDF = async (
       });
     }
 
-    // Add total row
     const totalRow: any[] = [{ content: "CARGA HORÁRIA TOTAL", styles: { fontStyle: 'bold', halign: 'left', fontSize: 7 } }];
     sortedYears.forEach((year, yearIndex) => {
       if (year.reclassified) {
-        // Empty cells for reclassified years
         totalRow.push(
           { content: "", styles: { fontSize: 6 } },
           { content: "", styles: { fontSize: 6 } },
@@ -468,7 +433,6 @@ export const exportToPDF = async (
     });
     matrixBody.push(totalRow);
 
-    // Render single unified table
     autoTable(doc, {
       startY: yPos,
       head: tableHeaders,
@@ -491,53 +455,27 @@ export const exportToPDF = async (
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  let certificateTitle = "";
-  if (student.student_status === "concluído") {
-    certificateTitle = "CERTIFICADO DE CONCLUSÃO";
-  } else if (student.student_status === "cursando") {
-    certificateTitle = "CERTIFICADO DE ESCOLARIDADE";
-  } else if (student.student_status === "transferido") {
-    certificateTitle = "CERTIFICADO DE TRANSFERÊNCIA";
-  } else if (student.student_status === "conservado") {
-    certificateTitle = "CERTIFICADO DE MATRÍCULA CONSERVADA";
-  }
+  // Student status is not in the new student table. This logic needs to be re-evaluated.
+  const certificateTitle = "CERTIFICADO DE ESCOLARIDADE";
   doc.text(certificateTitle, pageWidth / 2, yPos, { align: "center" });
   yPos += 10;
 
   doc.setFontSize(10);
   const currentYear = new Date().getFullYear();
-  const lastYear = academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : currentYear;
-  const gradeInfo = student.grade_series || "Ensino Fundamental";
+  const gradeInfo = "Ensino Fundamental";
   
-  // Build certificate text with bold formatting
   let certText1 = "Certificamos que ";
-  let certText2 = "";
-  let certText3 = "";
+  let certText2 = ` está cursando no ano de ${currentYear} o `;
+  let certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
   
-  if (student.student_status === "concluído") {
-    certText2 = ` concluiu no ano de ${lastYear} o `;
-    certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
-  } else if (student.student_status === "cursando") {
-    certText2 = ` está cursando no ano de ${currentYear} o `;
-    certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
-  } else if (student.student_status === "transferido") {
-    certText2 = ` foi transferido no ano de ${lastYear} o `;
-    certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
-  } else if (student.student_status === "conservado") {
-    certText2 = ` está conservado no ano de ${currentYear} o `;
-    certText3 = ` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`;
-  }
-  
-  // Print certificate text with bold name and grade series
   doc.setFont("helvetica", "normal");
   let xPos = 20;
   const maxWidth = pageWidth - 40;
   
-  // Measure text widths to properly position elements
   doc.setFont("helvetica", "normal");
   const text1Width = doc.getTextWidth(certText1);
   doc.setFont("helvetica", "bold");
-  const nameTextWidth = doc.getTextWidth(student.full_name);
+  const nameTextWidth = doc.getTextWidth(student.name);
   doc.setFont("helvetica", "normal");
   const text2Width = doc.getTextWidth(certText2);
   doc.setFont("helvetica", "bold");
@@ -548,13 +486,12 @@ export const exportToPDF = async (
   const totalWidth = text1Width + nameTextWidth + text2Width + gradeWidth + text3Width;
   
   if (totalWidth <= maxWidth) {
-    // Single line
     xPos = (pageWidth - totalWidth) / 2;
     doc.setFont("helvetica", "normal");
     doc.text(certText1, xPos, yPos);
     xPos += text1Width;
     doc.setFont("helvetica", "bold");
-    doc.text(student.full_name, xPos, yPos);
+    doc.text(student.name, xPos, yPos);
     xPos += nameTextWidth;
     doc.setFont("helvetica", "normal");
     doc.text(certText2, xPos, yPos);
@@ -566,9 +503,8 @@ export const exportToPDF = async (
     doc.text(certText3, xPos, yPos);
     yPos += 20;
   } else {
-    // Multi-line wrapped text
     doc.setFont("helvetica", "normal");
-    const fullText = certText1 + student.full_name + certText2 + gradeInfo + certText3;
+    const fullText = certText1 + student.name + certText2 + gradeInfo + certText3;
     const wrappedText = doc.splitTextToSize(fullText, maxWidth);
     doc.text(wrappedText, pageWidth / 2, yPos, { align: "center" });
     yPos += wrappedText.length * 7 + 20;
@@ -590,25 +526,25 @@ export const exportToPDF = async (
   const dateStr = `${now.getDate().toString().padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
   doc.text(`Luís Eduardo Magalhães - BA, ${dateStr}`, pageWidth / 2, yPos, { align: "center" });
 
-  // Observations
-  if (student.observations) {
-    if (yPos > 230) {
-      doc.addPage();
-      yPos = 20;
-    } else {
-      yPos += 10;
-    }
+  // Observations are not in the new student table
+  // if (student.observations) {
+  //   if (yPos > 230) {
+  //     doc.addPage();
+  //     yPos = 20;
+  //   } else {
+  //     yPos += 10;
+  //   }
     
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("OBSERVAÇÕES:", 15, yPos);
-    yPos += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    const obsLines = doc.splitTextToSize(student.observations, pageWidth - 30);
-    doc.text(obsLines, 15, yPos);
-    yPos += obsLines.length * 4 + 5;
-  }
+  //   doc.setFontSize(10);
+  //   doc.setFont("helvetica", "bold");
+  //   doc.text("OBSERVAÇÕES:", 15, yPos);
+  //   yPos += 5;
+  //   doc.setFont("helvetica", "normal");
+  //   doc.setFontSize(8);
+  //   const obsLines = doc.splitTextToSize(student.observations, pageWidth - 30);
+  //   doc.text(obsLines, 15, yPos);
+  //   yPos += obsLines.length * 4 + 5;
+  // }
 
   // Legend
   if (yPos > 240) {
@@ -637,7 +573,7 @@ export const exportToPDF = async (
   const splitInfo = doc.splitTextToSize(infoText, pageWidth - 30);
   doc.text(splitInfo, 15, yPos);
 
-  doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
+  doc.save(`historico_${student.name.replace(/ /g, "_")}.pdf`);
 };
 
 export const exportToExcel = (
@@ -650,16 +586,14 @@ export const exportToExcel = (
 
   // Student info sheet
   const studentInfo = [
-    ["Correct - Sistema de Histórico Escolar"], // Novo nome do sistema
+    ["Correct - Sistema de Histórico Escolar"],
     [""],
-    ["Gestão simplificada de históricos escolares"], // Nova descrição
+    ["Gestão simplificada de históricos escolares"],
     [""],
     ["DADOS DO ALUNO"],
-    ["Nome Completo:", student.full_name],
-    ["Nome da Mãe:", student.mother_name],
-    ["Nome do Pai:", student.father_name || "Não informado"],
-    ["Data de Nascimento:", new Date(student.birth_date).toLocaleDateString("pt-BR")],
-    ["Naturalidade:", student.birth_place],
+    ["Nome Completo:", student.name],
+    // Mother's name, Father's name, Birth place, Birth state are not in the new student table
+    ["Data de Nascimento:", new Date(student.birthdate).toLocaleDateString("pt-BR")],
     [""],
   ];
 
@@ -720,21 +654,10 @@ export const exportToExcel = (
   });
 
   // Certificate
-  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
+  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE ESCOLARIDADE"]], { origin: { r: currentRow, c: 0 } });
   currentRow++;
   
-  let statusText = "";
-  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
-  
-  if (student.student_status === "concluído") {
-    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "cursando") {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "transferido") {
-    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
-  } else if (student.student_status === "conservado") {
-    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
-  }
+  let statusText = `Certificamos que ${student.name} está cursando o Ensino Fundamental.`;
   
   XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
   currentRow += 2;
@@ -771,5 +694,5 @@ export const exportToExcel = (
   );
 
   XLSX.utils.book_append_sheet(wb, ws, "Histórico Escolar");
-  XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
+  XLSX.writeFile(wb, `historico_${student.name.replace(/ /g, "_")}.xlsx`);
 };
