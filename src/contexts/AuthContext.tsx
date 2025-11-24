@@ -100,20 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          data: { name, role, municipality_id: municipalityId, school_id: schoolId },
+          data: {
+            name,
+            role, // Passa o role para user_metadata
+            municipality_id: municipalityId, // Passa municipality_id para user_metadata
+            school_id: schoolId, // Passa school_id para user_metadata
+          },
         },
       });
 
       if (error) return { error };
 
-      if (data.user) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ role, municipality_id: municipalityId, school_id: schoolId, name, email })
-          .eq('id', data.user.id);
-        
-        if (updateError) return { error: updateError as unknown as Error };
-      }
+      // A função do banco de dados (trigger) agora deve lidar com a criação completa do perfil
+      // com o role e IDs corretos, então a atualização explícita aqui é removida.
+      // Se houver necessidade de atualizar outros campos que não são tratados pelo trigger,
+      // essa lógica precisaria ser reavaliada.
 
       return { error: null };
     } catch (error) {
@@ -123,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // Redirection is now handled by AuthRedirectHandler in App.tsx
   };
 
   const hasPermission = (requiredRoles: AppRole[]) => {
