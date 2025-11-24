@@ -45,8 +45,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AuthRedirectHandler /> {/* Adicionado o handler de redirecionamento */}
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthRedirectHandler />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
