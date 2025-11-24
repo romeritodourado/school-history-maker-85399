@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching profile:', error);
       setProfile(null);
       setRole(null);
+      // Do NOT re-throw here, let the caller handle the loading state
     }
   };
 
@@ -65,23 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          console.log('AuthContext: User found, fetching profile...');
-          try {
-            await fetchProfile(session.user.id);
+        try {
+          if (session?.user) {
+            console.log('AuthContext: User found, fetching profile...');
+            await fetchProfile(session.user.id); 
             console.log('AuthContext: Profile fetched.');
-          } catch (profileError) {
-            console.error('AuthContext: Error fetching profile in onAuthStateChange:', profileError);
+          } else {
+            console.log('AuthContext: No user in session.');
             setProfile(null);
             setRole(null);
           }
-        } else {
-          console.log('AuthContext: No user in session.');
+        } catch (error) {
+          console.error('AuthContext: Error during auth state change processing:', error);
           setProfile(null);
           setRole(null);
+        } finally {
+          setLoading(false); 
+          console.log('AuthContext: Loading set to false after onAuthStateChange.');
         }
-        setLoading(false);
-        console.log('AuthContext: Loading set to false after onAuthStateChange.');
       }
     );
 
@@ -89,19 +91,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: getSession resolved.');
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        console.log('AuthContext: User found in getSession, fetching profile...');
-        try {
+      try {
+        if (session?.user) {
+          console.log('AuthContext: User found in getSession, fetching profile...');
           await fetchProfile(session.user.id);
           console.log('AuthContext: Profile fetched after getSession.');
-        } catch (profileError) {
-          console.error('AuthContext: Error fetching profile in getSession:', profileError);
-          setProfile(null);
-          setRole(null);
         }
+      } catch (error) {
+        console.error('AuthContext: Error during getSession profile fetch:', error);
+        setProfile(null);
+        setRole(null);
+      } finally {
+        setLoading(false);
+        console.log('AuthContext: Loading set to false after getSession.');
       }
-      setLoading(false);
-      console.log('AuthContext: Loading set to false after getSession.');
     }).catch(error => {
       console.error('AuthContext: getSession failed:', error);
       setLoading(false);
