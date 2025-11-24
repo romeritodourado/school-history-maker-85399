@@ -137,11 +137,16 @@ const ManageMunicipalities = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); // Inicia o estado de carregamento
+    console.log('Attempting to save municipality. Current formData:', formData);
+    console.log('Editing municipality:', editingMunicipality);
 
     try {
+      // Validate form data
       municipalitySchema.parse(formData);
+      console.log('Form data validated successfully.');
 
       if (editingMunicipality) {
+        console.log('Updating existing municipality with ID:', editingMunicipality.id);
         const { error } = await supabase
           .from('municipalities')
           .update(formData)
@@ -152,6 +157,7 @@ const ManageMunicipalities = () => {
           throw error;
         }
         toast({ title: 'Rede municipal atualizada com sucesso!' });
+        console.log('Municipality updated successfully.');
       } else {
         // This page is for managing existing ones, creation is in MunicipalNetworkSetup
         toast({
@@ -167,6 +173,7 @@ const ManageMunicipalities = () => {
       resetForm();
       fetchMunicipalities();
     } catch (error) {
+      console.error('Error during municipality save:', error);
       toast({
         title: 'Erro ao salvar rede municipal',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
@@ -174,6 +181,7 @@ const ManageMunicipalities = () => {
       });
     } finally {
       setLoading(false); // Garante que o estado de carregamento seja redefinido
+      console.log('Loading state reset to false.');
     }
   };
 
