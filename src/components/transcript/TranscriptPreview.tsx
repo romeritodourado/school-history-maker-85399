@@ -14,7 +14,7 @@ interface StudentData {
   grade_series: string | null;
   observations: string | null;
   school_id: string | null;
-  schools: { name: string, municipality_id: string } | null;
+  schools: { name: string, municipality_id: string, address: string | null, city: string | null, state: string | null, logo_url: string | null, authorization_decree_url: string | null, official_gazette_url: string | null } | null;
 }
 
 interface AcademicYearData {
@@ -267,11 +267,21 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             <div className="text-center">
               <div className="border-t border-foreground pt-2">
                 <p className="text-sm font-semibold">Diretor(a)</p>
+                {student.schools?.authorization_decree_url && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {student.schools.authorization_decree_url}
+                  </p>
+                )}
               </div>
             </div>
             <div className="text-center">
               <div className="border-t border-foreground pt-2">
                 <p className="text-sm font-semibold">Secretário(a)</p>
+                {student.schools?.official_gazette_url && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {student.schools.official_gazette_url}
+                  </p>
+                )}
               </div>
             </div>
           </div>

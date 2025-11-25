@@ -130,15 +130,15 @@ export const schoolSchema = z.object({
     .optional()
     .or(z.literal('')),
   
+  // Alterado para string simples, não URL
   authorization_decree_url: z.string()
-    .url('URL do decreto de autorização inválida')
-    .max(500, 'URL do decreto deve ter no máximo 500 caracteres')
+    .max(500, 'Decreto de autorização deve ter no máximo 500 caracteres')
     .optional()
     .or(z.literal('')),
   
+  // Alterado para string simples, não URL
   official_gazette_url: z.string()
-    .url('URL do diário oficial inválida')
-    .max(500, 'URL do diário oficial deve ter no máximo 500 caracteres')
+    .max(500, 'Diário oficial deve ter no máximo 500 caracteres')
     .optional()
     .or(z.literal('')),
 });

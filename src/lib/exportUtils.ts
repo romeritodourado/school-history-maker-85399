@@ -37,7 +37,7 @@ interface StudentData {
   grade_series: string | null;
   observations: string | null;
   school_id: string | null;
-  schools: { name: string, municipality_id: string } | null;
+  schools: { name: string, municipality_id: string, address: string | null, city: string | null, state: string | null, logo_url: string | null, authorization_decree_url: string | null, official_gazette_url: string | null } | null;
 }
 
 interface AcademicYearData {
@@ -541,7 +541,17 @@ export const exportToPDF = async (
   
   doc.setFontSize(9);
   doc.text("Diretor(a)", 60, signatureY + 5, { align: "center" });
+  if (student.schools?.authorization_decree_url) {
+    doc.setFontSize(7);
+    doc.text(student.schools.authorization_decree_url, 60, signatureY + 10, { align: "center" });
+  }
+  
+  doc.setFontSize(9);
   doc.text("Secretário(a)", 150, signatureY + 5, { align: "center" });
+  if (student.schools?.official_gazette_url) {
+    doc.setFontSize(7);
+    doc.text(student.schools.official_gazette_url, 150, signatureY + 10, { align: "center" });
+  }
   
   yPos = signatureY + 15;
   doc.setFontSize(8);
@@ -706,6 +716,12 @@ export const exportToExcel = (
   XLSX.utils.sheet_add_aoa(ws, [["Diretor(a)", "", "Secretário(a)"]], {
     origin: { r: currentRow, c: 0 },
   });
+  currentRow++;
+  if (student.schools?.authorization_decree_url) {
+    XLSX.utils.sheet_add_aoa(ws, [[student.schools.authorization_decree_url, "", student.schools.official_gazette_url || ""]], {
+      origin: { r: currentRow, c: 0 },
+    });
+  }
   currentRow += 2;
   
   XLSX.utils.sheet_add_aoa(

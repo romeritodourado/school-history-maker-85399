@@ -56,15 +56,14 @@ export default function Schools() {
     city: 'Luís Eduardo Magalhães',
     state: 'BA',
     logo_url: '',
-    authorization_decree_url: '',
-    official_gazette_url: '',
+    authorization_decree_url: '', // Agora é texto
+    official_gazette_url: '', // Agora é texto
   });
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
-  const decreeFileInputRef = useRef<HTMLInputElement>(null);
-  const gazetteFileInputRef = useRef<HTMLInputElement>(null);
+  // Removido refs para decreto e diário oficial, pois não são mais uploads
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -148,7 +147,7 @@ export default function Schools() {
 
   const handleFileUpload = async (
     file: File,
-    field: 'logo_url' | 'authorization_decree_url' | 'official_gazette_url'
+    field: 'logo_url'
   ) => {
     setUploading(true);
     setUploadProgress(0);
@@ -198,7 +197,7 @@ export default function Schools() {
   };
 
   const handleFileRemove = (
-    field: 'logo_url' | 'authorization_decree_url' | 'official_gazette_url',
+    field: 'logo_url',
     fileInputRef: React.RefObject<HTMLInputElement>
   ) => {
     setFormData(prev => ({ ...prev, [field]: '' }));
@@ -303,8 +302,7 @@ export default function Schools() {
     });
     setEditingSchool(null);
     if (logoFileInputRef.current) logoFileInputRef.current.value = '';
-    if (decreeFileInputRef.current) decreeFileInputRef.current.value = '';
-    if (gazetteFileInputRef.current) gazetteFileInputRef.current.value = '';
+    // Removido reset para refs de decreto e diário oficial
   };
 
   return (
@@ -439,58 +437,26 @@ export default function Schools() {
                     )}
                   </div>
 
+                  {/* Campo de texto para Decreto de Autorização */}
                   <div className="space-y-2">
                     <Label htmlFor="authorization_decree_url">Decreto de Autorização</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        id="authorization_decree_url"
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'authorization_decree_url')}
-                        ref={decreeFileInputRef}
-                        className="flex-1"
-                        disabled={uploading}
-                      />
-                      {formData.authorization_decree_url && (
-                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('authorization_decree_url', decreeFileInputRef)} disabled={uploading}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
-                    {formData.authorization_decree_url && (
-                      <div className="mt-2 flex items-center space-x-2">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <a href={formData.authorization_decree_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Decreto</a>
-                      </div>
-                    )}
+                    <Input
+                      id="authorization_decree_url"
+                      value={formData.authorization_decree_url}
+                      onChange={(e) => setFormData({ ...formData, authorization_decree_url: e.target.value })}
+                      placeholder="Ex: Decreto Nº 123/2024"
+                    />
                   </div>
 
+                  {/* Campo de texto para Diário Oficial */}
                   <div className="space-y-2">
                     <Label htmlFor="official_gazette_url">Diário Oficial</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        id="official_gazette_url"
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'official_gazette_url')}
-                        ref={gazetteFileInputRef}
-                        className="flex-1"
-                        disabled={uploading}
-                      />
-                      {formData.official_gazette_url && (
-                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('official_gazette_url', gazetteFileInputRef)} disabled={uploading}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
-                    {formData.official_gazette_url && (
-                      <div className="mt-2 flex items-center space-x-2">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <a href={formData.official_gazette_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Diário Oficial</a>
-                      </div>
-                    )}
+                    <Input
+                      id="official_gazette_url"
+                      value={formData.official_gazette_url}
+                      onChange={(e) => setFormData({ ...formData, official_gazette_url: e.target.value })}
+                      placeholder="Ex: Diário Oficial do Município, Edição 456"
+                    />
                   </div>
 
                   <div className="flex justify-end gap-2">
@@ -562,16 +528,18 @@ export default function Schools() {
                       Rede: {school.municipality_name}
                     </p>
                   )}
+                  {/* Exibindo o texto do Decreto de Autorização */}
                   {school.authorization_decree_url && (
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      <a href={school.authorization_decree_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver Decreto</a>
+                      Decreto: {school.authorization_decree_url}
                     </p>
                   )}
+                  {/* Exibindo o texto do Diário Oficial */}
                   {school.official_gazette_url && (
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      <a href={school.official_gazette_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver Diário Oficial</a>
+                      Diário Oficial: {school.official_gazette_url}
                     </p>
                   )}
                 </div>
