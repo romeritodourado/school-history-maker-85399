@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, School, Trash2, Edit, Building2 } from 'lucide-react';
+import { ArrowLeft, Plus, School, Trash2, Edit, Building2, UploadCloud, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { schoolSchema } from '@/lib/validationSchemas';
+import { Progress } from '@/components/ui/progress';
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -28,6 +29,12 @@ interface SchoolData {
   inep: string | null;
   municipality_id: string | null;
   municipality_name?: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  logo_url: string | null;
+  authorization_decree_url: string | null;
+  official_gazette_url: string | null;
 }
 
 interface Municipality {
@@ -45,7 +52,20 @@ export default function Schools() {
     name: '',
     inep: '',
     municipality_id: '',
+    address: '',
+    city: 'Luís Eduardo Magalhães',
+    state: 'BA',
+    logo_url: '',
+    authorization_decree_url: '',
+    official_gazette_url: '',
   });
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const decreeFileInputRef = useRef<HTMLInputElement>(null);
+  const gazetteFileInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const { role: currentUserRole, profile: currentUserProfile } = useAuth();
@@ -92,6 +112,12 @@ export default function Schools() {
           name,
           inep,
           municipality_id,
+          address,
+          city,
+          state,
+          logo_url,
+          authorization_decree_url,
+          official_gazette_url,
           municipalities (name)
         `)
         .order('name');
@@ -120,11 +146,72 @@ export default function Schools() {
     }
   };
 
+  const handleFileUpload = async (
+    file: File,
+    field: 'logo_url' | 'authorization_decree_url' | 'official_gazette_url'
+  ) => {
+    setUploading(true);
+    setUploadProgress(0);
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${field}_${Date.now()}.${fileExt}`;
+    const filePath = `schools/${fileName}`;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('school_assets')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          onUploadProgress: (event) => {
+            if (event.totalBytes > 0) {
+              setUploadProgress(Math.round((event.loaded / event.totalBytes) * 100));
+            }
+          },
+        });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('school_assets')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, [field]: publicUrlData.publicUrl }));
+      toast({
+        title: 'Upload concluído!',
+        description: `O arquivo para ${field} foi enviado com sucesso.`,
+      });
+      return publicUrlData.publicUrl;
+    } catch (error: any) {
+      console.error(`Error uploading ${field}:`, error);
+      toast({
+        title: 'Erro no upload',
+        description: error.message || `Não foi possível enviar o arquivo para ${field}.`,
+        variant: 'destructive',
+      });
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      return null;
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleFileRemove = (
+    field: 'logo_url' | 'authorization_decree_url' | 'official_gazette_url',
+    fileInputRef: React.RefObject<HTMLInputElement>
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      schoolSchema.parse({ name: formData.name, inep: formData.inep }); // Use inep for validation
+      schoolSchema.parse(formData);
 
       if (!formData.municipality_id) {
         toast({
@@ -138,7 +225,7 @@ export default function Schools() {
       if (editingSchool) {
         const { error } = await supabase
           .from('schools')
-          .update({ name: formData.name, inep: formData.inep, municipality_id: formData.municipality_id })
+          .update(formData)
           .eq('id', editingSchool.id);
 
         if (error) throw error;
@@ -146,7 +233,7 @@ export default function Schools() {
       } else {
         const { error } = await supabase
           .from('schools')
-          .insert([{ name: formData.name, inep: formData.inep, municipality_id: formData.municipality_id }]);
+          .insert([formData]);
 
         if (error) throw error;
         toast({ title: 'Escola criada com sucesso!' });
@@ -192,6 +279,12 @@ export default function Schools() {
       name: school.name,
       inep: school.inep || '',
       municipality_id: school.municipality_id || '',
+      address: school.address || '',
+      city: school.city || 'Luís Eduardo Magalhães',
+      state: school.state || 'BA',
+      logo_url: school.logo_url || '',
+      authorization_decree_url: school.authorization_decree_url || '',
+      official_gazette_url: school.official_gazette_url || '',
     });
     setDialogOpen(true);
   };
@@ -201,8 +294,17 @@ export default function Schools() {
       name: '',
       inep: '',
       municipality_id: (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '',
+      address: '',
+      city: 'Luís Eduardo Magalhães',
+      state: 'BA',
+      logo_url: '',
+      authorization_decree_url: '',
+      official_gazette_url: '',
     });
     setEditingSchool(null);
+    if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    if (decreeFileInputRef.current) decreeFileInputRef.current.value = '';
+    if (gazetteFileInputRef.current) gazetteFileInputRef.current.value = '';
   };
 
   return (
@@ -231,7 +333,7 @@ export default function Schools() {
                   Nova Escola
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
                     {editingSchool ? 'Editar Escola' : 'Nova Escola'}
@@ -279,11 +381,123 @@ export default function Schools() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label htmlFor="address">Endereço</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="Ex: Rua das Flores, 123"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="city">Cidade *</Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="state">Estado (UF) *</Label>
+                      <Input
+                        id="state"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        required
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="logo_url">Logo da Escola</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="logo_url"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'logo_url')}
+                        ref={logoFileInputRef}
+                        className="flex-1"
+                        disabled={uploading}
+                      />
+                      {formData.logo_url && (
+                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('logo_url', logoFileInputRef)} disabled={uploading}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
+                    {formData.logo_url && (
+                      <div className="mt-2 flex items-center space-x-2">
+                        <img src={formData.logo_url} alt="Logo da Escola" className="h-10 w-10 object-contain border rounded-md" />
+                        <a href={formData.logo_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Logo</a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="authorization_decree_url">Decreto de Autorização</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="authorization_decree_url"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'authorization_decree_url')}
+                        ref={decreeFileInputRef}
+                        className="flex-1"
+                        disabled={uploading}
+                      />
+                      {formData.authorization_decree_url && (
+                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('authorization_decree_url', decreeFileInputRef)} disabled={uploading}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
+                    {formData.authorization_decree_url && (
+                      <div className="mt-2 flex items-center space-x-2">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <a href={formData.authorization_decree_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Decreto</a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="official_gazette_url">Diário Oficial</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="official_gazette_url"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'official_gazette_url')}
+                        ref={gazetteFileInputRef}
+                        className="flex-1"
+                        disabled={uploading}
+                      />
+                      {formData.official_gazette_url && (
+                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('official_gazette_url', gazetteFileInputRef)} disabled={uploading}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
+                    {formData.official_gazette_url && (
+                      <div className="mt-2 flex items-center space-x-2">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <a href={formData.official_gazette_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Diário Oficial</a>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={uploading}>
                       Cancelar
                     </Button>
-                    <Button type="submit">
+                    <Button type="submit" disabled={uploading}>
                       {editingSchool ? 'Atualizar' : 'Criar'}
                     </Button>
                   </div>
@@ -321,15 +535,43 @@ export default function Schools() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
+                  {school.logo_url && (
+                    <div className="flex items-center gap-2">
+                      <img src={school.logo_url} alt="Logo" className="h-8 w-8 object-contain" />
+                      <p className="text-muted-foreground">Logo</p>
+                    </div>
+                  )}
                   {school.inep && (
                     <p className="text-muted-foreground">
                       INEP: {school.inep}
+                    </p>
+                  )}
+                  {school.address && (
+                    <p className="text-muted-foreground">
+                      Endereço: {school.address}
+                    </p>
+                  )}
+                  {school.city && school.state && (
+                    <p className="text-muted-foreground">
+                      Localização: {school.city} - {school.state}
                     </p>
                   )}
                   {school.municipality_name && (
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <Building2 className="h-4 w-4" />
                       Rede: {school.municipality_name}
+                    </p>
+                  )}
+                  {school.authorization_decree_url && (
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      <a href={school.authorization_decree_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver Decreto</a>
+                    </p>
+                  )}
+                  {school.official_gazette_url && (
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      <a href={school.official_gazette_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver Diário Oficial</a>
                     </p>
                   )}
                 </div>

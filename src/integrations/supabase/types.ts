@@ -241,25 +241,43 @@ export type Database = {
       }
       schools: {
         Row: {
+          address: string | null
+          authorization_decree_url: string | null
+          city: string | null
           created_at: string | null
           id: string
           inep: string | null
+          logo_url: string | null
           municipality_id: string | null
           name: string
+          official_gazette_url: string | null
+          state: string | null
         }
         Insert: {
+          address?: string | null
+          authorization_decree_url?: string | null
+          city?: string | null
           created_at?: string | null
           id?: string
           inep?: string | null
+          logo_url?: string | null
           municipality_id?: string | null
           name: string
+          official_gazette_url?: string | null
+          state?: string | null
         }
         Update: {
+          address?: string | null
+          authorization_decree_url?: string | null
+          city?: string | null
           created_at?: string | null
           id?: string
           inep?: string | null
+          logo_url?: string | null
           municipality_id?: string | null
           name?: string
+          official_gazette_url?: string | null
+          state?: string | null
         }
         Relationships: [
           {
