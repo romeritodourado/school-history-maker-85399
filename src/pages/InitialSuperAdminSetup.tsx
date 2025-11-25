@@ -119,20 +119,20 @@ export default function InitialSuperAdminSetup() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                required
-                minLength={8}
-              />
-              <p className="text-xs text-muted-foreground">
-                A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas e números.
-              </p>
-            </div>
+                <Label htmlFor="password">Senha *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                  minLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas e números.
+                </p>
+              </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
