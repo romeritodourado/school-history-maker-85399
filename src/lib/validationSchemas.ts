@@ -123,6 +123,24 @@ export const schoolSchema = z.object({
   state: z.string()
     .length(2, 'Estado deve ter 2 caracteres')
     .regex(/^[A-Z]{2}$/, 'Estado deve ser uma sigla válida (ex: BA)'),
+  
+  logo_url: z.string()
+    .url('URL da logo inválida')
+    .max(500, 'URL da logo deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+  
+  authorization_decree_url: z.string()
+    .url('URL do decreto de autorização inválida')
+    .max(500, 'URL do decreto deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+  
+  official_gazette_url: z.string()
+    .url('URL do diário oficial inválida')
+    .max(500, 'URL do diário oficial deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal('')),
 });
 
 // Academic year validation schema
