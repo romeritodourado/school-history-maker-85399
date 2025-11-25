@@ -196,7 +196,7 @@ export default function ValidateTranscript() {
                 </p>
               </div>
             ) : (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200 font-medium flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
                   ATENÇÃO: Este documento pode ter sido adulterado!

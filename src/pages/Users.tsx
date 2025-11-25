@@ -147,7 +147,7 @@ export default function Users() {
       toast({
         title: 'Erro ao carregar usuários',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -177,7 +177,7 @@ export default function Users() {
       toast({
         title: 'Erro ao criar usuário',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -214,7 +214,7 @@ export default function Users() {
       toast({
         title: 'Erro ao atualizar usuário',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -232,7 +232,7 @@ export default function Users() {
       toast({
         title: 'Erro ao excluir usuário',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };

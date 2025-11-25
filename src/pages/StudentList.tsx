@@ -109,7 +109,7 @@ const StudentList = () => {
       toast({
         title: 'Erro ao excluir aluno',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };

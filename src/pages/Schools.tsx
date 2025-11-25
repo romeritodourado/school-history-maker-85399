@@ -20,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { schoolSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_admin' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
 interface SchoolData {
   id: string;
@@ -68,14 +68,14 @@ export default function Schools() {
         .select('id, name')
         .order('name');
 
-      if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+      if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager' && currentUserProfile?.municipality_id) {
         query = query.eq('id', currentUserProfile.municipality_id);
       }
 
       const { data, error } = await query;
       if (error) throw error;
       setMunicipalities(data || []);
-      if (data && data.length > 0 && currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+      if (data && data.length > 0 && (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         setFormData(prev => ({ ...prev, municipality_id: data[0].id }));
       }
     } catch (error) {
@@ -96,7 +96,7 @@ export default function Schools() {
         `)
         .order('name');
 
-      if (currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id) {
+      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.eq('municipality_id', currentUserProfile.municipality_id);
       } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
         query = query.eq('id', currentUserProfile.school_id);
@@ -115,7 +115,7 @@ export default function Schools() {
       toast({
         title: 'Erro ao carregar escolas',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -130,7 +130,7 @@ export default function Schools() {
         toast({
           title: 'Erro de validação',
           description: 'Selecione uma rede municipal.',
-          variant: 'destructive',
+          variant: "destructive",
         });
         return;
       }
@@ -160,7 +160,7 @@ export default function Schools() {
       toast({
         title: 'Erro ao salvar escola',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -181,7 +181,7 @@ export default function Schools() {
       toast({
         title: 'Erro ao excluir escola',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -200,7 +200,7 @@ export default function Schools() {
     setFormData({
       name: '',
       inep: '',
-      municipality_id: currentUserRole === 'municipal_admin' && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '',
+      municipality_id: (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '',
     });
     setEditingSchool(null);
   };
@@ -220,7 +220,7 @@ export default function Schools() {
             </h1>
           </div>
           
-          {(currentUserRole === 'super_admin' || currentUserRole === 'municipal_admin') && (
+          {(currentUserRole === 'super_admin' || currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && (
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) resetForm();
@@ -265,7 +265,7 @@ export default function Schools() {
                     <Select
                       value={formData.municipality_id}
                       onValueChange={(value) => setFormData({ ...formData, municipality_id: value })}
-                      disabled={currentUserRole === 'municipal_admin'}
+                      disabled={(currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && !!currentUserProfile?.municipality_id}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a rede municipal" />
@@ -299,7 +299,7 @@ export default function Schools() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="truncate">{school.name}</span>
-                  {(currentUserRole === 'super_admin' || (currentUserRole === 'municipal_admin' && school.municipality_id === currentUserProfile?.municipality_id)) && (
+                  {(currentUserRole === 'super_admin' || ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && school.municipality_id === currentUserProfile?.municipality_id)) && (
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"

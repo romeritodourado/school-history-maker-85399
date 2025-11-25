@@ -162,7 +162,7 @@ const CreateTranscript = () => {
         .from('schools')
         .select('id, name, municipality_id');
 
-      if (role === 'municipal_admin' && profile?.municipality_id) {
+      if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
         query = query.eq('municipality_id', profile.municipality_id);
       } else if (role === 'school_admin' || role === 'secretary' || role === 'assistente_administrativo') {
         query = query.eq('id', profile?.school_id);
@@ -456,7 +456,7 @@ const CreateTranscript = () => {
 
   if (loadingData) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p>Carregando dados...</p>
       </div>
     );
