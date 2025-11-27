@@ -21,9 +21,19 @@ import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
 import { useEffect } from "react";
 import NotFound from "./pages/NotFound";
-import { ThemeProvider } from "./components/ThemeProvider"; // Importar ThemeProvider
+import { ThemeProvider } from "./components/ThemeProvider";
+import { useTheme } from "next-themes"; // Importar useTheme
 
 const queryClient = new QueryClient();
+
+// Componente para logar o tema atual
+const ThemeLogger = () => {
+  const { theme } = useTheme();
+  useEffect(() => {
+    console.log("Current theme from ThemeProvider:", theme);
+  }, [theme]);
+  return null;
+};
 
 const AuthRedirectHandler = () => {
   const { user, loading } = useAuth();
@@ -46,7 +56,8 @@ const AuthRedirectHandler = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme"> {/* Adicionado ThemeProvider */}
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <ThemeLogger /> {/* Adicionado ThemeLogger aqui */}
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -119,7 +130,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
-    </ThemeProvider> {/* Fechamento do ThemeProvider */}
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
