@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
-import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -44,13 +44,20 @@ interface SelectedSchoolDetails {
   official_gazette_url: string | null;
 }
 
+interface MunicipalityDetails {
+  id: string;
+  name: string;
+  cnpj: string | null;
+  emblem_url: string | null;
+}
+
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
   const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const { toast } = useToast();
 
-  const [municipalityName, setMunicipalityName] = useState<string | null>(null);
+  const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [selectedSchoolDetails, setSelectedSchoolDetails] = useState<SelectedSchoolDetails | null>(null);
@@ -90,7 +97,7 @@ export default function MunicipalDashboard() {
   const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
       .from('municipalities')
-      .select('name')
+      .select('id, name, cnpj, emblem_url')
       .eq('id', id)
       .single();
 
@@ -103,7 +110,7 @@ export default function MunicipalDashboard() {
       navigate('/');
       return;
     }
-    setMunicipalityName(data?.name || 'Rede Municipal Desconhecida');
+    setMunicipalityDetails(data as MunicipalityDetails);
   };
 
   const fetchSchoolsForMunicipality = async (id: string) => {
@@ -227,7 +234,7 @@ export default function MunicipalDashboard() {
             <div>
               <h1 className="text-2xl font-bold">Dashboard Municipal</h1>
               <p className="text-sm text-muted-foreground">
-                {municipalityName ? `Operando em: ${municipalityName}` : 'Carregando...'}
+                {municipalityDetails?.name ? `Operando em: ${municipalityDetails.name}` : 'Carregando...'}
               </p>
             </div>
           </div>
@@ -242,7 +249,7 @@ export default function MunicipalDashboard() {
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta
                 </Button>
-                <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
+                <ThemeToggle />
                 <Button variant="outline" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sair
@@ -260,6 +267,28 @@ export default function MunicipalDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {municipalityDetails && (
+          <Card className="mb-6 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {municipalityDetails.emblem_url && (
+                  <img src={municipalityDetails.emblem_url} alt="Brasão da Rede Municipal" className="h-8 w-8 object-contain" />
+                )}
+                <Building2 className="h-5 w-5" />
+                {municipalityDetails.name}
+              </CardTitle>
+              <CardDescription>
+                Informações da Secretaria Municipal de Educação
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {municipalityDetails.cnpj && (
+                <p><span className="font-semibold">CNPJ:</span> {municipalityDetails.cnpj}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card>
             <CardHeader>
