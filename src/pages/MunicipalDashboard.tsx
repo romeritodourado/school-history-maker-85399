@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'; // Importar useSearchParams
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
@@ -57,7 +57,7 @@ interface MunicipalityDetails {
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams(); // Inicializar useSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const { toast } = useToast();
 
@@ -87,14 +87,13 @@ export default function MunicipalDashboard() {
     }
 
     fetchMunicipalityDetails(currentMunicipalityId);
-    fetchSchoolsForMunicipality(currentMunicipalityId);
-
-    // Ler o schoolId da URL ao carregar
+    
+    // Ler o schoolId da URL e tentar definir o estado inicial
     const schoolIdFromUrl = searchParams.get('schoolId');
-    if (schoolIdFromUrl) {
-      setSelectedSchoolId(schoolIdFromUrl);
-    }
-  }, [currentMunicipalityId, role, navigate, searchParams]); // Adicionar searchParams como dependência
+    setSelectedSchoolId(schoolIdFromUrl); // Define o estado, que será validado em fetchSchoolsForMunicipality
+    
+    fetchSchoolsForMunicipality(currentMunicipalityId, schoolIdFromUrl); // Passa o ID da URL para validação
+  }, [currentMunicipalityId, role, navigate, searchParams]);
 
   useEffect(() => {
     if (selectedSchoolId) {
@@ -103,7 +102,7 @@ export default function MunicipalDashboard() {
       setSearchParams(prev => {
         prev.set('schoolId', selectedSchoolId);
         return prev;
-      }, { replace: true }); // Usar replace para não adicionar ao histórico de navegação
+      }, { replace: true });
     } else {
       setSelectedSchoolDetails(null);
       // Remover schoolId da URL se nenhuma escola estiver selecionada
@@ -133,11 +132,8 @@ export default function MunicipalDashboard() {
     setMunicipalityDetails(data as MunicipalityDetails);
   };
 
-  const fetchSchoolsForMunicipality = async (id: string) => {
+  const fetchSchoolsForMunicipality = async (id: string, initialSchoolIdFromUrl: string | null) => {
     setLoadingSchools(true);
-    // Não resetar selectedSchoolId aqui para permitir que a URL o defina
-    // setSelectedSchoolId(null); 
-    // setSelectedSchoolDetails(null); 
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
@@ -152,8 +148,16 @@ export default function MunicipalDashboard() {
         variant: 'destructive',
       });
       setSchools([]);
+      setSelectedSchoolId(null); // Limpa a seleção em caso de erro
     } else {
       setSchools(data || []);
+      // Valida se a escola da URL ainda existe na lista recém-carregada
+      if (initialSchoolIdFromUrl && data && data.some(s => s.id === initialSchoolIdFromUrl)) {
+        // A escola da URL é válida, mantém selectedSchoolId como está (já definido no useEffect principal)
+      } else {
+        // A escola da URL é inválida ou não existe, limpa a seleção
+        setSelectedSchoolId(null);
+      }
     }
     setLoadingSchools(false);
   };
