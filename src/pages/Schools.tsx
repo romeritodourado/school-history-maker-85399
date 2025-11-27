@@ -20,6 +20,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { schoolSchema } from '@/lib/validationSchemas';
 import { Progress } from '@/components/ui/progress';
+import correctLogo from "/correct-logo.png"; // Importar a logo
+import { Link } from 'react-router-dom'; // Importar Link
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -312,8 +314,10 @@ export default function Schools() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
+            <Link to="/"> {/* Adicionado Link aqui */}
+              <img src={correctLogo} alt="Correct Logo" className="h-10 w-10" />
+            </Link>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <School className="h-8 w-8" />
               Gerenciar Escolas
             </h1>
           </div>

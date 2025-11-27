@@ -107,10 +107,12 @@ export default function ValidateTranscript() {
         <Card className="border-2 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl flex items-center gap-2">
+              <Link to="/" className="flex items-center gap-2"> {/* Adicionado Link aqui */}
                 <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
-                Validação de Histórico Escolar
-              </CardTitle>
+                <CardTitle className="text-2xl">
+                  Validação de Histórico Escolar
+                </CardTitle>
+              </Link>
               <Badge 
                 variant={validation.is_valid ? "default" : "destructive"}
                 className="text-lg px-4 py-2"

@@ -58,9 +58,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
         <CardHeader> {/* Removido space-y-1 */}
-          <div className="flex justify-center">
+          <Link to="/" className="flex justify-center"> {/* Adicionado Link aqui */}
             <img src={correctLogo} alt="Correct Logo" className="h-48 w-48 object-contain" />
-          </div>
+          </Link>
           <CardTitle className="text-2xl font-bold text-center">Sistema de Históricos Escolares</CardTitle>
           <CardDescription className="text-center">
             Entre com suas credenciais para acessar o sistema

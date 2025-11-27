@@ -123,7 +123,9 @@ const StudentList = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
+            <Link to="/"> {/* Adicionado Link aqui */}
+              <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
+            </Link>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Lista de Alunos</h1>
               <p className="text-muted-foreground">Gerenciar históricos escolares</p>

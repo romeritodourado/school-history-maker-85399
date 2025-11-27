@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
+import { Link } from 'react-router-dom'; // Importar Link
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -140,7 +141,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4 p-2 rounded">
+          <Link to="/" className="flex items-center gap-4 p-2 rounded"> {/* Adicionado Link aqui */}
             <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div>
               <h1 className="text-2xl font-bold">Sistema de Históricos Escolares</h1>
@@ -148,7 +149,7 @@ export default function Dashboard() {
                 Gestão simplificada de históricos escolares
               </p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             {user && (
               <>
