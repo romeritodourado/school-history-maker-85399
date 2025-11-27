@@ -19,7 +19,8 @@ import { Progress } from '@/components/ui/progress';
 import { z } from 'zod';
 import { municipalitySchema } from '@/lib/validationSchemas';
 import correctLogo from "/correct-logo.png";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -33,18 +34,6 @@ interface Municipality {
   state: string | null;
   created_at: string;
 }
-
-const CITIES = [
-  "Luís Eduardo Magalhães",
-  "Salvador",
-  "Feira de Santana",
-  "Vitória da Conquista",
-  "Barreiras",
-  "São Paulo",
-  "Rio de Janeiro",
-  "Brasília",
-  "Outra" // Opção para digitar caso a cidade não esteja na lista
-];
 
 const ManageMunicipalities = () => {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
@@ -64,7 +53,7 @@ const ManageMunicipalities = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Novo estado para input de cidade personalizada
+  const [showCustomCityInput, setShowCustomCityInput] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -72,6 +61,17 @@ const ManageMunicipalities = () => {
   useEffect(() => {
     fetchMunicipalities();
   }, []);
+
+  useEffect(() => {
+    // Reset city if state changes or if the selected city is no longer in the list for the new state
+    if (formData.state && formData.city && !brazilianCities[formData.state]?.includes(formData.city) && formData.city !== "Outra") {
+      setFormData(prev => ({ ...prev, city: "" }));
+      setShowCustomCityInput(false);
+    } else if (!formData.state) {
+      setFormData(prev => ({ ...prev, city: "" }));
+      setShowCustomCityInput(false);
+    }
+  }, [formData.state]);
 
   const fetchMunicipalities = async () => {
     console.log('fetchMunicipalities: Iniciando busca de redes municipais...');
@@ -288,7 +288,7 @@ const ManageMunicipalities = () => {
       state: municipality.state || '',
     });
     setEmblemFile(null);
-    setShowCustomCityInput(municipality.city ? !CITIES.includes(municipality.city) : false); // Define se o input customizado deve ser mostrado
+    setShowCustomCityInput(municipality.city ? !brazilianCities[municipality.state || '']?.includes(municipality.city) : false); // Define se o input customizado deve ser mostrado
     setDialogOpen(true);
   };
 
@@ -447,23 +447,46 @@ const ManageMunicipalities = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="state">Estado (UF) *</Label>
+                <Select
+                  value={formData.state}
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, state: value, city: "" })); // Reset city when state changes
+                    setShowCustomCityInput(false);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brazilianStates.map((s) => (
+                      <SelectItem key={s.uf} value={s.uf}>
+                        {s.name} ({s.uf})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="city">Cidade *</Label>
                 <Select
                   value={formData.city}
                   onValueChange={(value) => {
-                    setFormData({ ...formData, city: value });
+                    setFormData(prev => ({ ...prev, city: value }));
                     setShowCustomCityInput(value === "Outra");
                   }}
+                  disabled={!formData.state} // Disable city select if no state is selected
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a cidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CITIES.map((cityName) => (
+                    {formData.state && brazilianCities[formData.state]?.map((cityName) => (
                       <SelectItem key={cityName} value={cityName}>
                         {cityName}
                       </SelectItem>
                     ))}
+                    <SelectItem value="Outra">Outra (digitar)</SelectItem>
                   </SelectContent>
                 </Select>
                 {showCustomCityInput && (
@@ -476,17 +499,6 @@ const ManageMunicipalities = () => {
                     required
                   />
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">Estado (UF) *</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  placeholder="Ex: BA"
-                  maxLength={2}
-                  required
-                />
               </div>
             </div>
             <div className="space-y-2">

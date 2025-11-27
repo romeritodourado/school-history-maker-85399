@@ -11,21 +11,10 @@ import { z } from 'zod';
 import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
-
-const CITIES = [
-  "Luís Eduardo Magalhães",
-  "Salvador",
-  "Feira de Santana",
-  "Vitória da Conquista",
-  "Barreiras",
-  "São Paulo",
-  "Rio de Janeiro",
-  "Brasília",
-  "Outra" // Opção para digitar caso a cidade não esteja na lista
-];
 
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
@@ -38,7 +27,7 @@ const MunicipalNetworkSetup = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Novo estado para input de cidade personalizada
+  const [showCustomCityInput, setShowCustomCityInput] = useState(false);
 
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -52,6 +41,17 @@ const MunicipalNetworkSetup = () => {
   useEffect(() => {
     checkSuperAdminExists();
   }, []);
+
+  useEffect(() => {
+    // Reset city if state changes or if the selected city is no longer in the list for the new state
+    if (state && city && !brazilianCities[state]?.includes(city) && city !== "Outra") {
+      setCity("");
+      setShowCustomCityInput(false);
+    } else if (!state) {
+      setCity("");
+      setShowCustomCityInput(false);
+    }
+  }, [state]);
 
   const checkSuperAdminExists = async () => {
     const { data, error } = await supabase
@@ -279,6 +279,28 @@ const MunicipalNetworkSetup = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="state">Estado (UF) *</Label>
+                  <Select
+                    value={state}
+                    onValueChange={(value) => {
+                      setState(value);
+                      setCity(""); // Reset city when state changes
+                      setShowCustomCityInput(false);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brazilianStates.map((s) => (
+                        <SelectItem key={s.uf} value={s.uf}>
+                          {s.name} ({s.uf})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="city">Cidade *</Label>
                   <Select
                     value={city}
@@ -286,39 +308,30 @@ const MunicipalNetworkSetup = () => {
                       setCity(value);
                       setShowCustomCityInput(value === "Outra");
                     }}
+                    disabled={!state} // Disable city select if no state is selected
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a cidade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CITIES.map((cityName) => (
+                      {state && brazilianCities[state]?.map((cityName) => (
                         <SelectItem key={cityName} value={cityName}>
                           {cityName}
                         </SelectItem>
                       ))}
+                      <SelectItem value="Outra">Outra (digitar)</SelectItem>
                     </SelectContent>
                   </Select>
                   {showCustomCityInput && (
                     <Input
                       id="customCity"
-                      value={city !== "Outra" ? city : ""} // Limpa o input se a opção não for "Outra"
+                      value={city !== "Outra" ? city : ""}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="Digite o nome da cidade"
                       className="mt-2"
                       required
                     />
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">Estado (UF) *</Label>
-                  <Input
-                    id="state"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    placeholder="Ex: BA"
-                    maxLength={2}
-                    required
-                  />
                 </div>
               </div>
               <div className="space-y-2">
