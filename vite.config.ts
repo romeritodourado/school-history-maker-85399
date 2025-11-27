@@ -10,4 +10,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  css: {
+    postcss: {
+      plugins: [
+        require('tailwindcss/nesting'), // Adicionado para garantir o processamento correto de aninhamento
+        require('tailwindcss'),
+        require('autoprefixer'),
+      ],
+    },
+  },
 })
