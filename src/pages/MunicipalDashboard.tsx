@@ -13,9 +13,9 @@ import {
   ShieldCheck,
   Info,
   Loader2,
-  LogOut, // Importar LogOut
-  Settings, // Importar Settings
-  User as UserIcon // Importar UserIcon
+  LogOut,
+  Settings,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,16 +31,30 @@ interface SchoolOption {
   name: string;
 }
 
+interface SelectedSchoolDetails {
+  id: string;
+  name: string;
+  inep: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  logo_url: string | null;
+  authorization_decree_url: string | null;
+  official_gazette_url: string | null;
+}
+
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
-  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth(); // Adicionado user e signOut
+  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const { toast } = useToast();
 
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [selectedSchoolDetails, setSelectedSchoolDetails] = useState<SelectedSchoolDetails | null>(null);
   const [loadingSchools, setLoadingSchools] = useState(true);
+  const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
 
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
@@ -56,13 +70,21 @@ export default function MunicipalDashboard() {
     }
 
     if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
-      navigate('/'); // Redirect if not authorized for this dashboard
+      navigate('/');
       return;
     }
 
     fetchMunicipalityDetails(currentMunicipalityId);
     fetchSchoolsForMunicipality(currentMunicipalityId);
   }, [currentMunicipalityId, role, navigate]);
+
+  useEffect(() => {
+    if (selectedSchoolId) {
+      fetchSelectedSchoolDetails(selectedSchoolId);
+    } else {
+      setSelectedSchoolDetails(null);
+    }
+  }, [selectedSchoolId]);
 
   const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
@@ -85,7 +107,6 @@ export default function MunicipalDashboard() {
 
   const fetchSchoolsForMunicipality = async (id: string) => {
     setLoadingSchools(true);
-    console.log(`Fetching schools for municipality ID: ${id}`);
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
@@ -101,20 +122,40 @@ export default function MunicipalDashboard() {
       });
       setSchools([]);
     } else {
-      console.log('Schools fetched:', data);
       setSchools(data || []);
-      // Automatically select the first school if there's only one
       if (data && data.length === 1) {
         setSelectedSchoolId(data[0].id);
       } else {
-        setSelectedSchoolId(null); // Clear selection if multiple or none
+        setSelectedSchoolId(null);
       }
     }
     setLoadingSchools(false);
   };
 
+  const fetchSelectedSchoolDetails = async (schoolId: string) => {
+    setLoadingSchoolDetails(true);
+    const { data, error } = await supabase
+      .from('schools')
+      .select('id, name, inep, address, city, state, logo_url, authorization_decree_url, official_gazette_url')
+      .eq('id', schoolId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching school details:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar os detalhes da escola selecionada.',
+        variant: 'destructive',
+      });
+      setSelectedSchoolDetails(null);
+    } else {
+      setSelectedSchoolDetails(data as SelectedSchoolDetails);
+    }
+    setLoadingSchoolDetails(false);
+  };
+
   const handleBackToSuperAdminDashboard = () => {
-    setActiveMunicipalityIdForSuperAdmin(null); // Clear active municipality
+    setActiveMunicipalityIdForSuperAdmin(null);
     navigate('/');
   };
 
@@ -151,7 +192,7 @@ export default function MunicipalDashboard() {
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
-      requiresSchool: false, // Workload can be municipal level
+      requiresSchool: false,
     },
     {
       title: 'Gerenciar Escolas',
@@ -172,7 +213,7 @@ export default function MunicipalDashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      requiresSchool: false, // Public route
+      requiresSchool: false,
     },
   ];
 
@@ -217,47 +258,88 @@ export default function MunicipalDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <School className="h-5 w-5" />
-              Selecionar Escola (Opcional)
-            </CardTitle>
-            <CardDescription>
-              Selecione uma escola para realizar ações específicas a ela.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingSchools ? (
-              <div className="flex items-center justify-center text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
-              </div>
-            ) : schools.length === 0 ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="select-school">Escola</Label>
-                <Select
-                  value={selectedSchoolId || ""}
-                  onValueChange={(value) => setSelectedSchoolId(value)}
-                >
-                  <SelectTrigger className="w-full md:w-[300px]">
-                    <SelectValue placeholder="Selecione uma escola" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {schools.map((school) => (
-                      <SelectItem key={school.id} value={school.id}>
-                        {school.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <School className="h-5 w-5" />
+                Selecionar Escola (Opcional)
+              </CardTitle>
+              <CardDescription>
+                Selecione uma escola para realizar ações específicas a ela.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingSchools ? (
+                <div className="flex items-center justify-center text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
+                </div>
+              ) : schools.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="select-school">Escola</Label>
+                  <Select
+                    value={selectedSchoolId || ""}
+                    onValueChange={(value) => setSelectedSchoolId(value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione uma escola" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {schools.map((school) => (
+                        <SelectItem key={school.id} value={school.id}>
+                          {school.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {selectedSchoolDetails && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {selectedSchoolDetails.logo_url && (
+                    <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-6 w-6 object-contain" />
+                  )}
+                  {selectedSchoolDetails.name}
+                </CardTitle>
+                <CardDescription>Detalhes da Escola Selecionada</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {loadingSchoolDetails ? (
+                  <div className="flex items-center justify-center text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
+                  </div>
+                ) : (
+                  <>
+                    {selectedSchoolDetails.inep && (
+                      <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
+                    )}
+                    {selectedSchoolDetails.address && (
+                      <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
+                    )}
+                    {selectedSchoolDetails.city && selectedSchoolDetails.state && (
+                      <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
+                    )}
+                    {selectedSchoolDetails.authorization_decree_url && (
+                      <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
+                    )}
+                    {selectedSchoolDetails.official_gazette_url && (
+                      <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => {
@@ -269,7 +351,6 @@ export default function MunicipalDashboard() {
             if (card.requiresSchool && selectedSchoolId) {
               cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
             } else if (!card.requiresSchool && currentMunicipalityId) {
-              // For non-school specific actions, pass municipalityId if applicable
               cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
             }
 
