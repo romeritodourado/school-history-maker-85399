@@ -10,7 +10,8 @@ import {
   UserCog,
   ArrowLeft,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +36,7 @@ export default function MunicipalDashboard() {
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [loadingSchools, setLoadingSchools] = useState(true); // Novo estado para carregamento de escolas
 
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
@@ -78,6 +80,8 @@ export default function MunicipalDashboard() {
   };
 
   const fetchSchoolsForMunicipality = async (id: string) => {
+    setLoadingSchools(true);
+    console.log(`Fetching schools for municipality ID: ${id}`);
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
@@ -86,9 +90,23 @@ export default function MunicipalDashboard() {
 
     if (error) {
       console.error('Error fetching schools:', error);
-      return;
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar as escolas.',
+        variant: 'destructive',
+      });
+      setSchools([]);
+    } else {
+      console.log('Schools fetched:', data);
+      setSchools(data || []);
+      // Automatically select the first school if there's only one
+      if (data && data.length === 1) {
+        setSelectedSchoolId(data[0].id);
+      } else {
+        setSelectedSchoolId(null); // Clear selection if multiple or none
+      }
     }
-    setSchools(data || []);
+    setLoadingSchools(false);
   };
 
   const handleBackToSuperAdminDashboard = () => {
@@ -177,24 +195,34 @@ export default function MunicipalDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="select-school">Escola</Label>
-              <Select
-                value={selectedSchoolId || ""}
-                onValueChange={(value) => setSelectedSchoolId(value)}
-              >
-                <SelectTrigger className="w-full md:w-[300px]">
-                  <SelectValue placeholder="Selecione uma escola" />
-                </SelectTrigger>
-                <SelectContent>
-                  {schools.map((school) => (
-                    <SelectItem key={school.id} value={school.id}>
-                      {school.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {loadingSchools ? (
+              <div className="flex items-center justify-center text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
+              </div>
+            ) : schools.length === 0 ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="select-school">Escola</Label>
+                <Select
+                  value={selectedSchoolId || ""}
+                  onValueChange={(value) => setSelectedSchoolId(value)}
+                >
+                  <SelectTrigger className="w-full md:w-[300px]">
+                    <SelectValue placeholder="Selecione uma escola" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schools.map((school) => (
+                      <SelectItem key={school.id} value={school.id}>
+                        {school.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </CardContent>
         </Card>
 
