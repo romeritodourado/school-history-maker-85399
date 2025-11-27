@@ -33,7 +33,7 @@ interface Municipality {
 
 const ManageMunicipalities = () => {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
-  const [pageLoading, setPageLoading] = useState(true); // Renomeado para pageLoading
+  const [pageLoading, setPageLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMunicipality, setEditingMunicipality] = useState<Municipality | null>(null);
   const [formData, setFormData] = useState({
@@ -45,7 +45,7 @@ const ManageMunicipalities = () => {
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Novo estado para submissão do formulário
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const navigate = useNavigate();
@@ -149,7 +149,7 @@ const ManageMunicipalities = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true); // Inicia o estado de submissão
+    setIsSubmitting(true);
     console.log('handleSubmit: Iniciando submissão do formulário.');
 
     try {
@@ -191,12 +191,15 @@ const ManageMunicipalities = () => {
         return; 
       }
 
-      console.log('handleSubmit: Chamando fetchMunicipalities para atualizar a lista...');
-      await fetchMunicipalities(); 
-      console.log('handleSubmit: fetchMunicipalities concluído. Tentando fechar o diálogo...');
+      // Mover estas linhas para aqui para feedback imediato da UI
+      console.log('handleSubmit: Tentando fechar o diálogo e resetar o formulário.');
       setDialogOpen(false); 
       resetForm(); 
-      console.log('handleSubmit: Diálogo fechado e formulário resetado.');
+      console.log('handleSubmit: Diálogo fechado e formulário resetado. Agora buscando redes municipais...');
+
+      await fetchMunicipalities(); // Buscar redes municipais após a atualização da UI
+      console.log('handleSubmit: fetchMunicipalities concluído.');
+
     } catch (error) {
       console.error('handleSubmit: Erro no bloco catch:', error);
       toast({
@@ -205,7 +208,7 @@ const ManageMunicipalities = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false); // Finaliza o estado de submissão
+      setIsSubmitting(false);
       console.log('handleSubmit: Submissão finalizada, isSubmitting definido como false.');
     }
   };
