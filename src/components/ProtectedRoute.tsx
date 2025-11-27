@@ -14,7 +14,12 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   const { user, role, loading } = useAuth();
   const location = useLocation();
 
+  useEffect(() => {
+    console.log(`ProtectedRoute (${location.pathname}): loading=${loading}, user=${!!user}, role=${role}`);
+  }, [loading, user, role, location.pathname]);
+
   if (loading) {
+    console.log(`ProtectedRoute (${location.pathname}): Showing loader.`);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -23,10 +28,12 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   }
 
   if (!user) {
+    console.log(`ProtectedRoute (${location.pathname}): User not found, redirecting to /login.`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(role as AppRole)) {
+    console.log(`ProtectedRoute (${location.pathname}): Access denied for role ${role}.`);
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
@@ -39,5 +46,6 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
+  console.log(`ProtectedRoute (${location.pathname}): Access granted.`);
   return <>{children}</>;
 }

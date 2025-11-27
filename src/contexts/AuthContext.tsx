@@ -61,10 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('AuthContext: Initializing...');
+    console.log('AuthContext: Setting up auth state listener...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('AuthContext: onAuthStateChange event:', event);
+        console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -85,41 +85,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
-          setLoading(false); 
-          console.log('AuthContext: Loading set to false after onAuthStateChange.');
+          // Ensure loading is set to false only after the initial session is fully processed
+          // This handles both 'INITIAL_SESSION' and subsequent events.
+          if (loading) { // Only set to false if it's still true from initial mount
+            setLoading(false); 
+            console.log('AuthContext: Loading set to false after onAuthStateChange.');
+          }
         }
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('AuthContext: getSession resolved.');
-      setSession(session);
-      setUser(session?.user ?? null);
-      try {
-        if (session?.user) {
-          console.log('AuthContext: User found in getSession, fetching profile...');
-          await fetchProfile(session.user.id);
-          console.log('AuthContext: Profile fetched after getSession.');
-        }
-      } catch (error) {
-        console.error('AuthContext: Error during getSession profile fetch:', error);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
-      } finally {
-        setLoading(false);
-        console.log('AuthContext: Loading set to false after getSession.');
-      }
-    }).catch(error => {
-      console.error('AuthContext: getSession failed:', error);
-      setLoading(false);
-    });
+    // Rely solely on onAuthStateChange. The 'INITIAL_SESSION' event will fire immediately on subscription.
+    // No need for a separate getSession call here.
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array for a single setup on mount
 
   useEffect(() => {
     if (!user?.id) return;
