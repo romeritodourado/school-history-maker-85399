@@ -58,7 +58,7 @@ export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth();
+  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin, loading: authLoading } = useAuth(); // Obter authLoading
   const { toast } = useToast();
 
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
@@ -71,6 +71,13 @@ export default function MunicipalDashboard() {
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
   useEffect(() => {
+    // Só prosseguir se o carregamento da autenticação estiver completo
+    if (authLoading) {
+      console.log("MunicipalDashboard: Auth loading, waiting...");
+      return;
+    }
+    console.log("MunicipalDashboard: Auth loading complete. Proceeding with dashboard logic.");
+
     if (!currentMunicipalityId) {
       toast({
         title: 'Erro de acesso',
@@ -81,31 +88,30 @@ export default function MunicipalDashboard() {
       return;
     }
 
+    // Agora que authLoading é false, role deve estar definido
     if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
+      console.log(`MunicipalDashboard: Role ${role} not authorized for this dashboard. Redirecting to /.`);
       navigate('/');
       return;
     }
 
     fetchMunicipalityDetails(currentMunicipalityId);
     
-    // Ler o schoolId da URL e tentar definir o estado inicial
     const schoolIdFromUrl = searchParams.get('schoolId');
-    setSelectedSchoolId(schoolIdFromUrl); // Define o estado, que será validado em fetchSchoolsForMunicipality
+    setSelectedSchoolId(schoolIdFromUrl);
     
-    fetchSchoolsForMunicipality(currentMunicipalityId, schoolIdFromUrl); // Passa o ID da URL para validação
-  }, [currentMunicipalityId, role, navigate, searchParams]);
+    fetchSchoolsForMunicipality(currentMunicipalityId, schoolIdFromUrl);
+  }, [currentMunicipalityId, role, navigate, searchParams, authLoading]); // Adicionar authLoading às dependências
 
   useEffect(() => {
     if (selectedSchoolId) {
       fetchSelectedSchoolDetails(selectedSchoolId);
-      // Atualizar a URL com o schoolId selecionado
       setSearchParams(prev => {
         prev.set('schoolId', selectedSchoolId);
         return prev;
       }, { replace: true });
     } else {
       setSelectedSchoolDetails(null);
-      // Remover schoolId da URL se nenhuma escola estiver selecionada
       setSearchParams(prev => {
         prev.delete('schoolId');
         return prev;
@@ -148,14 +154,12 @@ export default function MunicipalDashboard() {
         variant: 'destructive',
       });
       setSchools([]);
-      setSelectedSchoolId(null); // Limpa a seleção em caso de erro
+      setSelectedSchoolId(null);
     } else {
       setSchools(data || []);
-      // Valida se a escola da URL ainda existe na lista recém-carregada
       if (initialSchoolIdFromUrl && data && data.some(s => s.id === initialSchoolIdFromUrl)) {
-        // A escola da URL é válida, mantém selectedSchoolId como está (já definido no useEffect principal)
+        // A escola da URL é válida, mantém selectedSchoolId como está
       } else {
-        // A escola da URL é inválida ou não existe, limpa a seleção
         setSelectedSchoolId(null);
       }
     }
