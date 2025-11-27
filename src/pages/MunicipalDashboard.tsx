@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
@@ -50,19 +50,20 @@ interface MunicipalityDetails {
   cnpj: string | null;
   emblem_url: string | null;
   address: string | null;
-  city: string | null; // Adicionado
-  state: string | null; // Adicionado
+  city: string | null;
+  state: string | null;
 }
 
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams(); // Inicializar useSearchParams
   const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const { toast } = useToast();
 
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null); // Inicializado como null
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [selectedSchoolDetails, setSelectedSchoolDetails] = useState<SelectedSchoolDetails | null>(null);
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
@@ -87,20 +88,36 @@ export default function MunicipalDashboard() {
 
     fetchMunicipalityDetails(currentMunicipalityId);
     fetchSchoolsForMunicipality(currentMunicipalityId);
-  }, [currentMunicipalityId, role, navigate]);
+
+    // Ler o schoolId da URL ao carregar
+    const schoolIdFromUrl = searchParams.get('schoolId');
+    if (schoolIdFromUrl) {
+      setSelectedSchoolId(schoolIdFromUrl);
+    }
+  }, [currentMunicipalityId, role, navigate, searchParams]); // Adicionar searchParams como dependência
 
   useEffect(() => {
     if (selectedSchoolId) {
       fetchSelectedSchoolDetails(selectedSchoolId);
+      // Atualizar a URL com o schoolId selecionado
+      setSearchParams(prev => {
+        prev.set('schoolId', selectedSchoolId);
+        return prev;
+      }, { replace: true }); // Usar replace para não adicionar ao histórico de navegação
     } else {
-      setSelectedSchoolDetails(null); // Limpar detalhes se nenhuma escola estiver selecionada
+      setSelectedSchoolDetails(null);
+      // Remover schoolId da URL se nenhuma escola estiver selecionada
+      setSearchParams(prev => {
+        prev.delete('schoolId');
+        return prev;
+      }, { replace: true });
     }
-  }, [selectedSchoolId]);
+  }, [selectedSchoolId, setSearchParams]);
 
   const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
       .from('municipalities')
-      .select('id, name, cnpj, emblem_url, address, city, state') // Incluído 'city' e 'state' na seleção
+      .select('id, name, cnpj, emblem_url, address, city, state')
       .eq('id', id)
       .single();
 
@@ -118,8 +135,9 @@ export default function MunicipalDashboard() {
 
   const fetchSchoolsForMunicipality = async (id: string) => {
     setLoadingSchools(true);
-    setSelectedSchoolId(null); // Explicitamente resetar a escola selecionada
-    setSelectedSchoolDetails(null); // Explicitamente resetar os detalhes da escola
+    // Não resetar selectedSchoolId aqui para permitir que a URL o defina
+    // setSelectedSchoolId(null); 
+    // setSelectedSchoolDetails(null); 
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
@@ -292,7 +310,7 @@ export default function MunicipalDashboard() {
                   {municipalityDetails.address && (
                     <p className="text-sm text-muted-foreground"><span className="font-semibold">Endereço:</span> {municipalityDetails.address}</p>
                   )}
-                  {municipalityDetails.city && municipalityDetails.state && ( // Exibindo cidade e estado
+                  {municipalityDetails.city && municipalityDetails.state && (
                     <p className="text-sm text-muted-foreground"><span className="font-semibold">Localização:</span> {municipalityDetails.city} - {municipalityDetails.state}</p>
                   )}
                 </div>
