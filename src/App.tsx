@@ -21,6 +21,7 @@ import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
 import { useEffect } from "react";
 import NotFound from "./pages/NotFound";
+import { ThemeProvider } from "./components/ThemeProvider"; // Importar ThemeProvider
 
 const queryClient = new QueryClient();
 
@@ -45,78 +46,80 @@ const AuthRedirectHandler = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AuthRedirectHandler />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
-            <Route path="/municipal-network-setup" element={<MunicipalNetworkSetup />} />
-            <Route path="/validar" element={<ValidateTranscript />} />
-            
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/municipal-dashboard/:municipalityId" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
-                <MunicipalDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/manage-municipalities" element={
-              <ProtectedRoute requiredRoles={['super_admin']}>
-                <ManageMunicipalities />
-              </ProtectedRoute>
-            } />
-            <Route path="/lista-alunos" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
-                <StudentList />
-              </ProtectedRoute>
-            } />
-            <Route path="/novo-historico" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
-                <CreateTranscript />
-              </ProtectedRoute>
-            } />
-            <Route path="/visualizar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
-                <ViewTranscript />
-              </ProtectedRoute>
-            } />
-            <Route path="/editar/:id" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
-                <CreateTranscript />
-              </ProtectedRoute>
-            } />
-            <Route path="/carga-horaria" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
-                <WorkloadManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/escolas" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
-                <Schools />
-              </ProtectedRoute>
-            } />
-            <Route path="/usuarios" element={
-              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin']}>
-                <Users />
-              </ProtectedRoute>
-            } />
-            <Route path="/account-settings" element={
-              <ProtectedRoute>
-                <AccountSettings />
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme"> {/* Adicionado ThemeProvider */}
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <AuthRedirectHandler />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
+              <Route path="/municipal-network-setup" element={<MunicipalNetworkSetup />} />
+              <Route path="/validar" element={<ValidateTranscript />} />
+              
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/municipal-dashboard/:municipalityId" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
+                  <MunicipalDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/manage-municipalities" element={
+                <ProtectedRoute requiredRoles={['super_admin']}>
+                  <ManageMunicipalities />
+                </ProtectedRoute>
+              } />
+              <Route path="/lista-alunos" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                  <StudentList />
+                </ProtectedRoute>
+              } />
+              <Route path="/novo-historico" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                  <CreateTranscript />
+                </ProtectedRoute>
+              } />
+              <Route path="/visualizar/:id" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                  <ViewTranscript />
+                </ProtectedRoute>
+              } />
+              <Route path="/editar/:id" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                  <CreateTranscript />
+                </ProtectedRoute>
+              } />
+              <Route path="/carga-horaria" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
+                  <WorkloadManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/escolas" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
+                  <Schools />
+                </ProtectedRoute>
+              } />
+              <Route path="/usuarios" element={
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin']}>
+                  <Users />
+                </ProtectedRoute>
+              } />
+              <Route path="/account-settings" element={
+                <ProtectedRoute>
+                  <AccountSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider> {/* Fechamento do ThemeProvider */}
   </QueryClientProvider>
 );
 

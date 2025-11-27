@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
+import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -39,7 +40,6 @@ export default function Dashboard() {
       if (role === 'super_admin') {
         fetchMunicipalities();
       } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
-        // Redirect municipal_secretary or network_manager directly to their municipal dashboard
         navigate(`/municipal-dashboard/${profile.municipality_id}`, { replace: true });
       }
     }
@@ -136,10 +136,6 @@ export default function Dashboard() {
     );
   }
 
-  // If not a super_admin and already redirected, this part won't be reached.
-  // If it's a school_admin, secretary, or assistente_administrativo, they see their specific cards.
-  // If it's a super_admin, they see the municipality selection.
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -164,6 +160,7 @@ export default function Dashboard() {
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta
                 </Button>
+                <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
                 <Button variant="outline" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sair

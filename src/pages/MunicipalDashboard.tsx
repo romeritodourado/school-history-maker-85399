@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
+import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -241,6 +242,7 @@ export default function MunicipalDashboard() {
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta
                 </Button>
+                <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
                 <Button variant="outline" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sair
