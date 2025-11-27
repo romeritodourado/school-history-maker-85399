@@ -41,12 +41,11 @@ const AuthRedirectHandler = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (!loading && !user) {
-      const publicPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup', '/validar'];
-      const isMunicipalDashboardRoute = location.pathname.startsWith('/municipal-dashboard/');
+    if (!loading && user) { // Se o carregamento terminou e o usuário está autenticado
+      const publicOnlyPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup']; // Caminhos que usuários autenticados não deveriam estar
       
-      if (!publicPaths.includes(location.pathname) && !isMunicipalDashboardRoute) {
-        navigate('/login', { replace: true });
+      if (publicOnlyPaths.includes(location.pathname)) {
+        navigate('/', { replace: true }); // Redireciona para o dashboard
       }
     }
   }, [user, loading, navigate, location.pathname]);
