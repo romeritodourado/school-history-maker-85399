@@ -62,7 +62,7 @@ export default function MunicipalDashboard() {
 
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null); // Inicializado como null
   const [selectedSchoolDetails, setSelectedSchoolDetails] = useState<SelectedSchoolDetails | null>(null);
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
@@ -93,7 +93,7 @@ export default function MunicipalDashboard() {
     if (selectedSchoolId) {
       fetchSelectedSchoolDetails(selectedSchoolId);
     } else {
-      setSelectedSchoolDetails(null);
+      setSelectedSchoolDetails(null); // Limpar detalhes se nenhuma escola estiver selecionada
     }
   }, [selectedSchoolId]);
 
@@ -134,11 +134,8 @@ export default function MunicipalDashboard() {
       setSchools([]);
     } else {
       setSchools(data || []);
-      if (data && data.length === 1) {
-        setSelectedSchoolId(data[0].id);
-      } else {
-        setSelectedSchoolId(null);
-      }
+      // Removida a lógica de pré-seleção automática
+      setSelectedSchoolId(null); 
     }
     setLoadingSchools(false);
   };
@@ -309,7 +306,7 @@ export default function MunicipalDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <School className="h-5 w-5" />
-                Selecionar Escola (Opcional)
+                Selecionar Escola (Obrigatório para algumas ações)
               </CardTitle>
               <CardDescription>
                 Selecione uma escola para realizar ações específicas a ela.
