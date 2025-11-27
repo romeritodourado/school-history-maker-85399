@@ -27,6 +27,7 @@ interface Municipality {
   name: string;
   cnpj: string | null;
   emblem_url: string | null;
+  address: string | null; // Adicionado o campo address
   created_at: string;
 }
 
@@ -39,6 +40,7 @@ const ManageMunicipalities = () => {
     name: '',
     cnpj: '',
     emblem_url: '',
+    address: '', // Adicionado ao formData
   });
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -255,6 +257,7 @@ const ManageMunicipalities = () => {
       name: municipality.name,
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
+      address: municipality.address || '', // Carregar address
     });
     setEmblemFile(null);
     setDialogOpen(true);
@@ -265,6 +268,7 @@ const ManageMunicipalities = () => {
       name: '',
       cnpj: '',
       emblem_url: '',
+      address: '', // Resetar address
     });
     setEmblemFile(null);
     if (fileInputRef.current) {
@@ -337,6 +341,11 @@ const ManageMunicipalities = () => {
                         CNPJ: {municipality.cnpj}
                       </p>
                     )}
+                    {municipality.address && ( // Exibir address
+                      <p className="text-muted-foreground">
+                        Endereço: {municipality.address}
+                      </p>
+                    )}
                     {municipality.emblem_url && (
                       <div className="flex items-center gap-2">
                         <img src={municipality.emblem_url} alt="Brasão" className="h-8 w-8 object-contain" />
@@ -390,6 +399,15 @@ const ManageMunicipalities = () => {
                 placeholder="Ex: 00.000.000/0001-00"
               />
             </div>
+            <div>
+              <Label htmlFor="address">Endereço</Label> {/* Campo de endereço no formulário de edição */}
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Ex: Rua das Flores, 123, Centro"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="emblemFile">Brasão/Logo da Rede Municipal</Label>
               <div className="flex items-center space-x-2">
@@ -422,7 +440,7 @@ const ManageMunicipalities = () => {
               </p>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={uploading}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading || uploading}>

@@ -165,6 +165,7 @@ export type Database = {
       }
       municipalities: {
         Row: {
+          address: string | null
           cnpj: string | null
           created_at: string | null
           emblem_url: string | null
@@ -172,6 +173,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          address?: string | null
           cnpj?: string | null
           created_at?: string | null
           emblem_url?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           name: string
         }
         Update: {
+          address?: string | null
           cnpj?: string | null
           created_at?: string | null
           emblem_url?: string | null

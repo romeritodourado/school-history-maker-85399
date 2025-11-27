@@ -17,6 +17,7 @@ type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'scho
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [address, setAddress] = useState(''); // Novo estado para o endereço
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploadedEmblemUrl, setUploadedEmblemUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -119,7 +120,7 @@ const MunicipalNetworkSetup = () => {
     try {
       // 1. Validate municipality data
       console.log('Validando dados da rede municipal...');
-      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '' });
+      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address }); // Incluir address
       console.log('Dados da rede municipal validados.');
 
       // 2. Validate admin user data
@@ -131,7 +132,7 @@ const MunicipalNetworkSetup = () => {
       console.log('Criando rede municipal no Supabase...');
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
-        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl }])
+        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address }]) // Incluir address
         .select()
         .single();
 
@@ -249,6 +250,15 @@ const MunicipalNetworkSetup = () => {
                   value={cnpj}
                   onChange={(e) => setCnpj(e.target.value)}
                   placeholder="Ex: 00.000.000/0001-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label> {/* Novo campo de endereço */}
+                <Input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Ex: Rua das Flores, 123, Centro"
                 />
               </div>
               <div className="space-y-2">

@@ -185,6 +185,12 @@ export const municipalitySchema = z.object({
     .max(500, 'URL do brasão deve ter no máximo 500 caracteres')
     .optional()
     .or(z.literal('')),
+  
+  address: z.string() // Novo campo de endereço
+    .trim()
+    .max(200, 'Endereço deve ter no máximo 200 caracteres')
+    .optional()
+    .or(z.literal('')),
 });
 
 // Password change schema
