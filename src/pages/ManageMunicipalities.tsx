@@ -64,10 +64,11 @@ const ManageMunicipalities = () => {
 
   useEffect(() => {
     // Reset city if state changes or if the selected city is no longer in the list for the new state
-    if (formData.state && formData.city && !brazilianCities[formData.state]?.includes(formData.city) && formData.city !== "Outra") {
+    // Also, if state is cleared, clear city and hide custom input
+    if (!formData.state) {
       setFormData(prev => ({ ...prev, city: "" }));
       setShowCustomCityInput(false);
-    } else if (!formData.state) {
+    } else if (formData.city && !brazilianCities[formData.state]?.includes(formData.city) && formData.city !== "Outra") {
       setFormData(prev => ({ ...prev, city: "" }));
       setShowCustomCityInput(false);
     }
@@ -284,11 +285,12 @@ const ManageMunicipalities = () => {
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
       address: municipality.address || '',
-      city: municipality.city || '',
-      state: municipality.state || '',
+      city: municipality.city || '', // Ensure city is not null, use empty string if null
+      state: municipality.state || '', // Ensure state is not null, use empty string if null
     });
     setEmblemFile(null);
-    setShowCustomCityInput(municipality.city ? !brazilianCities[municipality.state || '']?.includes(municipality.city) : false); // Define se o input customizado deve ser mostrado
+    // Determine if custom city input should be shown based on loaded city and state
+    setShowCustomCityInput(municipality.city ? !brazilianCities[municipality.state || '']?.includes(municipality.city) : false);
     setDialogOpen(true);
   };
 

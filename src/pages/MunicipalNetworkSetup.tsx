@@ -44,10 +44,11 @@ const MunicipalNetworkSetup = () => {
 
   useEffect(() => {
     // Reset city if state changes or if the selected city is no longer in the list for the new state
-    if (state && city && !brazilianCities[state]?.includes(city) && city !== "Outra") {
+    // Also, if state is cleared, clear city and hide custom input
+    if (!state) {
       setCity("");
       setShowCustomCityInput(false);
-    } else if (!state) {
+    } else if (city && !brazilianCities[state]?.includes(city) && city !== "Outra") {
       setCity("");
       setShowCustomCityInput(false);
     }
