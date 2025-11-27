@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Começa como true para indicar carregamento inicial
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
@@ -65,6 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
+        
+        // Sempre define loading como true no início do processamento de uma mudança de autenticação
+        setLoading(true);
+
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -85,18 +89,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
-          // Ensure loading is set to false only after the initial session is fully processed
-          // This handles both 'INITIAL_SESSION' and subsequent events.
-          if (loading) { // Only set to false if it's still true from initial mount
-            setLoading(false); 
-            console.log('AuthContext: Loading set to false after onAuthStateChange.');
-          }
+          // Sempre define loading como false após todo o processamento para este evento ser concluído.
+          setLoading(false); 
+          console.log('AuthContext: Loading set to false after onAuthStateChange processing.');
         }
       }
     );
-
-    // Rely solely on onAuthStateChange. The 'INITIAL_SESSION' event will fire immediately on subscription.
-    // No need for a separate getSession call here.
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
