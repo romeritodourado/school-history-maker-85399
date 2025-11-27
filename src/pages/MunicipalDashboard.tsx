@@ -118,6 +118,8 @@ export default function MunicipalDashboard() {
 
   const fetchSchoolsForMunicipality = async (id: string) => {
     setLoadingSchools(true);
+    setSelectedSchoolId(null); // Explicitamente resetar a escola selecionada
+    setSelectedSchoolDetails(null); // Explicitamente resetar os detalhes da escola
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
@@ -134,8 +136,6 @@ export default function MunicipalDashboard() {
       setSchools([]);
     } else {
       setSchools(data || []);
-      // Removida a lógica de pré-seleção automática
-      setSelectedSchoolId(null); 
     }
     setLoadingSchools(false);
   };
@@ -229,7 +229,7 @@ export default function MunicipalDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-4 p-2 rounded"> {/* Adicionado Link aqui */}
+          <Link to="/" className="flex items-center gap-4 p-2 rounded">
             <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div>
               <h1 className="text-2xl font-bold">Dashboard Municipal</h1>
