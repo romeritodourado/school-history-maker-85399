@@ -22,6 +22,7 @@ import { schoolSchema } from '@/lib/validationSchemas';
 import { Progress } from '@/components/ui/progress';
 import correctLogo from "/correct-logo.png"; // Importar a logo
 import { Link } from 'react-router-dom'; // Importar Link
+import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -55,16 +56,17 @@ export default function Schools() {
     inep: '',
     municipality_id: '',
     address: '',
-    city: 'Luís Eduardo Magalhães',
-    state: 'BA',
+    city: '', // Inicializar como string vazia
+    state: '', // Inicializar como string vazia
     logo_url: '',
-    authorization_decree_url: '', // Agora é texto
-    official_gazette_url: '', // Agora é texto
+    authorization_decree_url: '',
+    official_gazette_url: '',
   });
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Estado para controlar input de cidade personalizada
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -73,6 +75,18 @@ export default function Schools() {
   useEffect(() => {
     fetchData();
   }, [currentUserRole, currentUserProfile]);
+
+  useEffect(() => {
+    // Reset city if state changes or if the selected city is no longer in the list for the new state
+    // Also, if state is cleared, clear city and hide custom input
+    if (!formData.state) {
+      setFormData(prev => ({ ...prev, city: "" }));
+      setShowCustomCityInput(false);
+    } else if (formData.city && !brazilianCities[formData.state]?.includes(formData.city) && formData.city !== "Outra") {
+      setFormData(prev => ({ ...prev, city: "" }));
+      setShowCustomCityInput(false);
+    }
+  }, [formData.state]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -280,12 +294,14 @@ export default function Schools() {
       inep: school.inep || '',
       municipality_id: school.municipality_id || '',
       address: school.address || '',
-      city: school.city || 'Luís Eduardo Magalhães',
-      state: school.state || 'BA',
+      city: school.city || '', // Garante que não seja null
+      state: school.state || '', // Garante que não seja null
       logo_url: school.logo_url || '',
       authorization_decree_url: school.authorization_decree_url || '',
       official_gazette_url: school.official_gazette_url || '',
     });
+    // Define se o input customizado deve ser mostrado com base nos dados carregados
+    setShowCustomCityInput(school.city ? !brazilianCities[school.state || '']?.includes(school.city) : false);
     setDialogOpen(true);
   };
 
@@ -295,14 +311,15 @@ export default function Schools() {
       inep: '',
       municipality_id: (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '',
       address: '',
-      city: 'Luís Eduardo Magalhães',
-      state: 'BA',
+      city: '',
+      state: '',
       logo_url: '',
       authorization_decree_url: '',
       official_gazette_url: '',
     });
     setEditingSchool(null);
     if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    setShowCustomCityInput(false); // Reseta o estado do input customizado
   };
 
   return (
@@ -333,7 +350,7 @@ export default function Schools() {
                   Nova Escola
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"> {/* Adicionado max-h e overflow-y-auto */}
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingSchool ? 'Editar Escola' : 'Nova Escola'}
@@ -391,24 +408,59 @@ export default function Schools() {
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city">Cidade *</Label>
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="state">Estado (UF) *</Label>
-                      <Input
-                        id="state"
+                      <Select
                         value={formData.state}
-                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                        required
-                        maxLength={2}
-                      />
+                        onValueChange={(value) => {
+                          setFormData(prev => ({ ...prev, state: value, city: "" })); // Reset city when state changes
+                          setShowCustomCityInput(false);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {brazilianStates.map((s) => (
+                            <SelectItem key={s.uf} value={s.uf}>
+                              {s.name} ({s.uf})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade *</Label>
+                      <Select
+                        value={formData.city}
+                        onValueChange={(value) => {
+                          setFormData(prev => ({ ...prev, city: value }));
+                          setShowCustomCityInput(value === "Outra");
+                        }}
+                        disabled={!formData.state} // Disable city select if no state is selected
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a cidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {formData.state && brazilianCities[formData.state]?.map((cityName) => (
+                            <SelectItem key={cityName} value={cityName}>
+                              {cityName}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="Outra">Outra (digitar)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {showCustomCityInput && (
+                        <Input
+                          id="customCity"
+                          value={formData.city !== "Outra" ? formData.city : ""}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          placeholder="Digite o nome da cidade"
+                          className="mt-2"
+                          required
+                        />
+                      )}
                     </div>
                   </div>
 
