@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +73,7 @@ interface SchoolOption {
 const CreateTranscript = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!id);
@@ -83,10 +84,10 @@ const CreateTranscript = () => {
 
   // Student data
   const [studentData, setStudentData] = useState({
-    full_name: "", // Changed from name
+    full_name: "",
     mother_name: "",
     father_name: "",
-    birth_date: "", // Changed from birthdate
+    birth_date: "",
     birth_place: "",
     birth_state: "BA",
     student_status: "cursando",
@@ -137,24 +138,29 @@ const CreateTranscript = () => {
     shift: "",
   });
 
-  // Observations
-  // const [observations, setObservations] = useState(""); // Moved into studentData
-
   // Store the latest academic year ID for trimester grades (not directly used in this simplified version)
   const [latestAcademicYearId, setLatestAcademicYearId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSchools();
-  }, [profile]);
+  }, [profile, role]);
 
   useEffect(() => {
+    const schoolIdFromUrl = searchParams.get('schoolId');
+    if (schoolIdFromUrl) {
+      setSelectedSchoolId(schoolIdFromUrl);
+    }
+
     if (id) {
       loadTranscriptData();
-    } else if (schools.length > 0 && profile?.school_id) {
-      setSelectedSchoolId(profile.school_id);
-      updateAcademicYearsSchoolInfo(profile.school_id);
+    } else if (schools.length > 0 && (schoolIdFromUrl || profile?.school_id)) {
+      const initialSchool = schoolIdFromUrl || profile?.school_id;
+      if (initialSchool) {
+        setSelectedSchoolId(initialSchool);
+        updateAcademicYearsSchoolInfo(initialSchool);
+      }
     }
-  }, [id, schools, profile]);
+  }, [id, schools, profile, searchParams]);
 
   const fetchSchools = async () => {
     try {
@@ -194,11 +200,74 @@ const CreateTranscript = () => {
     }
   };
 
+  const updateWorkloadsFromDatabase = async () => {
+    try {
+      for (const year of academicYears) {
+        const { data, error } = await supabase
+          .from("workload_configurations")
+          .select("*")
+          .eq("grade_level", year.grade_level)
+          .eq("academic_year", year.calendar_year);
+
+        if (error) {
+          console.error("Error loading workload:", error);
+          continue;
+        }
+
+        if (data && data.length > 0) {
+          setYearGrades(prevGrades => {
+            const updatedGrades = { ...prevGrades };
+            const level = year.grade_level;
+            
+            if (updatedGrades[level]) {
+              updatedGrades[level] = updatedGrades[level].map(grade => {
+                const dbConfig = data.find(d => d.subject_name === grade.subject_name);
+                if (dbConfig) {
+                  return {
+                    ...grade,
+                    workload: dbConfig.workload.toString(),
+                  };
+                }
+                return grade;
+              });
+            }
+            
+            return updatedGrades;
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error("Error updating workloads from database:", error);
+    }
+  };
+
+  useEffect(() => {
+    updateWorkloadsFromDatabase();
+    
+    const channel = supabase
+      .channel('workload-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workload_configurations'
+        },
+        () => {
+          updateWorkloadsFromDatabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [academicYears]);
+
   const loadTranscriptData = async () => {
     try {
       setLoadingData(true);
 
-      // Fetch student data
       const { data: student, error: studentError } = await supabase
         .from("students")
         .select("*")
@@ -220,7 +289,6 @@ const CreateTranscript = () => {
       });
       setSelectedSchoolId(student.school_id);
 
-      // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
         .select("*")
@@ -247,7 +315,6 @@ const CreateTranscript = () => {
           }))
         );
 
-        // Fetch annual grades
         const loadedYearGrades: { [key: string]: Grade[] } = {};
         
         for (const year of yearsData) {

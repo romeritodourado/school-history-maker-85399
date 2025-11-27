@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster as Sonner } => "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
@@ -63,7 +63,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/municipal-dashboard/:municipalityId" element={
-              <ProtectedRoute requiredRoles={['super_admin']}>
+              <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager']}>
                 <MunicipalDashboard />
               </ProtectedRoute>
             } />

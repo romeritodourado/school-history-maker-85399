@@ -28,28 +28,41 @@ interface SchoolOption {
 
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
-  const { municipalityId } = useParams<{ municipalityId: string }>();
-  const { role, setActiveMunicipalityIdForSuperAdmin } = useAuth();
+  const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
+  const { role, profile, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const { toast } = useToast();
 
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
-  const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+
+  const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
   useEffect(() => {
-    if (role !== 'super_admin' || !municipalityId) {
-      navigate('/'); // Redirect if not super_admin or no municipalityId
+    if (!currentMunicipalityId) {
+      toast({
+        title: 'Erro de acesso',
+        description: 'ID da rede municipal não encontrado. Redirecionando.',
+        variant: 'destructive',
+      });
+      navigate('/');
       return;
     }
-    fetchMunicipalityDetails();
-    fetchSchoolsForMunicipality();
-  }, [municipalityId, role, navigate]);
 
-  const fetchMunicipalityDetails = async () => {
+    if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
+      navigate('/'); // Redirect if not authorized for this dashboard
+      return;
+    }
+
+    fetchMunicipalityDetails(currentMunicipalityId);
+    fetchSchoolsForMunicipality(currentMunicipalityId);
+  }, [currentMunicipalityId, role, navigate]);
+
+  const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
       .from('municipalities')
       .select('name')
-      .eq('id', municipalityId)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -64,11 +77,11 @@ export default function MunicipalDashboard() {
     setMunicipalityName(data?.name || 'Rede Municipal Desconhecida');
   };
 
-  const fetchSchoolsForMunicipality = async () => {
+  const fetchSchoolsForMunicipality = async (id: string) => {
     const { data, error } = await supabase
       .from('schools')
       .select('id, name')
-      .eq('municipality_id', municipalityId)
+      .eq('municipality_id', id)
       .order('name');
 
     if (error) {
@@ -142,10 +155,12 @@ export default function MunicipalDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleBackToSuperAdminDashboard}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar para Super Admin
-            </Button>
+            {role === 'super_admin' && (
+              <Button variant="outline" onClick={handleBackToSuperAdminDashboard}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar para Super Admin
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -165,8 +180,8 @@ export default function MunicipalDashboard() {
             <div className="space-y-2">
               <Label htmlFor="select-school">Escola</Label>
               <Select
-                value={activeSchoolId || ""}
-                onValueChange={(value) => setActiveSchoolId(value)}
+                value={selectedSchoolId || ""}
+                onValueChange={(value) => setSelectedSchoolId(value)}
               >
                 <SelectTrigger className="w-full md:w-[300px]">
                   <SelectValue placeholder="Selecione uma escola" />
@@ -186,14 +201,22 @@ export default function MunicipalDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => {
             const Icon = card.icon;
-            const isDisabled = card.requiresSchool && !activeSchoolId;
-            const tooltipText = card.requiresSchool && !activeSchoolId ? "Selecione uma escola para habilitar" : "";
+            const isDisabled = card.requiresSchool && !selectedSchoolId;
+            const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
+
+            let cardPath = card.path;
+            if (card.requiresSchool && selectedSchoolId) {
+              cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
+            } else if (!card.requiresSchool && currentMunicipalityId) {
+              // For non-school specific actions, pass municipalityId if applicable
+              cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
+            }
 
             return (
               <Card 
                 key={card.path}
                 className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isDisabled && navigate(card.path)}
+                onClick={() => !isDisabled && navigate(cardPath)}
                 title={tooltipText}
               >
                 <CardHeader>

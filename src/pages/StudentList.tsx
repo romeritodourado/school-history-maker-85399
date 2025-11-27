@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,10 +33,12 @@ const StudentList = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { role: currentUserRole, profile: currentUserProfile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const schoolIdFromUrl = searchParams.get('schoolId');
 
   useEffect(() => {
     fetchStudents();
-  }, [currentUserRole, currentUserProfile]);
+  }, [currentUserRole, currentUserProfile, schoolIdFromUrl]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -71,7 +73,9 @@ const StudentList = () => {
         `)
         .order("full_name");
 
-      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
+      if (schoolIdFromUrl) {
+        query = query.eq('school_id', schoolIdFromUrl);
+      } else if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
       } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') {
         query = query.eq('school_id', currentUserProfile?.school_id);
