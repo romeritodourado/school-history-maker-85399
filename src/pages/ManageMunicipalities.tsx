@@ -27,24 +27,25 @@ interface Municipality {
   name: string;
   cnpj: string | null;
   emblem_url: string | null;
-  address: string | null; // Adicionado o campo address
+  address: string | null;
   created_at: string;
 }
 
 const ManageMunicipalities = () => {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true); // Renomeado para pageLoading
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMunicipality, setEditingMunicipality] = useState<Municipality | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
     emblem_url: '',
-    address: '', // Adicionado ao formData
+    address: '',
   });
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Novo estado para submissão do formulário
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const navigate = useNavigate();
@@ -55,26 +56,30 @@ const ManageMunicipalities = () => {
   }, []);
 
   const fetchMunicipalities = async () => {
-    console.log('Fetching municipalities...');
+    console.log('fetchMunicipalities: Iniciando busca de redes municipais...');
+    setPageLoading(true);
     try {
       const { data, error } = await supabase
         .from('municipalities')
         .select('*')
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('fetchMunicipalities: Erro do Supabase:', error);
+        throw error;
+      }
       setMunicipalities(data || []);
-      console.log('Municipalities fetched successfully:', data);
+      console.log('fetchMunicipalities: Redes municipais buscadas com sucesso:', data);
     } catch (error) {
-      console.error('Error fetching municipalities:', error);
+      console.error('fetchMunicipalities: Erro no bloco catch:', error);
       toast({
         title: 'Erro ao carregar redes municipais',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
-      console.log('Finished fetching municipalities, loading set to false.');
+      setPageLoading(false);
+      console.log('fetchMunicipalities: Finalizado, pageLoading definido como false.');
     }
   };
 
@@ -89,7 +94,7 @@ const ManageMunicipalities = () => {
   const uploadEmblem = async (file: File) => {
     setUploading(true);
     setUploadProgress(0);
-    setFormData(prev => ({ ...prev, emblem_url: '' })); // Clear previous URL during upload
+    setFormData(prev => ({ ...prev, emblem_url: '' }));
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
@@ -144,63 +149,64 @@ const ManageMunicipalities = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    console.log('handleSubmit: Attempting to save municipality. Current formData:', formData);
-    console.log('handleSubmit: Editing municipality:', editingMunicipality);
+    setIsSubmitting(true); // Inicia o estado de submissão
+    console.log('handleSubmit: Iniciando submissão do formulário.');
 
     try {
+      console.log('handleSubmit: Validando dados do formulário...');
       municipalitySchema.parse(formData);
-      console.log('handleSubmit: Form data validated successfully.');
+      console.log('handleSubmit: Dados do formulário validados com sucesso.');
 
       if (editingMunicipality) {
-        console.log('handleSubmit: Updating existing municipality with ID:', editingMunicipality.id);
+        console.log('handleSubmit: Atualizando rede municipal existente com ID:', editingMunicipality.id);
         const { data, error, count } = await supabase
           .from('municipalities')
           .update(formData)
           .eq('id', editingMunicipality.id)
-          .select(); // Adiciona .select() para obter os dados atualizados e o count
+          .select();
 
         if (error) {
-          console.error('handleSubmit: Supabase update error:', error);
+          console.error('handleSubmit: Erro de atualização do Supabase:', error);
           throw error;
         }
 
         if (!data || data.length === 0) {
-          console.warn('handleSubmit: Supabase update did not affect any rows. Data:', data, 'Count:', count);
-          // This could indicate RLS issues or that the data was identical
+          console.warn('handleSubmit: A atualização do Supabase não afetou nenhuma linha. Dados:', data, 'Count:', count);
           toast({
             title: 'Aviso',
             description: 'Nenhuma alteração foi salva ou a rede municipal não foi encontrada. Verifique as permissões.',
-            variant: 'default', // Pode ser 'default' ou 'warning'
+            variant: 'default',
           });
         } else {
           toast({ title: 'Rede municipal atualizada com sucesso!' });
-          console.log('handleSubmit: Municipality updated successfully. Data:', data);
+          console.log('handleSubmit: Rede municipal atualizada com sucesso. Dados:', data);
         }
       } else {
+        console.log('handleSubmit: Tentativa de criar rede municipal no diálogo de edição. Isso não deveria acontecer.');
         toast({
           title: 'Erro',
           description: 'Funcionalidade de criação não disponível aqui. Use a página de configuração inicial.',
           variant: 'destructive',
         });
-        return;
+        return; 
       }
 
-      // Recarrega a lista e fecha o diálogo
+      console.log('handleSubmit: Chamando fetchMunicipalities para atualizar a lista...');
       await fetchMunicipalities(); 
-      setDialogOpen(false);
-      resetForm(); // Resetar o formulário após o fechamento do diálogo
-      console.log('handleSubmit: Dialog closed and form reset.');
+      console.log('handleSubmit: fetchMunicipalities concluído. Tentando fechar o diálogo...');
+      setDialogOpen(false); 
+      resetForm(); 
+      console.log('handleSubmit: Diálogo fechado e formulário resetado.');
     } catch (error) {
-      console.error('handleSubmit: Error during municipality save:', error);
+      console.error('handleSubmit: Erro no bloco catch:', error);
       toast({
         title: 'Erro ao salvar rede municipal',
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
-      console.log('handleSubmit: Loading state reset to false.');
+      setIsSubmitting(false); // Finaliza o estado de submissão
+      console.log('handleSubmit: Submissão finalizada, isSubmitting definido como false.');
     }
   };
 
@@ -257,7 +263,7 @@ const ManageMunicipalities = () => {
       name: municipality.name,
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
-      address: municipality.address || '', // Carregar address
+      address: municipality.address || '',
     });
     setEmblemFile(null);
     setDialogOpen(true);
@@ -268,7 +274,7 @@ const ManageMunicipalities = () => {
       name: '',
       cnpj: '',
       emblem_url: '',
-      address: '', // Resetar address
+      address: '',
     });
     setEmblemFile(null);
     if (fileInputRef.current) {
@@ -298,7 +304,7 @@ const ManageMunicipalities = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {loading ? (
+        {pageLoading ? (
           <div className="text-center text-muted-foreground">Carregando redes municipais...</div>
         ) : municipalities.length === 0 ? (
           <Card>
@@ -341,7 +347,7 @@ const ManageMunicipalities = () => {
                         CNPJ: {municipality.cnpj}
                       </p>
                     )}
-                    {municipality.address && ( // Exibir address
+                    {municipality.address && (
                       <p className="text-muted-foreground">
                         Endereço: {municipality.address}
                       </p>
@@ -367,7 +373,7 @@ const ManageMunicipalities = () => {
         setDialogOpen(open);
         if (!open) {
           resetForm();
-          fetchMunicipalities(); // Recarrega a lista após o diálogo fechar
+          fetchMunicipalities();
         }
       }}>
         <DialogContent>
@@ -400,7 +406,7 @@ const ManageMunicipalities = () => {
               />
             </div>
             <div>
-              <Label htmlFor="address">Endereço</Label> {/* Campo de endereço no formulário de edição */}
+              <Label htmlFor="address">Endereço</Label>
               <Input
                 id="address"
                 value={formData.address}
@@ -418,10 +424,10 @@ const ManageMunicipalities = () => {
                   onChange={handleFileChange}
                   ref={fileInputRef}
                   className="flex-1"
-                  disabled={uploading}
+                  disabled={uploading || isSubmitting}
                 />
                 {(formData.emblem_url || emblemFile) && (
-                  <Button variant="destructive" size="icon" onClick={removeEmblem} disabled={uploading}>
+                  <Button variant="destructive" size="icon" onClick={removeEmblem} disabled={uploading || isSubmitting}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -440,11 +446,18 @@ const ManageMunicipalities = () => {
               </p>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={uploading}>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={uploading || isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading || uploading}>
-                {editingMunicipality ? 'Atualizar' : 'Criar'}
+              <Button type="submit" disabled={pageLoading || uploading || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editingMunicipality ? 'Atualizando...' : 'Criando...'}
+                  </>
+                ) : (
+                  editingMunicipality ? 'Atualizar' : 'Criar'
+                )}
               </Button>
             </div>
           </form>
