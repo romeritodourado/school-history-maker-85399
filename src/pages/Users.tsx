@@ -49,7 +49,8 @@ export default function Users() {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial data fetch
+  const [isSubmitting, setIsSubmitting] = useState(false); // For form submission
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
@@ -154,6 +155,7 @@ export default function Users() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     try {
       signupSchema.parse({ email: formData.email, password: formData.password, name: formData.name });
@@ -179,11 +181,14 @@ export default function Users() {
         description: error instanceof z.ZodError ? error.errors[0].message : error instanceof Error ? error.message : 'Erro desconhecido',
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     if (!editingUser) return;
 
     try {
@@ -216,6 +221,8 @@ export default function Users() {
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -407,11 +414,18 @@ export default function Users() {
                   </div>
                 )}
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
-                  <Button type="submit">
-                    {editingUser ? 'Atualizar' : 'Criar'}
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {editingUser ? 'Atualizando...' : 'Criando...'}
+                      </>
+                    ) : (
+                      editingUser ? 'Atualizar' : 'Criar'
+                    )}
                   </Button>
                 </div>
               </form>
