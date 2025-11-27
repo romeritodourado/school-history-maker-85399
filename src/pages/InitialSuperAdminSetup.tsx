@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,32 +17,63 @@ export default function InitialSuperAdminSetup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Para submissão do formulário
+  const [pageLoading, setPageLoading] = useState(true); // Para verificações iniciais
   const [superAdminExists, setSuperAdminExists] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp } = useAuth();
+  const { signUp, user, loading: authLoading, role } = useAuth(); // Obter estado de autenticação
 
   useEffect(() => {
-    checkSuperAdminStatus();
-  }, []);
+    const checkSetupStatus = async () => {
+      if (authLoading) {
+        // Ainda carregando o estado de autenticação, aguardar
+        return;
+      }
 
-  const checkSuperAdminStatus = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'super_admin')
-      .limit(1);
+      if (user) {
+        // Usuário já está logado, redirecionar para o dashboard
+        toast({
+          title: 'Você já está logado',
+          description: 'Redirecionando para o dashboard.',
+        });
+        navigate('/', { replace: true });
+        return;
+      }
 
-    if (data && data.length > 0) {
-      setSuperAdminExists(true);
-      toast({
-        title: 'Super Administrador já existe',
-        description: 'Redirecionando para o login.',
-      });
-      navigate('/login');
-    }
-  };
+      // Nenhum usuário logado, verificar se um super admin existe no DB
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'super_admin')
+        .limit(1);
+
+      if (error) {
+        console.error('Erro ao verificar status do super admin:', error);
+        toast({
+          title: 'Erro ao verificar status do sistema',
+          description: 'Não foi possível determinar se um Super Administrador já existe.',
+          variant: 'destructive',
+        });
+        setPageLoading(false);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setSuperAdminExists(true);
+        toast({
+          title: 'Super Administrador já existe',
+          description: 'Redirecionando para o login.',
+        });
+        navigate('/login', { replace: true });
+      } else {
+        setSuperAdminExists(false); // Explicitamente definir como false se não encontrado
+      }
+      setPageLoading(false);
+    };
+
+    checkSetupStatus();
+  }, [authLoading, user, navigate, toast]); // Depender de authLoading e user
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,13 +103,19 @@ export default function InitialSuperAdminSetup() {
     }
   };
 
-  if (superAdminExists) {
+  if (pageLoading || authLoading) { // Mostrar carregando se a página estiver verificando ou a autenticação estiver carregando
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Verificando status do Super Administrador...</p>
+        <p className="ml-2">Verificando status do sistema...</p>
       </div>
     );
+  }
+
+  // Se superAdminExists for true, já deveríamos ter redirecionado.
+  // Esta condição idealmente não deve ser alcançada se os redirecionamentos funcionarem.
+  if (superAdminExists) {
+    return null; // Ou um fallback, mas o redirecionamento deve lidar com isso
   }
 
   return (
