@@ -11,7 +11,8 @@ import {
   ArrowLeft,
   Building2,
   ShieldCheck,
-  Info
+  Info,
+  Loader2 // Adicionado Loader2 aqui
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
