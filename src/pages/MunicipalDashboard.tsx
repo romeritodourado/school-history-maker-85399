@@ -49,6 +49,7 @@ interface MunicipalityDetails {
   name: string;
   cnpj: string | null;
   emblem_url: string | null;
+  address: string | null; // Adicionado o campo address
 }
 
 export default function MunicipalDashboard() {
@@ -97,7 +98,7 @@ export default function MunicipalDashboard() {
   const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
       .from('municipalities')
-      .select('id, name, cnpj, emblem_url')
+      .select('id, name, cnpj, emblem_url, address') // Incluído 'address' na seleção
       .eq('id', id)
       .single();
 
@@ -284,6 +285,9 @@ export default function MunicipalDashboard() {
             <CardContent className="space-y-2 text-sm">
               {municipalityDetails.cnpj && (
                 <p><span className="font-semibold">CNPJ:</span> {municipalityDetails.cnpj}</p>
+              )}
+              {municipalityDetails.address && ( // Exibindo o endereço
+                <p><span className="font-semibold">Endereço:</span> {municipalityDetails.address}</p>
               )}
             </CardContent>
           </Card>
