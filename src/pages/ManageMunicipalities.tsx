@@ -19,6 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { z } from 'zod';
 import { municipalitySchema } from '@/lib/validationSchemas';
 import correctLogo from "/correct-logo.png";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
 
@@ -28,10 +29,22 @@ interface Municipality {
   cnpj: string | null;
   emblem_url: string | null;
   address: string | null;
-  city: string | null; // Adicionado
-  state: string | null; // Adicionado
+  city: string | null;
+  state: string | null;
   created_at: string;
 }
+
+const CITIES = [
+  "Luís Eduardo Magalhães",
+  "Salvador",
+  "Feira de Santana",
+  "Vitória da Conquista",
+  "Barreiras",
+  "São Paulo",
+  "Rio de Janeiro",
+  "Brasília",
+  "Outra" // Opção para digitar caso a cidade não esteja na lista
+];
 
 const ManageMunicipalities = () => {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
@@ -43,14 +56,15 @@ const ManageMunicipalities = () => {
     cnpj: '',
     emblem_url: '',
     address: '',
-    city: '', // Adicionado
-    state: '', // Adicionado
+    city: '',
+    state: '',
   });
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Novo estado para input de cidade personalizada
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -195,13 +209,12 @@ const ManageMunicipalities = () => {
         return; 
       }
 
-      // Mover estas linhas para aqui para feedback imediato da UI
       console.log('handleSubmit: Tentando fechar o diálogo e resetar o formulário.');
       setDialogOpen(false); 
       resetForm(); 
       console.log('handleSubmit: Diálogo fechado e formulário resetado. Agora buscando redes municipais...');
 
-      await fetchMunicipalities(); // Buscar redes municipais após a atualização da UI
+      await fetchMunicipalities();
       console.log('handleSubmit: fetchMunicipalities concluído.');
 
     } catch (error) {
@@ -271,10 +284,11 @@ const ManageMunicipalities = () => {
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
       address: municipality.address || '',
-      city: municipality.city || '', // Adicionado
-      state: municipality.state || '', // Adicionado
+      city: municipality.city || '',
+      state: municipality.state || '',
     });
     setEmblemFile(null);
+    setShowCustomCityInput(municipality.city ? !CITIES.includes(municipality.city) : false); // Define se o input customizado deve ser mostrado
     setDialogOpen(true);
   };
 
@@ -284,14 +298,15 @@ const ManageMunicipalities = () => {
       cnpj: '',
       emblem_url: '',
       address: '',
-      city: '', // Adicionado
-      state: '', // Adicionado
+      city: '',
+      state: '',
     });
     setEmblemFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     setEditingMunicipality(null);
+    setShowCustomCityInput(false);
   };
 
   return (
@@ -363,7 +378,7 @@ const ManageMunicipalities = () => {
                         Endereço: {municipality.address}
                       </p>
                     )}
-                    {municipality.city && municipality.state && ( // Exibindo cidade e estado
+                    {municipality.city && municipality.state && (
                       <p className="text-muted-foreground">
                         Localização: {municipality.city} - {municipality.state}
                       </p>
@@ -430,16 +445,37 @@ const ManageMunicipalities = () => {
                 placeholder="Ex: Rua das Flores, 123, Centro"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4"> {/* Campos de cidade e estado no formulário de edição */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="city">Cidade *</Label>
-                <Input
-                  id="city"
+                <Select
                   value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  placeholder="Ex: Luís Eduardo Magalhães"
-                  required
-                />
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, city: value });
+                    setShowCustomCityInput(value === "Outra");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a cidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CITIES.map((cityName) => (
+                      <SelectItem key={cityName} value={cityName}>
+                        {cityName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {showCustomCityInput && (
+                  <Input
+                    id="customCity"
+                    value={formData.city !== "Outra" ? formData.city : ""}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Digite o nome da cidade"
+                    className="mt-2"
+                    required
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">Estado (UF) *</Label>

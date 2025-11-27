@@ -11,20 +11,34 @@ import { z } from 'zod';
 import { municipalitySchema, signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+
+const CITIES = [
+  "Luís Eduardo Magalhães",
+  "Salvador",
+  "Feira de Santana",
+  "Vitória da Conquista",
+  "Barreiras",
+  "São Paulo",
+  "Rio de Janeiro",
+  "Brasília",
+  "Outra" // Opção para digitar caso a cidade não esteja na lista
+];
 
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState(''); // Novo estado para cidade
-  const [state, setState] = useState(''); // Novo estado para estado
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploadedEmblemUrl, setUploadedEmblemUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Novo estado para input de cidade personalizada
 
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -122,7 +136,7 @@ const MunicipalNetworkSetup = () => {
     try {
       // 1. Validate municipality data
       console.log('Validando dados da rede municipal...');
-      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address, city, state }); // Incluir city e state
+      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address, city, state });
       console.log('Dados da rede municipal validados.');
 
       // 2. Validate admin user data
@@ -134,7 +148,7 @@ const MunicipalNetworkSetup = () => {
       console.log('Criando rede municipal no Supabase...');
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
-        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address, city, state }]) // Incluir city e state
+        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address, city, state }])
         .select()
         .single();
 
@@ -150,7 +164,7 @@ const MunicipalNetworkSetup = () => {
         adminEmail,
         adminPassword,
         adminName,
-        'municipal_secretary', // Assigning municipal_secretary role
+        'municipal_secretary',
         municipalityData.id
       );
 
@@ -263,16 +277,37 @@ const MunicipalNetworkSetup = () => {
                   placeholder="Ex: Rua das Flores, 123, Centro"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4"> {/* Novos campos de cidade e estado */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade *</Label>
-                  <Input
-                    id="city"
+                  <Select
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Ex: Luís Eduardo Magalhães"
-                    required
-                  />
+                    onValueChange={(value) => {
+                      setCity(value);
+                      setShowCustomCityInput(value === "Outra");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CITIES.map((cityName) => (
+                        <SelectItem key={cityName} value={cityName}>
+                          {cityName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {showCustomCityInput && (
+                    <Input
+                      id="customCity"
+                      value={city !== "Outra" ? city : ""} // Limpa o input se a opção não for "Outra"
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Digite o nome da cidade"
+                      className="mt-2"
+                      required
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">Estado (UF) *</Label>
