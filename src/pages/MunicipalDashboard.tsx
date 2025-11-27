@@ -12,7 +12,10 @@ import {
   Building2,
   ShieldCheck,
   Info,
-  Loader2 // Adicionado Loader2 aqui
+  Loader2,
+  LogOut, // Importar LogOut
+  Settings, // Importar Settings
+  User as UserIcon // Importar UserIcon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,13 +34,13 @@ interface SchoolOption {
 export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
-  const { role, profile, setActiveMunicipalityIdForSuperAdmin } = useAuth();
+  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin } = useAuth(); // Adicionado user e signOut
   const { toast } = useToast();
 
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [loadingSchools, setLoadingSchools] = useState(true); // Novo estado para carregamento de escolas
+  const [loadingSchools, setLoadingSchools] = useState(true);
 
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
@@ -115,6 +118,19 @@ export default function MunicipalDashboard() {
     navigate('/');
   };
 
+  const getRoleLabel = (role: AppRole | null) => {
+    if (!role) return 'N/A';
+    const labels: Record<AppRole, string> = {
+      super_admin: 'Super Administrador',
+      municipal_secretary: 'Secretário(a) Municipal',
+      network_manager: 'Gerente de Estatísticas',
+      school_admin: 'Diretor Escolar',
+      secretary: 'Secretário(a) Escolar',
+      assistente_administrativo: 'Assistente Administrativo',
+    };
+    return labels[role] || role;
+  };
+
   const cards = [
     {
       title: 'Novo Histórico',
@@ -174,6 +190,22 @@ export default function MunicipalDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {user && (
+              <>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <UserIcon className="h-4 w-4" />
+                  Olá, <span className="font-medium">{profile?.name || user.email}</span> (<span className="font-medium">{getRoleLabel(role)}</span>)
+                </div>
+                <Button variant="outline" onClick={() => navigate('/account-settings')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurações da Conta
+                </Button>
+                <Button variant="outline" onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair
+                </Button>
+              </>
+            )}
             {role === 'super_admin' && (
               <Button variant="outline" onClick={handleBackToSuperAdminDashboard}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
