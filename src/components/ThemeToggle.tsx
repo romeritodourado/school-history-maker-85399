@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Check } from "lucide-react"; // Importar Check icon
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme(); // Obter o tema atual para depuração
-  
+  const { setTheme, theme } = useTheme(); // Obter o tema atual
+
   React.useEffect(() => {
     console.log("ThemeToggle montado. Tema atual:", theme);
     console.log("Função setTheme:", setTheme);
@@ -31,13 +31,19 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => { console.log("Definindo tema para light"); setTheme("light"); }}>
-          Claro
+          <span className="flex items-center justify-between w-full">
+            Claro {theme === "light" && <Check className="h-4 w-4" />}
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => { console.log("Definindo tema para dark"); setTheme("dark"); }}>
-          Escuro
+          <span className="flex items-center justify-between w-full">
+            Escuro {theme === "dark" && <Check className="h-4 w-4" />}
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => { console.log("Definindo tema para system"); setTheme("system"); }}>
-          Sistema
+          <span className="flex items-center justify-between w-full">
+            Sistema {theme === "system" && <Check className="h-4 w-4" />}
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
