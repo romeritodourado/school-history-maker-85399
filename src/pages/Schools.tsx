@@ -63,7 +63,6 @@ export default function Schools() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
-  // Removido refs para decreto e diário oficial, pois não são mais uploads
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -302,7 +301,6 @@ export default function Schools() {
     });
     setEditingSchool(null);
     if (logoFileInputRef.current) logoFileInputRef.current.value = '';
-    // Removido reset para refs de decreto e diário oficial
   };
 
   return (
@@ -331,7 +329,7 @@ export default function Schools() {
                   Nova Escola
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"> {/* Adicionado max-h e overflow-y-auto */}
                 <DialogHeader>
                   <DialogTitle>
                     {editingSchool ? 'Editar Escola' : 'Nova Escola'}
@@ -429,6 +427,12 @@ export default function Schools() {
                       )}
                     </div>
                     {uploading && <Progress value={uploadProgress} className="w-full mt-2" />}
+                    {/* Mensagem de erro para upload da logo */}
+                    {!uploading && logoFileInputRef.current?.files?.[0] && !formData.logo_url && (
+                      <p className="text-sm text-destructive mt-2">
+                        Erro ao carregar a logo. Verifique as permissões do bucket 'school_assets' no Supabase.
+                      </p>
+                    )}
                     {formData.logo_url && (
                       <div className="mt-2 flex items-center space-x-2">
                         <img src={formData.logo_url} alt="Logo da Escola" className="h-10 w-10 object-contain border rounded-md" />
