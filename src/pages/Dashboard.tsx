@@ -11,7 +11,8 @@ import {
   UserCog,
   LogOut,
   Settings,
-  User as UserIcon
+  User as UserIcon,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
@@ -34,10 +35,15 @@ export default function Dashboard() {
   const [hasMunicipalities, setHasMunicipalities] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && role === 'super_admin') {
-      fetchMunicipalities();
+    if (!loading && user) {
+      if (role === 'super_admin') {
+        fetchMunicipalities();
+      } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
+        // Redirect municipal_secretary or network_manager directly to their municipal dashboard
+        navigate(`/municipal-dashboard/${profile.municipality_id}`, { replace: true });
+      }
     }
-  }, [loading, user, role]);
+  }, [loading, user, role, profile, navigate]);
 
   const fetchMunicipalities = async () => {
     const { data, error } = await supabase
@@ -129,6 +135,10 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // If not a super_admin and already redirected, this part won't be reached.
+  // If it's a school_admin, secretary, or assistente_administrativo, they see their specific cards.
+  // If it's a super_admin, they see the municipality selection.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
