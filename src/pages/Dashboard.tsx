@@ -64,6 +64,19 @@ export default function Dashboard() {
     }
   };
 
+  const getRoleLabel = (role: AppRole | null) => {
+    if (!role) return 'N/A';
+    const labels: Record<AppRole, string> = {
+      super_admin: 'Super Administrador',
+      municipal_secretary: 'Secretário(a) Municipal',
+      network_manager: 'Gerente de Estatísticas',
+      school_admin: 'Diretor Escolar',
+      secretary: 'Secretário(a) Escolar',
+      assistente_administrativo: 'Assistente Administrativo',
+    };
+    return labels[role] || role;
+  };
+
   const cards = [
     {
       title: 'Novo Histórico',
@@ -135,7 +148,7 @@ export default function Dashboard() {
               <>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <UserIcon className="h-4 w-4" />
-                  Olá, <span className="font-medium">{profile?.name || user.email}</span> (<span className="font-medium">{role}</span>)
+                  Olá, <span className="font-medium">{profile?.name || user.email}</span> (<span className="font-medium">{getRoleLabel(role)}</span>)
                 </div>
                 <Button variant="outline" onClick={() => navigate('/account-settings')}>
                   <Settings className="h-4 w-4 mr-2" />
