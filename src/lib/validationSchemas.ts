@@ -115,14 +115,18 @@ export const schoolSchema = z.object({
     .optional()
     .or(z.literal('')),
   
-  city: z.string()
+  city: z.string() // Adicionado
     .trim()
     .min(2, 'Cidade deve ter pelo menos 2 caracteres')
-    .max(100, 'Cidade deve ter no máximo 100 caracteres'),
+    .max(100, 'Cidade deve ter no máximo 100 caracteres')
+    .optional()
+    .or(z.literal('')),
   
-  state: z.string()
+  state: z.string() // Adicionado
     .length(2, 'Estado deve ter 2 caracteres')
-    .regex(/^[A-Z]{2}$/, 'Estado deve ser uma sigla válida (ex: BA)'),
+    .regex(/^[A-Z]{2}$/, 'Estado deve ser uma sigla válida (ex: BA)')
+    .optional()
+    .or(z.literal('')),
   
   logo_url: z.string()
     .url('URL da logo inválida')
@@ -191,6 +195,15 @@ export const municipalitySchema = z.object({
     .max(200, 'Endereço deve ter no máximo 200 caracteres')
     .optional()
     .or(z.literal('')),
+  
+  city: z.string() // Adicionado
+    .trim()
+    .min(2, 'Cidade deve ter pelo menos 2 caracteres')
+    .max(100, 'Cidade deve ter no máximo 100 caracteres'),
+  
+  state: z.string() // Adicionado
+    .length(2, 'Estado deve ter 2 caracteres')
+    .regex(/^[A-Z]{2}$/, 'Estado deve ser uma sigla válida (ex: BA)'),
 });
 
 // Password change schema

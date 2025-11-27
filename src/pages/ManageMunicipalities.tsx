@@ -28,6 +28,8 @@ interface Municipality {
   cnpj: string | null;
   emblem_url: string | null;
   address: string | null;
+  city: string | null; // Adicionado
+  state: string | null; // Adicionado
   created_at: string;
 }
 
@@ -41,6 +43,8 @@ const ManageMunicipalities = () => {
     cnpj: '',
     emblem_url: '',
     address: '',
+    city: '', // Adicionado
+    state: '', // Adicionado
   });
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -267,6 +271,8 @@ const ManageMunicipalities = () => {
       cnpj: municipality.cnpj || '',
       emblem_url: municipality.emblem_url || '',
       address: municipality.address || '',
+      city: municipality.city || '', // Adicionado
+      state: municipality.state || '', // Adicionado
     });
     setEmblemFile(null);
     setDialogOpen(true);
@@ -278,6 +284,8 @@ const ManageMunicipalities = () => {
       cnpj: '',
       emblem_url: '',
       address: '',
+      city: '', // Adicionado
+      state: '', // Adicionado
     });
     setEmblemFile(null);
     if (fileInputRef.current) {
@@ -355,6 +363,11 @@ const ManageMunicipalities = () => {
                         Endereço: {municipality.address}
                       </p>
                     )}
+                    {municipality.city && municipality.state && ( // Exibindo cidade e estado
+                      <p className="text-muted-foreground">
+                        Localização: {municipality.city} - {municipality.state}
+                      </p>
+                    )}
                     {municipality.emblem_url && (
                       <div className="flex items-center gap-2">
                         <img src={municipality.emblem_url} alt="Brasão" className="h-8 w-8 object-contain" />
@@ -416,6 +429,29 @@ const ManageMunicipalities = () => {
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Ex: Rua das Flores, 123, Centro"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4"> {/* Campos de cidade e estado no formulário de edição */}
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade *</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Ex: Luís Eduardo Magalhães"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">Estado (UF) *</Label>
+                <Input
+                  id="state"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  placeholder="Ex: BA"
+                  maxLength={2}
+                  required
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="emblemFile">Brasão/Logo da Rede Municipal</Label>

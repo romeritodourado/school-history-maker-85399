@@ -17,7 +17,9 @@ type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'scho
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
   const [cnpj, setCnpj] = useState('');
-  const [address, setAddress] = useState(''); // Novo estado para o endereço
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState(''); // Novo estado para cidade
+  const [state, setState] = useState(''); // Novo estado para estado
   const [emblemFile, setEmblemFile] = useState<File | null>(null);
   const [uploadedEmblemUrl, setUploadedEmblemUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -120,7 +122,7 @@ const MunicipalNetworkSetup = () => {
     try {
       // 1. Validate municipality data
       console.log('Validando dados da rede municipal...');
-      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address }); // Incluir address
+      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address, city, state }); // Incluir city e state
       console.log('Dados da rede municipal validados.');
 
       // 2. Validate admin user data
@@ -132,7 +134,7 @@ const MunicipalNetworkSetup = () => {
       console.log('Criando rede municipal no Supabase...');
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
-        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address }]) // Incluir address
+        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address, city, state }]) // Incluir city e state
         .select()
         .single();
 
@@ -253,13 +255,36 @@ const MunicipalNetworkSetup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address">Endereço</Label> {/* Novo campo de endereço */}
+                <Label htmlFor="address">Endereço</Label>
                 <Input
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Ex: Rua das Flores, 123, Centro"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4"> {/* Novos campos de cidade e estado */}
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade *</Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Ex: Luís Eduardo Magalhães"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">Estado (UF) *</Label>
+                  <Input
+                    id="state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="Ex: BA"
+                    maxLength={2}
+                    required
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="emblemFile">Brasão/Logo da Rede Municipal</Label>

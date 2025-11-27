@@ -171,6 +171,8 @@ export type Database = {
           emblem_url: string | null
           id: string
           name: string
+          city: string | null // Adicionado
+          state: string | null // Adicionado
         }
         Insert: {
           address?: string | null
@@ -179,6 +181,8 @@ export type Database = {
           emblem_url?: string | null
           id?: string
           name: string
+          city?: string | null // Adicionado
+          state?: string | null // Adicionado
         }
         Update: {
           address?: string | null
@@ -187,6 +191,8 @@ export type Database = {
           emblem_url?: string | null
           id?: string
           name?: string
+          city?: string | null // Adicionado
+          state?: string | null // Adicionado
         }
         Relationships: []
       }
@@ -576,9 +582,9 @@ export type Enums<
     | keyof PublicSchema["Enums"]
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
+> = PublicTableNameOrOptions extends { schema: keyof Database }
   ? Database[PublicTableNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicTableNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicTableNameOrOptions]

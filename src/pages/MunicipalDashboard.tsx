@@ -50,6 +50,8 @@ interface MunicipalityDetails {
   cnpj: string | null;
   emblem_url: string | null;
   address: string | null;
+  city: string | null; // Adicionado
+  state: string | null; // Adicionado
 }
 
 export default function MunicipalDashboard() {
@@ -98,7 +100,7 @@ export default function MunicipalDashboard() {
   const fetchMunicipalityDetails = async (id: string) => {
     const { data, error } = await supabase
       .from('municipalities')
-      .select('id, name, cnpj, emblem_url, address')
+      .select('id, name, cnpj, emblem_url, address, city, state') // Incluído 'city' e 'state' na seleção
       .eq('id', id)
       .single();
 
@@ -271,15 +273,15 @@ export default function MunicipalDashboard() {
         {municipalityDetails && (
           <Card className="mb-6 border-primary/20 bg-primary/5">
             <CardHeader>
-              <div className="flex items-center gap-4"> {/* Contêiner flexível para logo e detalhes */}
+              <div className="flex items-center gap-4">
                 {municipalityDetails.emblem_url && (
                   <img 
                     src={municipalityDetails.emblem_url} 
                     alt="Brasão da Rede Municipal" 
-                    className="h-20 w-20 object-contain" // Tamanho da logo
+                    className="h-20 w-20 object-contain"
                   />
                 )}
-                <div className="flex-1 space-y-1"> {/* Contêiner para os detalhes textuais */}
+                <div className="flex-1 space-y-1">
                   <CardTitle className="flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
                     {municipalityDetails.name}
@@ -293,10 +295,12 @@ export default function MunicipalDashboard() {
                   {municipalityDetails.address && (
                     <p className="text-sm text-muted-foreground"><span className="font-semibold">Endereço:</span> {municipalityDetails.address}</p>
                   )}
+                  {municipalityDetails.city && municipalityDetails.state && ( // Exibindo cidade e estado
+                    <p className="text-sm text-muted-foreground"><span className="font-semibold">Localização:</span> {municipalityDetails.city} - {municipalityDetails.state}</p>
+                  )}
                 </div>
               </div>
             </CardHeader>
-            {/* CardContent removido pois as informações foram movidas para o CardHeader */}
           </Card>
         )}
 
