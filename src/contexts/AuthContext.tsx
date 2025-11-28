@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       console.log("AuthContext: Profile fetched:", JSON.stringify(profileData));
       setProfile(profileData as Profile);
-      setRole(profileData.role as AppRole);
+      setRole(profileData.role as AppRole); // This line sets the role
       console.log("AuthContext: Role loaded:", profileData.role);
     } catch (error) {
       console.error('AuthContext: Error in fetchUserProfileAndRole:', error);
@@ -70,37 +70,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthContext: Setting up auth state listener...");
+    console.log("AuthContext: Initializing auth state...");
+    const initializeAuth = async () => {
+      setLoading(true); // Ensure loading is true at the start of initialization
 
+      // Fetch initial session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("AuthContext: Error fetching initial session:", sessionError);
+      }
+
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        await fetchUserProfileAndRole(session.user.id);
+      } else {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      }
+      setLoading(false);
+      console.log("AuthContext: Initial auth state fully resolved.");
+    };
+
+    initializeAuth();
+
+    // Set up auth state listener for subsequent changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthContext: onAuthStateChange event:", event, "Session:", session);
-
-        if (session?.user) {
-          setUser(session.user);
-          setSession(session);
-          await fetchUserProfileAndRole(session.user.id); // Aguarda a busca do perfil e role
-        } else {
-          console.log("AuthContext: No session → clearing auth");
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
+        // Only update if the event is not INITIAL_SESSION, as we handled it above
+        // Or if the user object actually changes (e.g., SIGNED_IN, SIGNED_OUT)
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+          if (session?.user) {
+            setUser(session.user);
+            setSession(session);
+            await fetchUserProfileAndRole(session.user.id);
+          } else {
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            setRole(null);
+            setActiveMunicipalityIdForSuperAdmin(null);
+          }
+          setLoading(false); // Ensure loading is false after any state change
         }
-        setLoading(false); // Define loading como false somente após todas as operações assíncronas serem concluídas
-        console.log("AuthContext: AuthContext fully initialized.");
       }
     );
-
-    // A verificação inicial da sessão no montagem do componente é tratada pelo evento INITIAL_SESSION do onAuthStateChange,
-    // então não é necessária uma chamada separada para getSession.
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   // Listener em tempo real para mudanças no perfil (separado do carregamento inicial)
   useEffect(() => {
