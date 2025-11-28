@@ -67,7 +67,11 @@ const App = () => (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
-              <Route path="/municipal-network-setup" element={<MunicipalNetworkSetup />} />
+              <Route path="/municipal-network-setup" element={
+                <ProtectedRoute requiredRoles={['super_admin']}>
+                  <MunicipalNetworkSetup />
+                </ProtectedRoute>
+              } />
               <Route path="/validar" element={<ValidateTranscript />} />
               
               <Route path="/" element={
