@@ -143,52 +143,58 @@ const CreateTranscript = () => {
   // Store the latest academic year ID for trimester grades (not directly used in this simplified version)
   const [latestAcademicYearId, setLatestAcademicYearId] = useState<string | null>(null);
 
+  // Fetch schools based on user role and profile
   useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        let query = supabase
+          .from('schools')
+          .select('id, name, municipality_id, city, state');
+
+        if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
+          query = query.eq('municipality_id', profile.municipality_id);
+        } else if (role === 'school_admin' || role === 'secretary' || role === 'teacher') {
+          query = query.eq('id', profile?.school_id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setSchools(data || []);
+      } catch (error) {
+        console.error('Error fetching schools:', error);
+      }
+    };
     fetchSchools();
   }, [profile, role]);
 
+  // Logic for initial school selection and updating academic years info
   useEffect(() => {
+    if (loadingData) return; // If editing, loadTranscriptData will handle school selection
+
     const schoolIdFromUrl = searchParams.get('schoolId');
+    let resolvedSchoolId: string | null = null;
+
     if (schoolIdFromUrl) {
-      setSelectedSchoolId(schoolIdFromUrl);
+      resolvedSchoolId = schoolIdFromUrl;
+    } else if (profile?.school_id) {
+      resolvedSchoolId = profile.school_id;
+    } else if (schools.length === 1) {
+      resolvedSchoolId = schools[0].id;
     }
 
-    if (id) {
-      loadTranscriptData();
-    } else if (schools.length > 0) {
-      const initialSchoolId = schoolIdFromUrl || profile?.school_id;
-      if (initialSchoolId) {
-        setSelectedSchoolId(initialSchoolId);
-        updateAcademicYearsSchoolInfo(initialSchoolId);
-      } else if (schools.length === 1) {
-        // If only one school is available and no schoolId is pre-selected, select it
-        setSelectedSchoolId(schools[0].id);
-        updateAcademicYearsSchoolInfo(schools[0].id);
-      }
+    // Only update if the resolvedSchoolId is different from the current selectedSchoolId
+    // and if it's a valid school from the fetched list.
+    if (resolvedSchoolId && resolvedSchoolId !== selectedSchoolId && schools.some(s => s.id === resolvedSchoolId)) {
+      setSelectedSchoolId(resolvedSchoolId);
+      updateAcademicYearsSchoolInfo(resolvedSchoolId);
+    } else if (!resolvedSchoolId && selectedSchoolId) {
+      // If no school should be selected, but one is, clear it.
+      setSelectedSchoolId(null);
+      updateAcademicYearsSchoolInfo(null); // Clear school info in academic years
     }
-  }, [id, schools, profile, searchParams]);
+  }, [id, schools, profile, searchParams, loadingData, selectedSchoolId]); // Add selectedSchoolId to dependencies
 
-  const fetchSchools = async () => {
-    try {
-      let query = supabase
-        .from('schools')
-        .select('id, name, municipality_id, city, state');
-
-      if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
-        query = query.eq('municipality_id', profile.municipality_id);
-      } else if (role === 'school_admin' || role === 'secretary' || role === 'teacher') {
-        query = query.eq('id', profile?.school_id);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setSchools(data || []);
-    } catch (error) {
-      console.error('Error fetching schools:', error);
-    }
-  };
-
-  const updateAcademicYearsSchoolInfo = async (schoolId: string) => {
+  const updateAcademicYearsSchoolInfo = (schoolId: string | null) => { // Allow null
     const school = schools.find(s => s.id === schoolId);
     if (school) {
       setAcademicYears(prevYears => prevYears.map(year => ({
@@ -196,6 +202,14 @@ const CreateTranscript = () => {
         school_name: school.name,
         city: school.city || "",
         state: school.state || "",
+      })));
+    } else {
+      // If no school is selected or found, clear the school info
+      setAcademicYears(prevYears => prevYears.map(year => ({
+        ...year,
+        school_name: "",
+        city: "",
+        state: "",
       })));
     }
   };
@@ -263,6 +277,13 @@ const CreateTranscript = () => {
       supabase.removeChannel(channel);
     };
   }, [academicYears]);
+
+  // Load existing data when editing
+  useEffect(() => {
+    if (id) {
+      loadTranscriptData();
+    }
+  }, [id]);
 
   const loadTranscriptData = async () => {
     try {
@@ -727,6 +748,7 @@ const CreateTranscript = () => {
                       setSelectedSchoolId(value);
                       updateAcademicYearsSchoolInfo(value);
                     }}
+                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary' || role === 'teacher')}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a escola" />
