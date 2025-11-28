@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); // Começa como true para indicar carregamento inicial
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
+  const supabaseAuthTokenKey = `sb-${supabase.supabaseUrl.split('.')[0].split('-').pop()}-auth-token`;
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -66,53 +68,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
         
-        // Sempre define loading como true no início do processamento de uma mudança de autenticação
-        // Isso garante que componentes dependentes mostrem um loader enquanto o estado é resolvido
         setLoading(true);
 
         setSession(session);
         setUser(session?.user ?? null);
-        setProfile(null); // Reset profile and role initially to avoid stale data
+        setProfile(null);
         setRole(null);
         setActiveMunicipalityIdForSuperAdmin(null);
 
         try {
           if (session?.user) {
             console.log('AuthContext: User found, fetching profile...');
-            await fetchProfile(session.user.id); // Isso irá atualizar profile e role
+            await fetchProfile(session.user.id);
             console.log('AuthContext: Profile fetched.');
+            console.log('AuthContext: localStorage after SIGNED_IN:', localStorage.getItem(supabaseAuthTokenKey));
           } else {
             console.log('AuthContext: No user in session.');
+            console.log('AuthContext: localStorage after SIGNED_OUT/no user:', localStorage.getItem(supabaseAuthTokenKey));
           }
         } catch (error) {
           console.error('AuthContext: Error during auth state change processing:', error);
-          // Em caso de erro, garantir que o estado seja limpo
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
-          // Sempre define loading como false após todo o processamento para este evento ser concluído.
           setLoading(false); 
           console.log('AuthContext: Loading set to false after onAuthStateChange processing.');
         }
       }
     );
 
-    // Não precisamos de uma função checkInitialSession separada,
-    // pois o onAuthStateChange com o evento 'INITIAL_SESSION' já cuida disso.
-    // O `loading` inicial como `true` e o `setLoading(false)` no `finally` do listener
-    // garantem que o estado seja resolvido na primeira carga.
+    const checkInitialSession = async () => {
+      setLoading(true);
+      console.log('AuthContext: Checking initial session...');
+      console.log('AuthContext: localStorage before initial check:', localStorage.getItem(supabaseAuthTokenKey));
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      try {
+        if (session?.user) {
+          console.log('AuthContext: Initial session found, fetching profile...');
+          await fetchProfile(session.user.id);
+          console.log('AuthContext: Initial profile fetched.');
+          console.log('AuthContext: localStorage after initial session found:', localStorage.getItem(supabaseAuthTokenKey));
+        } else {
+          console.log('AuthContext: No initial session found.');
+          console.log('AuthContext: localStorage after no initial session:', localStorage.getItem(supabaseAuthTokenKey));
+        }
+      } catch (error) {
+        console.error('AuthContext: Error during initial session check:', error);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      } finally {
+        setLoading(false);
+        console.log('AuthContext: Initial session check complete, loading set to false.');
+      }
+    };
+
+    checkInitialSession();
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array for a single setup on mount
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    // Listener para mudanças em tempo real no perfil do usuário
     const profileChannel = supabase
       .channel('profile-changes')
       .on(
