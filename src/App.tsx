@@ -42,7 +42,7 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     console.log(`AuthRedirectHandler (${location.pathname}): authLoading=${authLoading}, user=${!!user}`);
     if (!authLoading && user) { // If loading finished AND user is authenticated
-      const publicOnlyPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup'];
+      const publicOnlyPaths = ['/login', '/initial-superadmin-setup']; // REMOVED '/municipal-network-setup'
       
       if (publicOnlyPaths.includes(location.pathname)) {
         console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
