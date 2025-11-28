@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -16,7 +16,6 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
-  fetchProfile: (userId: string) => Promise<void>;
   activeMunicipalityIdForSuperAdmin: string | null;
   setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
 }
@@ -30,39 +29,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
-
-  const fetchUserProfileAndRole = useCallback(async (userId: string) => {
-    console.log(`AuthProvider: Fetching profile for user ${userId}`);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-        console.error("AuthProvider: Error fetching profile:", error);
-        setProfile(null);
-        setRole(null);
-      } else if (error && error.code === 'PGRST116') {
-        console.log("AuthProvider: No profile found for user");
-        setProfile(null);
-        setRole(null);
-      } else if (data) {
-        console.log("AuthProvider: Profile fetched:", data);
-        setProfile(data);
-        setRole(data.role);
-      } else {
-        console.log("AuthProvider: No profile data returned");
-        setProfile(null);
-        setRole(null);
-      }
-    } catch (error) {
-      console.error("AuthProvider: Exception in fetchUserProfileAndRole:", error);
-      setProfile(null);
-      setRole(null);
-    }
-  }, []);
 
   // Initialize auth state
   useEffect(() => {
@@ -83,7 +49,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("AuthProvider: Session found, setting user");
           setUser(initialSession.user);
           setSession(initialSession);
-          await fetchUserProfileAndRole(initialSession.user.id);
+          
+          // Fetch user profile
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', initialSession.user.id)
+              .single();
+
+            if (profileError) {
+              console.error("AuthProvider: Error fetching profile:", profileError);
+              setProfile(null);
+              setRole(null);
+            } else {
+              console.log("AuthProvider: Profile fetched:", profileData);
+              setProfile(profileData);
+              setRole(profileData.role);
+            }
+          } catch (profileFetchError) {
+            console.error("AuthProvider: Exception fetching profile:", profileFetchError);
+            setProfile(null);
+            setRole(null);
+          }
         } else {
           console.log("AuthProvider: No session found");
           setUser(null);
@@ -114,7 +102,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("AuthProvider: User signed in");
           setUser(session.user);
           setSession(session);
-          await fetchUserProfileAndRole(session.user.id);
+          
+          // Fetch user profile
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (profileError) {
+              console.error("AuthProvider: Error fetching profile:", profileError);
+              setProfile(null);
+              setRole(null);
+            } else {
+              console.log("AuthProvider: Profile fetched:", profileData);
+              setProfile(profileData);
+              setRole(profileData.role);
+            }
+          } catch (profileFetchError) {
+            console.error("AuthProvider: Exception fetching profile:", profileFetchError);
+            setProfile(null);
+            setRole(null);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log("AuthProvider: User signed out");
           setUser(null);
@@ -130,11 +140,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("AuthProvider: User updated");
           setUser(session.user);
           setSession(session);
-          await fetchUserProfileAndRole(session.user.id);
-        } else if (event === 'INITIAL_SESSION') {
-          console.log("AuthProvider: Initial session event");
-          // This event fires when the initial session check is complete
-          // We don't need to do anything special here as we already handled it above
         }
       }
     );
@@ -143,11 +148,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthProvider: Cleaning up auth listener");
       subscription.unsubscribe();
     };
-  }, [fetchUserProfileAndRole]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthProvider: Signing in user ${email}`);
-    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
@@ -159,14 +163,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthProvider: Sign in exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign in") };
-    } finally {
-      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthProvider: Signing up user ${email}`);
-    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -185,14 +186,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthProvider: Sign up exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign up") };
-    } finally {
-      setLoading(false);
     }
   };
 
   const signOut = async () => {
     console.log("AuthProvider: Signing out user");
-    setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -204,8 +202,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthProvider: Sign out exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign out") };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -218,7 +214,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signIn,
     signUp,
     signOut,
-    fetchProfile: fetchUserProfileAndRole,
     activeMunicipalityIdForSuperAdmin,
     setActiveMunicipalityIdForSuperAdmin,
   };

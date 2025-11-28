@@ -7,14 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { loginSchema } from '@/lib/validationSchemas';
-import { z } from 'zod';
 import correctLogo from "/correct-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -29,20 +26,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      loginSchema.parse({ email, password });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast({
-          title: "Erro de validação",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    setLoading(true);
     const { error } = await signIn(email, password);
     
     if (error) {
@@ -56,7 +39,6 @@ export default function Login() {
         title: "Login realizado com sucesso!",
       });
     }
-    setLoading(false);
   };
 
   if (authLoading) {
@@ -89,7 +71,6 @@ export default function Login() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
                 required
               />
             </div>
@@ -101,19 +82,11 @@ export default function Login() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                'Entrar'
-              )}
+            <Button type="submit" className="w-full">
+              Entrar
             </Button>
           </form>
         </CardContent>
