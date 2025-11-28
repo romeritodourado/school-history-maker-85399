@@ -102,9 +102,9 @@ const CreateTranscript = () => {
     {
       calendar_year: new Date().getFullYear(),
       grade_level: "1º Ano",
-      school_name: "", // Default empty, will be set by selectedSchoolId
-      city: "", // Default empty
-      state: "", // Default empty
+      school_name: "", 
+      city: "", 
+      state: "", 
       shift: "",
       class_name: "",
       reclassified: false,
@@ -143,7 +143,7 @@ const CreateTranscript = () => {
   // Store the latest academic year ID for trimester grades (not directly used in this simplified version)
   const [latestAcademicYearId, setLatestAcademicYearId] = useState<string | null>(null);
 
-  // Fetch schools based on user role and profile
+  // 1. Fetch schools based on user role and profile
   useEffect(() => {
     const fetchSchools = async () => {
       try {
@@ -167,35 +167,31 @@ const CreateTranscript = () => {
     fetchSchools();
   }, [profile, role]);
 
-  // Logic for initial school selection and updating academic years info
+  // 2. Determine initial selectedSchoolId (for new transcripts)
   useEffect(() => {
-    if (loadingData) return; // If editing, loadTranscriptData will handle school selection
+    if (loadingData || schools.length === 0) return; // If editing or no schools, skip
 
     const schoolIdFromUrl = searchParams.get('schoolId');
-    let resolvedSchoolId: string | null = null;
+    let initialSchoolId: string | null = null;
 
-    if (schoolIdFromUrl) {
-      resolvedSchoolId = schoolIdFromUrl;
-    } else if (profile?.school_id) {
-      resolvedSchoolId = profile.school_id;
+    if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
+      initialSchoolId = schoolIdFromUrl;
+    } else if (profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+      initialSchoolId = profile.school_id;
     } else if (schools.length === 1) {
-      resolvedSchoolId = schools[0].id;
+      initialSchoolId = schools[0].id;
     }
 
-    // Only update if the resolvedSchoolId is different from the current selectedSchoolId
-    // and if it's a valid school from the fetched list.
-    if (resolvedSchoolId && resolvedSchoolId !== selectedSchoolId && schools.some(s => s.id === resolvedSchoolId)) {
-      setSelectedSchoolId(resolvedSchoolId);
-      updateAcademicYearsSchoolInfo(resolvedSchoolId);
-    } else if (!resolvedSchoolId && selectedSchoolId) {
-      // If no school should be selected, but one is, clear it.
+    if (initialSchoolId && initialSchoolId !== selectedSchoolId) {
+      setSelectedSchoolId(initialSchoolId);
+    } else if (!initialSchoolId && selectedSchoolId) {
       setSelectedSchoolId(null);
-      updateAcademicYearsSchoolInfo(null); // Clear school info in academic years
     }
-  }, [id, schools, profile, searchParams, loadingData, selectedSchoolId]); // Add selectedSchoolId to dependencies
+  }, [schools, profile, searchParams, loadingData]); // Removed selectedSchoolId from dependencies to prevent loop
 
-  const updateAcademicYearsSchoolInfo = (schoolId: string | null) => { // Allow null
-    const school = schools.find(s => s.id === schoolId);
+  // 3. Update academicYears school info when selectedSchoolId changes
+  useEffect(() => {
+    const school = schools.find(s => s.id === selectedSchoolId);
     if (school) {
       setAcademicYears(prevYears => prevYears.map(year => ({
         ...year,
@@ -212,10 +208,13 @@ const CreateTranscript = () => {
         state: "",
       })));
     }
-  };
+  }, [selectedSchoolId, schools]); // Depend on selectedSchoolId and schools
 
   const updateWorkloadsFromDatabase = async () => {
     try {
+      // Ensure academicYears is not empty before iterating
+      if (academicYears.length === 0) return;
+
       for (const year of academicYears) {
         const { data, error } = await supabase
           .from("workload_configurations")
@@ -308,7 +307,7 @@ const CreateTranscript = () => {
         grade_series: student.grade_series || "",
         observations: student.observations || "",
       });
-      setSelectedSchoolId(student.school_id);
+      setSelectedSchoolId(student.school_id); // Set selected school from loaded student data
 
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
@@ -746,7 +745,6 @@ const CreateTranscript = () => {
                     value={selectedSchoolId || ""}
                     onValueChange={(value) => {
                       setSelectedSchoolId(value);
-                      updateAcademicYearsSchoolInfo(value);
                     }}
                     disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary' || role === 'teacher')}
                   >
