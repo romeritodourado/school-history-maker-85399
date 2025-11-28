@@ -144,6 +144,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("AuthProvider: Initial session event");
           // We already handle this in refreshSession, so we can ignore it here
         }
+        
+        // Ensure loading is set to false after any auth state change
+        setLoading(false);
       }
     );
 

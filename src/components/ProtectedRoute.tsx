@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type AppRole = 
   | 'super_admin'
@@ -18,9 +19,17 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const location = useLocation();
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+
+  // Track when auth check is complete
+  useEffect(() => {
+    if (!loading) {
+      setHasCheckedAuth(true);
+    }
+  }, [loading]);
 
   // If we're still loading, show a spinner
-  if (loading) {
+  if (loading || !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
