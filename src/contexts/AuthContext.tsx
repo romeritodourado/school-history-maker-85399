@@ -42,8 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); // Começa como true para indicar carregamento inicial
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // A função fetchProfile não é mais usada diretamente no onAuthStateChange,
-  // mas é mantida para outros usos, se houver.
+  // Função para buscar o perfil e o role do usuário
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -52,11 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('AuthContext: Profile fetch error:', error);
+        throw error; // Lança o erro para ser capturado no onAuthStateChange
+      }
+      console.log("AuthContext: Profile fetched:", JSON.stringify(data));
       setProfile(data as Profile);
       setRole(data.role as AppRole);
+      console.log("AuthContext: Role loaded:", data.role);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('AuthContext: Error fetching profile:', error);
       setProfile(null);
       setRole(null);
     }
@@ -73,38 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setProfile(null);
           setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null); // Garante que este estado também seja limpo
-          setLoading(false);
-          return;
+          setActiveMunicipalityIdForSuperAdmin(null);
+        } else {
+          const user = session.user;
+          setUser(user);
+          await fetchProfile(user.id); // Chama a função para buscar e definir o perfil/role
         }
 
-        // Sessão existe → buscar o profile
-        const user = session.user;
-        setUser(user);
-
-        try {
-          console.log("AuthContext: Fetching profile...");
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-
-          if (profileError) {
-            console.error("AuthContext: Profile fetch error:", profileError);
-          }
-
-          console.log("AuthContext: Profile data received:", profileData);
-          setProfile(profileData || null);
-          setRole(profileData?.role || null);
-        } catch (err) {
-          console.error("AuthContext: Unexpected profile error:", err);
-          setProfile(null); // Limpa o perfil em caso de erro inesperado
-          setRole(null);    // Limpa o papel em caso de erro inesperado
-        }
-
-        console.log("AuthContext: Finished loading.");
-        setLoading(false);
+        console.log("AuthContext: AuthContext fully initialized.");
+        setLoading(false); // Define loading como false após todas as operações
       }
     );
 
