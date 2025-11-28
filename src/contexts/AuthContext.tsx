@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react'; // Importar useRef
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); // Começa como true para indicar carregamento inicial
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
+  const isInitialMount = useRef(true); // Ref para rastrear a montagem inicial
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -66,32 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
         
-        // Sempre define loading como true no início do processamento de uma mudança de autenticação
-        setLoading(true);
-
         setSession(session);
         setUser(session?.user ?? null);
         
-        try {
-          if (session?.user) {
-            console.log('AuthContext: User found, fetching profile...');
-            await fetchProfile(session.user.id); 
-            console.log('AuthContext: Profile fetched.');
-          } else {
-            console.log('AuthContext: No user in session.');
-            setProfile(null);
-            setRole(null);
-            setActiveMunicipalityIdForSuperAdmin(null);
-          }
-        } catch (error) {
-          console.error('AuthContext: Error during auth state change processing:', error);
+        if (session?.user) {
+          console.log('AuthContext: User found, fetching profile...');
+          await fetchProfile(session.user.id); 
+          console.log('AuthContext: Profile fetched.');
+        } else {
+          console.log('AuthContext: No user in session.');
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-        } finally {
-          // Sempre define loading como false após todo o processamento para este evento ser concluído.
-          setLoading(false); 
-          console.log('AuthContext: Loading set to false after onAuthStateChange processing.');
+        }
+
+        // Apenas define loading como false após a primeira verificação completa da sessão
+        if (isInitialMount.current) {
+          setLoading(false);
+          isInitialMount.current = false; // Marca a montagem inicial como concluída
+          console.log('AuthContext: Initial session processed, loading set to false.');
         }
       }
     );
