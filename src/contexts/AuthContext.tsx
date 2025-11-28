@@ -51,9 +51,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      console.log("AuthContext: Supabase profile query result - data:", data, "error:", error);
+      // AQUI ESTÁ O LOG CRÍTICO QUE PRECISAMOS VER!
+      console.log("DEBUG SUPABASE: data=", data, "error=", error); 
+
       if (data) {
-        console.log("AuthContext: DEBUG: role from fetched data =", data.role); // Explicit log for role
+        console.log("AuthContext: DEBUG: role from fetched data =", data.role);
         setProfile(data);
         setRole(data.role);
         console.log("AuthContext: Profile data received:", data);
