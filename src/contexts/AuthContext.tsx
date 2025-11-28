@@ -40,14 +40,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
         console.error("AuthProvider: Error fetching profile:", error);
         setProfile(null);
         setRole(null);
-      } else {
+      } else if (error && error.code === 'PGRST116') {
+        console.log("AuthProvider: No profile found for user");
+        setProfile(null);
+        setRole(null);
+      } else if (data) {
         console.log("AuthProvider: Profile fetched:", data);
         setProfile(data);
         setRole(data.role);
+      } else {
+        console.log("AuthProvider: No profile data returned");
+        setProfile(null);
+        setRole(null);
       }
     } catch (error) {
       console.error("AuthProvider: Exception in fetchUserProfileAndRole:", error);
@@ -107,7 +115,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setSession(session);
           await fetchUserProfileAndRole(session.user.id);
-          setLoading(false); // Ensure loading is false after profile fetch
         } else if (event === 'SIGNED_OUT') {
           console.log("AuthProvider: User signed out");
           setUser(null);
@@ -115,18 +122,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-          setLoading(false); // Ensure loading is false after sign out
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           console.log("AuthProvider: Token refreshed");
           setUser(session.user);
           setSession(session);
-          setLoading(false); // Ensure loading is false after token refresh
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("AuthProvider: User updated");
           setUser(session.user);
           setSession(session);
           await fetchUserProfileAndRole(session.user.id);
-          setLoading(false); // Ensure loading is false after profile fetch
+        } else if (event === 'INITIAL_SESSION') {
+          console.log("AuthProvider: Initial session event");
+          // This event fires when the initial session check is complete
+          // We don't need to do anything special here as we already handled it above
         }
       }
     );
@@ -152,7 +160,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign in exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign in") };
     } finally {
-      // Note: We don't set loading to false here because onAuthStateChange will handle it
+      setLoading(false);
     }
   };
 
@@ -178,7 +186,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign up exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign up") };
     } finally {
-      // Note: We don't set loading to false here because onAuthStateChange will handle it
+      setLoading(false);
     }
   };
 
@@ -197,7 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign out exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign out") };
     } finally {
-      // Note: We don't set loading to false here because onAuthStateChange will handle it
+      setLoading(false);
     }
   };
 
