@@ -58,7 +58,7 @@ export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin, loading: authLoading } = useAuth(); // Obter authLoading
+  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
@@ -71,7 +71,6 @@ export default function MunicipalDashboard() {
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
   useEffect(() => {
-    // Só prosseguir se o carregamento da autenticação estiver completo
     if (authLoading) {
       console.log("MunicipalDashboard: Auth loading, waiting...");
       return;
@@ -88,7 +87,6 @@ export default function MunicipalDashboard() {
       return;
     }
 
-    // Agora que authLoading é false, role deve estar definido
     if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
       console.log(`MunicipalDashboard: Role ${role} not authorized for this dashboard. Redirecting to /.`);
       navigate('/');
@@ -98,10 +96,16 @@ export default function MunicipalDashboard() {
     fetchMunicipalityDetails(currentMunicipalityId);
     
     const schoolIdFromUrl = searchParams.get('schoolId');
-    setSelectedSchoolId(schoolIdFromUrl);
+    // Only set selectedSchoolId from URL if it's not already set or if it changed
+    if (schoolIdFromUrl && schoolIdFromUrl !== selectedSchoolId) {
+      setSelectedSchoolId(schoolIdFromUrl);
+    } else if (!schoolIdFromUrl && selectedSchoolId) {
+      // If URL param is removed but a school is selected, clear it
+      setSelectedSchoolId(null);
+    }
     
-    fetchSchoolsForMunicipality(currentMunicipalityId, schoolIdFromUrl);
-  }, [currentMunicipalityId, role, navigate, searchParams, authLoading]); // Adicionar authLoading às dependências
+    fetchSchoolsForMunicipality(currentMunicipalityId);
+  }, [currentMunicipalityId, role, navigate, searchParams, authLoading]);
 
   useEffect(() => {
     if (selectedSchoolId) {
@@ -138,7 +142,7 @@ export default function MunicipalDashboard() {
     setMunicipalityDetails(data as MunicipalityDetails);
   };
 
-  const fetchSchoolsForMunicipality = async (id: string, initialSchoolIdFromUrl: string | null) => {
+  const fetchSchoolsForMunicipality = async (id: string) => {
     setLoadingSchools(true);
     const { data, error } = await supabase
       .from('schools')
@@ -154,13 +158,12 @@ export default function MunicipalDashboard() {
         variant: 'destructive',
       });
       setSchools([]);
-      setSelectedSchoolId(null);
     } else {
       setSchools(data || []);
-      if (initialSchoolIdFromUrl && data && data.some(s => s.id === initialSchoolIdFromUrl)) {
-        // A escola da URL é válida, mantém selectedSchoolId como está
-      } else {
-        setSelectedSchoolId(null);
+      // If a school was selected from URL, ensure it's still valid
+      const schoolIdFromUrl = searchParams.get('schoolId');
+      if (schoolIdFromUrl && data && !data.some(s => s.id === schoolIdFromUrl)) {
+        setSelectedSchoolId(null); // Clear if URL school is no longer valid
       }
     }
     setLoadingSchools(false);
@@ -327,15 +330,15 @@ export default function MunicipalDashboard() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <Card>
+        {!selectedSchoolId ? (
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <School className="h-5 w-5" />
-                Selecionar Escola (Obrigatório para algumas ações)
+                Selecione uma Escola
               </CardTitle>
               <CardDescription>
-                Selecione uma escola para realizar ações específicas a ela.
+                Para continuar, por favor, selecione uma escola para gerenciar.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -369,80 +372,82 @@ export default function MunicipalDashboard() {
               )}
             </CardContent>
           </Card>
-
-          {selectedSchoolDetails && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {selectedSchoolDetails.logo_url && (
-                    <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-6 w-6 object-contain" />
-                  )}
-                  {selectedSchoolDetails.name}
-                </CardTitle>
-                <CardDescription>Detalhes da Escola Selecionada</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {loadingSchoolDetails ? (
-                  <div className="flex items-center justify-center text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
-                  </div>
-                ) : (
-                  <>
-                    {selectedSchoolDetails.inep && (
-                      <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
-                    )}
-                    {selectedSchoolDetails.address && (
-                      <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
-                    )}
-                    {selectedSchoolDetails.city && selectedSchoolDetails.state && (
-                      <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
-                    )}
-                    {selectedSchoolDetails.authorization_decree_url && (
-                      <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
-                    )}
-                    {selectedSchoolDetails.official_gazette_url && (
-                      <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            const isDisabled = card.requiresSchool && !selectedSchoolId;
-            const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
-
-            let cardPath = card.path;
-            if (card.requiresSchool && selectedSchoolId) {
-              cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
-            } else if (!card.requiresSchool && currentMunicipalityId) {
-              cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
-            }
-
-            return (
-              <Card 
-                key={card.path}
-                className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isDisabled && navigate(cardPath)}
-                title={tooltipText}
-              >
+        ) : (
+          <>
+            {selectedSchoolDetails && (
+              <Card className="mb-6">
                 <CardHeader>
-                  <div className="flex items-center space-x-2">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <CardTitle>{card.title}</CardTitle>
-                  </div>
-                  <CardDescription>{card.description}</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    {selectedSchoolDetails.logo_url && (
+                      <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-6 w-6 object-contain" />
+                    )}
+                    {selectedSchoolDetails.name}
+                  </CardTitle>
+                  <CardDescription>Detalhes da Escola Selecionada</CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {loadingSchoolDetails ? (
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
+                    </div>
+                  ) : (
+                    <>
+                      {selectedSchoolDetails.inep && (
+                        <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
+                      )}
+                      {selectedSchoolDetails.address && (
+                        <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
+                      )}
+                      {selectedSchoolDetails.city && selectedSchoolDetails.state && (
+                        <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
+                      )}
+                      {selectedSchoolDetails.authorization_decree_url && (
+                        <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
+                      )}
+                      {selectedSchoolDetails.official_gazette_url && (
+                        <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {cards.map((card) => {
+                const Icon = card.icon;
+                const isDisabled = card.requiresSchool && !selectedSchoolId;
+                const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
+
+                let cardPath = card.path;
+                if (card.requiresSchool && selectedSchoolId) {
+                  cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
+                } else if (!card.requiresSchool && currentMunicipalityId) {
+                  cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
+                }
+
+                return (
+                  <Card 
+                    key={card.path}
+                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => !isDisabled && navigate(cardPath)}
+                    title={tooltipText}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Icon className="h-6 w-6 text-primary" />
+                        </div>
+                        <CardTitle>{card.title}</CardTitle>
+                      </div>
+                      <CardDescription>{card.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
