@@ -22,11 +22,10 @@ import AccountSettings from "./pages/AccountSettings";
 import { useEffect } from "react";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
-import { useTheme } from "next-themes"; // Importar useTheme
+import { useTheme } from "next-themes";
 
 const queryClient = new QueryClient();
 
-// Componente para logar o tema atual
 const ThemeLogger = () => {
   const { theme } = useTheme();
   useEffect(() => {
@@ -36,13 +35,13 @@ const ThemeLogger = () => {
 };
 
 const AuthRedirectHandler = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Use authLoading here
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    console.log(`AuthRedirectHandler (${location.pathname}): loading=${loading}, user=${!!user}`);
-    if (!loading && user) { // If loading finished AND user is authenticated
+    console.log(`AuthRedirectHandler (${location.pathname}): authLoading=${authLoading}, user=${!!user}`);
+    if (!authLoading && user) { // If loading finished AND user is authenticated
       const publicOnlyPaths = ['/login', '/initial-superadmin-setup', '/municipal-network-setup'];
       
       if (publicOnlyPaths.includes(location.pathname)) {
@@ -50,7 +49,7 @@ const AuthRedirectHandler = () => {
         navigate('/', { replace: true }); // Redirect to dashboard
       }
     }
-  }, [user, loading, navigate, location.pathname]);
+  }, [user, authLoading, navigate, location.pathname]); // Depend on authLoading
 
   return null;
 };
@@ -58,7 +57,7 @@ const AuthRedirectHandler = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <ThemeLogger /> {/* Adicionado ThemeLogger aqui */}
+      <ThemeLogger />
       <AuthProvider>
         <TooltipProvider>
           <Toaster />

@@ -27,7 +27,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, role: AppRole, municipalityId?: string, schoolId?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasPermission: (requiredRoles: AppRole[]) => boolean;
-  fetchProfile: (userId: string) => Promise<void>; // Keep this function for external use if needed
+  fetchProfile: (userId: string) => Promise<void>;
   activeMunicipalityIdForSuperAdmin: string | null;
   setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
 }
@@ -42,13 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // Esta função será chamada internamente pelo useEffect
   const fetchUserProfileAndRole = async (userId: string) => {
     console.log("AuthContext: Fetching profile for userId:", userId);
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, name, municipality_id, school_id, role, created_at, updated_at') // Explicitamente seleciona os campos
+        .select('id, email, name, municipality_id, school_id, role, created_at, updated_at')
         .eq('id', userId)
         .single();
 
@@ -56,11 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext: Profile fetch error:', profileError);
         setProfile(null);
         setRole(null);
-        throw profileError; // Propaga o erro
+        throw profileError;
       }
       console.log("AuthContext: Profile fetched:", JSON.stringify(profileData));
       setProfile(profileData as Profile);
-      setRole(profileData.role as AppRole); // This line sets the role
+      setRole(profileData.role as AppRole);
       console.log("AuthContext: Role loaded:", profileData.role);
     } catch (error) {
       console.error('AuthContext: Error in fetchUserProfileAndRole:', error);
@@ -71,35 +70,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true); // Start loading when component mounts
+    
+    const handleAuthStateChange = async (event: string, session: Session | null) => {
+      console.log("AuthContext: onAuthStateChange event:", event, "Session:", session);
+      if (!isMounted) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("AuthContext: onAuthStateChange event:", event, "Session:", session);
-        if (!isMounted) return;
-
-        if (session?.user) {
-          setUser(session.user);
-          setSession(session);
-          await fetchUserProfileAndRole(session.user.id); // Await profile fetch
-        } else {
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
-        }
-        setLoading(false); // Always set loading to false after processing the event
-        console.log(`AuthContext: Event ${event} processed. Loading set to false.`);
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        await fetchUserProfileAndRole(session.user.id);
+      } else {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
       }
-    );
+      setLoading(false); // Ensure loading is false after any auth state change
+      console.log(`AuthContext: Event ${event} processed. Loading set to false.`);
+    };
+
+    // Initial session check
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        await fetchUserProfileAndRole(session.user.id);
+      }
+      setLoading(false); // Set loading to false after initial check
+      console.log('AuthContext: Initial session check complete. Loading set to false.');
+    });
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => {
       isMounted = false;
       console.log('AuthContext: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array to run only once on mount
+  }, []);
 
   // Listener em tempo real para mudanças no perfil (separado do carregamento inicial)
   useEffect(() => {
@@ -149,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         options: {
           data: {
-            name: name, // Passa o nome para raw_user_meta_data para o trigger
+            name: name,
           }
         }
       });
@@ -157,18 +168,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) return { error };
 
       if (data.user) {
-        // O perfil já foi criado automaticamente pelo trigger do banco de dados.
-        // Agora, vamos atualizá-lo com os detalhes específicos fornecidos durante o signUp.
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            email: data.user.email, // Garante que o email esteja consistente
+            email: data.user.email,
             name: name,
             role: role,
             municipality_id: municipalityId || null,
             school_id: schoolId || null,
           })
-          .eq('id', data.user.id); // Atualiza o perfil criado pelo trigger
+          .eq('id', data.user.id);
 
         if (profileError) throw profileError;
       }
@@ -199,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     hasPermission,
-    fetchProfile: fetchUserProfileAndRole, // Expõe a função interna de busca
+    fetchProfile: fetchUserProfileAndRole,
     activeMunicipalityIdForSuperAdmin,
     setActiveMunicipalityIdForSuperAdmin,
   };
