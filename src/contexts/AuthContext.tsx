@@ -45,7 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(null);
           setProfile(null);
           setRole(null);
-        } else if (initialSession?.user) {
+          return;
+        }
+        
+        if (initialSession?.user) {
           console.log("AuthProvider: Session found, setting user");
           setUser(initialSession.user);
           setSession(initialSession);
@@ -125,6 +128,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfile(null);
             setRole(null);
           }
+          
+          // Ensure loading is false when user is signed in
+          if (loading) {
+            console.log("AuthProvider: Setting loading to false in onAuthStateChange");
+            setLoading(false);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log("AuthProvider: User signed out");
           setUser(null);
@@ -132,14 +141,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
+          
+          // Ensure loading is false when user is signed out
+          if (loading) {
+            console.log("AuthProvider: Setting loading to false in onAuthStateChange (sign out)");
+            setLoading(false);
+          }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           console.log("AuthProvider: Token refreshed");
           setUser(session.user);
           setSession(session);
+          
+          // Ensure loading is false when token is refreshed
+          if (loading) {
+            console.log("AuthProvider: Setting loading to false in onAuthStateChange (token refresh)");
+            setLoading(false);
+          }
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("AuthProvider: User updated");
           setUser(session.user);
           setSession(session);
+          
+          // Ensure loading is false when user is updated
+          if (loading) {
+            console.log("AuthProvider: Setting loading to false in onAuthStateChange (user update)");
+            setLoading(false);
+          }
         }
       }
     );
