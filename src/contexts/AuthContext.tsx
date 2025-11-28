@@ -28,14 +28,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(true); // Start as true
+  const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
 
   const fetchUserProfileAndRole = useCallback(async (userId: string) => {
-    console.log(`AuthContext: Fetching user profile for: ${userId}`);
-    setProfileLoading(true);
-    
+    console.log(`AuthProvider: Fetching profile for user ${userId}`);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -43,129 +40,120 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      if (error && error.code === 'PGRST116') { // No rows found
-        console.log("AuthContext: No profile found for user");
+      if (error) {
+        console.error("AuthProvider: Error fetching profile:", error);
         setProfile(null);
         setRole(null);
-      } else if (error) {
-        console.error("AuthContext: Error fetching profile:", error);
-        setProfile(null);
-        setRole(null);
-      } else if (data) {
-        console.log("AuthContext: Profile fetched successfully:", data);
+      } else {
+        console.log("AuthProvider: Profile fetched:", data);
         setProfile(data);
         setRole(data.role);
-      } else {
-        console.log("AuthContext: No profile data returned");
-        setProfile(null);
-        setRole(null);
       }
     } catch (error) {
-      console.error("AuthContext: Error caught in fetchUserProfileAndRole:", error);
+      console.error("AuthProvider: Exception in fetchUserProfileAndRole:", error);
       setProfile(null);
       setRole(null);
-    } finally {
-      setProfileLoading(false);
-      console.log("AuthContext: Finished fetching profile");
     }
   }, []);
 
+  // Initialize auth state
   useEffect(() => {
-    console.log("AuthContext: Setting up initial session loading...");
+    console.log("AuthProvider: Initializing auth state");
+    
     const initializeAuth = async () => {
-      setLoading(true);
       try {
-        console.log("AuthContext: Getting session from Supabase...");
+        // Get current session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("AuthContext: Error getting initial session:", error);
+          console.error("AuthProvider: Error getting session:", error);
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
         } else if (initialSession?.user) {
-          console.log("AuthContext: Session found, setting user and fetching profile...");
+          console.log("AuthProvider: Session found, setting user");
           setUser(initialSession.user);
           setSession(initialSession);
           await fetchUserProfileAndRole(initialSession.user.id);
         } else {
-          console.log("AuthContext: No session found");
+          console.log("AuthProvider: No session found");
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
         }
       } catch (error) {
-        console.error("AuthContext: Error during initial session loading:", error);
+        console.error("AuthProvider: Error in initializeAuth:", error);
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
       } finally {
+        console.log("AuthProvider: Finished initializing auth state");
         setLoading(false);
-        console.log("AuthContext: Initial session loading complete");
       }
     };
 
     initializeAuth();
 
-    console.log("AuthContext: Setting up auth state listener...");
-    // Listener para mudanças de estado de autenticação subsequentes
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`AuthContext: onAuthStateChange event: ${event}`);
-        // Apenas reage a mudanças significativas que não sejam a inicialização
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          if (session?.user) {
-            console.log("AuthContext: User signed in, setting session and fetching profile...");
-            setUser(session.user);
-            setSession(session);
-            await fetchUserProfileAndRole(session.user.id);
-          }
+        console.log(`AuthProvider: Auth state changed - ${event}`);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log("AuthProvider: User signed in");
+          setUser(session.user);
+          setSession(session);
+          await fetchUserProfileAndRole(session.user.id);
         } else if (event === 'SIGNED_OUT') {
-          console.log("AuthContext: User signed out, resetting state...");
+          console.log("AuthProvider: User signed out");
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          console.log("AuthProvider: Token refreshed");
+          setUser(session.user);
+          setSession(session);
+        } else if (event === 'USER_UPDATED' && session?.user) {
+          console.log("AuthProvider: User updated");
+          setUser(session.user);
+          setSession(session);
+          await fetchUserProfileAndRole(session.user.id);
         }
-        // Outros eventos como PASSWORD_RECOVERY não exigem alteração do estado de user/profile
       }
     );
 
     return () => {
-      console.log("AuthContext: Unsubscribing from auth state listener...");
+      console.log("AuthProvider: Cleaning up auth listener");
       subscription.unsubscribe();
     };
   }, [fetchUserProfileAndRole]);
 
   const signIn = async (email: string, password: string) => {
-    console.log(`AuthContext: Attempting to sign in user: ${email}`);
+    console.log(`AuthProvider: Signing in user ${email}`);
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        console.error("AuthContext: Error during signIn:", error);
-        setLoading(false);
+        console.error("AuthProvider: Sign in error:", error);
         return { error };
       }
-      console.log("AuthContext: Sign in successful");
-      // onAuthStateChange vai lidar com a definição de user, session, profile, role e loading para false
+      console.log("AuthProvider: Sign in successful");
       return { error: null };
     } catch (error: any) {
-      console.error("AuthContext: Error caught during signIn:", error);
+      console.error("AuthProvider: Sign in exception:", error);
+      return { error: error instanceof Error ? error : new Error("Unknown error during sign in") };
+    } finally {
       setLoading(false);
-      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login.") };
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
-    console.log(`AuthContext: Attempting to sign up user: ${email}`);
+    console.log(`AuthProvider: Signing up user ${email}`);
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -177,36 +165,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error("AuthContext: Error during signUp:", error);
-        setLoading(false);
+        console.error("AuthProvider: Sign up error:", error);
         return { error };
       }
-      console.log("AuthContext: Sign up successful");
-      // onAuthStateChange vai lidar com a definição de user, session, profile, role e loading para false
+      console.log("AuthProvider: Sign up successful");
       return { error: null };
     } catch (error: any) {
-      console.error("AuthContext: Error caught during signUp:", error);
+      console.error("AuthProvider: Sign up exception:", error);
+      return { error: error instanceof Error ? error : new Error("Unknown error during sign up") };
+    } finally {
       setLoading(false);
-      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro.") };
     }
   };
 
   const signOut = async () => {
-    console.log("AuthContext: Attempting to sign out user");
+    console.log("AuthProvider: Signing out user");
     setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("AuthContext: Error during signOut:", error);
-        setLoading(false);
+        console.error("AuthProvider: Sign out error:", error);
+        return { error };
       }
-      console.log("AuthContext: Sign out successful");
-      // onAuthStateChange vai lidar com o reset de user, session, profile, role e loading para false
-      return { error };
+      console.log("AuthProvider: Sign out successful");
+      return { error: null };
     } catch (error: any) {
-      console.error("AuthContext: Error caught during signOut:", error);
+      console.error("AuthProvider: Sign out exception:", error);
+      return { error: error instanceof Error ? error : new Error("Unknown error during sign out") };
+    } finally {
       setLoading(false);
-      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout.") };
     }
   };
 
@@ -215,7 +202,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     session,
     profile,
     role,
-    loading: loading || profileLoading,
+    loading,
     signIn,
     signUp,
     signOut,

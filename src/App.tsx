@@ -24,14 +24,9 @@ import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
 
-const ThemeLogger = () => {
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <ThemeLogger />
       <AuthProvider>
         <TooltipProvider>
           <Toaster />

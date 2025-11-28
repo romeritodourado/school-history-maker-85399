@@ -19,7 +19,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirecionar se o usuário já estiver autenticado
+  // Redirect if user is already authenticated
   useEffect(() => {
     if (!authLoading && user) {
       navigate('/', { replace: true });
@@ -51,14 +51,12 @@ export default function Login() {
         description: error.message,
         variant: "destructive",
       });
-      setLoading(false);
     } else {
       toast({
         title: "Login realizado com sucesso!",
-        description: "Redirecionando...",
       });
-      // O redirecionamento será feito automaticamente pelo ProtectedRoute
     }
+    setLoading(false);
   };
 
   if (authLoading) {

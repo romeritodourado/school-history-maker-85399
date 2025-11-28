@@ -19,20 +19,20 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, role, loading: authLoading } = useAuth();
   const location = useLocation();
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Marcar quando a verificação de autenticação foi concluída
+  // Track when initial auth load is complete
   useEffect(() => {
     if (!authLoading) {
-      setHasCheckedAuth(true);
+      setInitialLoadComplete(true);
     }
   }, [authLoading]);
 
-  console.log(`ProtectedRoute (${location.pathname}): authLoading=${authLoading}, user=${!!user}, role=${role}, hasCheckedAuth=${hasCheckedAuth}`);
+  console.log(`ProtectedRoute (${location.pathname}): authLoading=${authLoading}, user=${!!user}, role=${role}, initialLoadComplete=${initialLoadComplete}`);
 
-  // 1. Enquanto estiver carregando a autenticação, mostra um loader
-  if (authLoading || !hasCheckedAuth) {
-    console.log(`ProtectedRoute (${location.pathname}): Waiting for auth to load.`);
+  // Show loading spinner while auth is initializing
+  if (authLoading || !initialLoadComplete) {
+    console.log(`ProtectedRoute (${location.pathname}): Showing loading spinner`);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -41,27 +41,21 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
-  // 2. Se não estiver autenticado, redireciona para a página de login
+  // If no user, redirect to login (except for initial setup)
   if (!user) {
-    console.log(`ProtectedRoute (${location.pathname}): User not authenticated, redirecting to login.`);
-    // Evita redirecionar da página de setup inicial do super admin
+    console.log(`ProtectedRoute (${location.pathname}): No user, redirecting to login`);
     if (location.pathname !== '/initial-superadmin-setup') {
       return <Navigate to="/login" state={{ from: location }} replace />;
     }
     return <>{children}</>;
   }
 
-  // 3. Se o usuário está autenticado, mas o perfil/role não foi carregado
-  // Isso pode indicar um usuário sem perfil no banco de dados
+  // If user exists but no role, show profile incomplete message (except for initial setup)
   if (user && role === null) {
-    console.log(`ProtectedRoute (${location.pathname}): User authenticated but no profile found.`);
-    // Verifica se a rota atual é a de configuração inicial do Super Admin
+    console.log(`ProtectedRoute (${location.pathname}): User exists but no role`);
     if (location.pathname === '/initial-superadmin-setup') {
-      console.log(`ProtectedRoute (${location.pathname}): Allowing access to initial super admin setup.`);
       return <>{children}</>;
     }
-    // Para outras rotas, exibe uma mensagem de perfil incompleto
-    console.log(`ProtectedRoute (${location.pathname}): Showing incomplete profile message.`);
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
@@ -74,9 +68,9 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
-  // 4. Verifica se o usuário tem as roles necessárias para a rota
+  // Check if user has required roles
   if (requiredRoles && requiredRoles.length > 0 && (!role || !requiredRoles.includes(role as AppRole))) {
-    console.log(`ProtectedRoute (${location.pathname}): User does not have required role. Required: ${requiredRoles.join(', ')}, User role: ${role}`);
+    console.log(`ProtectedRoute (${location.pathname}): User does not have required role`);
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
@@ -89,7 +83,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
-  // 5. Se todas as verificações passarem, renderiza o conteúdo da rota
-  console.log(`ProtectedRoute (${location.pathname}): All checks passed, rendering children.`);
+  // All checks passed, render children
+  console.log(`ProtectedRoute (${location.pathname}): All checks passed, rendering children`);
   return <>{children}</>;
 }
