@@ -148,21 +148,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name, // Passa o nome para raw_user_meta_data para o trigger
+          }
+        }
       });
 
       if (error) return { error };
 
       if (data.user) {
+        // O perfil já foi criado automaticamente pelo trigger do banco de dados.
+        // Agora, vamos atualizá-lo com os detalhes específicos fornecidos durante o signUp.
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
+          .update({
+            email: data.user.email, // Garante que o email esteja consistente
             name: name,
             role: role,
             municipality_id: municipalityId || null,
             school_id: schoolId || null,
-          });
+          })
+          .eq('id', data.user.id); // Atualiza o perfil criado pelo trigger
 
         if (profileError) throw profileError;
       }

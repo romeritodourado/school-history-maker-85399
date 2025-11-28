@@ -82,6 +82,7 @@ export default function InitialSuperAdminSetup() {
     try {
       signupSchema.parse({ email, password, name });
 
+      // Usando a função signUp do AuthContext que agora lida com o trigger e update do perfil
       const { error } = await signUp(email, password, name, 'super_admin');
 
       if (error) throw error;
