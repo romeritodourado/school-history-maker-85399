@@ -8,13 +8,23 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Plus, Trash2 } from "lucide-react";
 import { AcademicYear } from "@/pages/CreateTranscript";
 
+interface SchoolOption {
+  id: string;
+  name: string;
+  municipality_id: string;
+  city: string | null;
+  state: string | null;
+}
+
 interface AcademicYearsTableProps {
   academicYears: AcademicYear[];
   setAcademicYears: (years: AcademicYear[]) => void;
   gradeLevels: string[];
+  schools: SchoolOption[]; // Adicionado
+  selectedSchoolId: string | null; // Adicionado
 }
 
-export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevels }: AcademicYearsTableProps) => {
+export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevels, schools, selectedSchoolId }: AcademicYearsTableProps) => {
   // Sort years by grade level (descending - newest on top)
   const sortedYears = [...academicYears].sort((a, b) => {
     const gradeA = parseInt(a.grade_level.match(/\d+/)?.[0] || "0");
@@ -23,14 +33,15 @@ export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevel
   });
 
   const addYear = () => {
+    const selectedSchool = schools.find(s => s.id === selectedSchoolId);
     setAcademicYears([
       ...academicYears,
       {
         calendar_year: new Date().getFullYear(),
         grade_level: "1º Ano",
-        school_name: "Escola Municipal Aldori Luiz Tolazzi",
-        city: "Luís Eduardo Magalhães",
-        state: "BA",
+        school_name: selectedSchool?.name || "",
+        city: selectedSchool?.city || "",
+        state: selectedSchool?.state || "",
         shift: "",
         class_name: "",
         reclassified: false,

@@ -176,10 +176,15 @@ const CreateTranscript = () => {
 
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
       initialSchoolId = schoolIdFromUrl;
+      console.log("Initial school from URL:", initialSchoolId);
     } else if (profile?.school_id && schools.some(s => s.id === profile.school_id)) {
       initialSchoolId = profile.school_id;
+      console.log("Initial school from user profile:", initialSchoolId);
     } else if (schools.length === 1) {
       initialSchoolId = schools[0].id;
+      console.log("Initial school (only one available):", initialSchoolId);
+    } else {
+      console.log("No initial school determined.");
     }
 
     if (initialSchoolId && initialSchoolId !== selectedSchoolId) {
@@ -769,6 +774,8 @@ const CreateTranscript = () => {
               academicYears={academicYears}
               setAcademicYears={setAcademicYears}
               gradeLevels={GRADE_LEVELS}
+              schools={schools} // Passando schools
+              selectedSchoolId={selectedSchoolId} // Passando selectedSchoolId
             />
           </TabsContent>
 
