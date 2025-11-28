@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -18,6 +18,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: Error | null }>;
   activeMunicipalityIdForSuperAdmin: string | null;
   setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,73 +31,86 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // Initialize auth state
-  useEffect(() => {
-    console.log("AuthProvider: Initializing auth state");
-    
-    const initializeAuth = async () => {
-      try {
-        // Get current session
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("AuthProvider: Error getting session:", error);
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-          return;
-        }
-        
-        if (initialSession?.user) {
-          console.log("AuthProvider: Session found, setting user");
-          setUser(initialSession.user);
-          setSession(initialSession);
-          
-          // Fetch user profile
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', initialSession.user.id)
-              .single();
+  // Fetch user profile
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      console.log("AuthProvider: Fetching profile for user ID:", userId);
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-            if (profileError) {
-              console.error("AuthProvider: Error fetching profile:", profileError);
-              setProfile(null);
-              setRole(null);
-            } else {
-              console.log("AuthProvider: Profile fetched:", profileData);
-              setProfile(profileData);
-              setRole(profileData.role);
-            }
-          } catch (profileFetchError) {
-            console.error("AuthProvider: Exception fetching profile:", profileFetchError);
-            setProfile(null);
-            setRole(null);
-          }
-        } else {
-          console.log("AuthProvider: No session found");
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-        }
-      } catch (error) {
-        console.error("AuthProvider: Error in initializeAuth:", error);
+      if (profileError) {
+        console.error("AuthProvider: Error fetching profile:", profileError);
+        setProfile(null);
+        setRole(null);
+        return null;
+      } else {
+        console.log("AuthProvider: Profile fetched:", profileData);
+        setProfile(profileData);
+        setRole(profileData.role);
+        return profileData;
+      }
+    } catch (profileFetchError) {
+      console.error("AuthProvider: Exception fetching profile:", profileFetchError);
+      setProfile(null);
+      setRole(null);
+      return null;
+    }
+  }, []);
+
+  // Refresh session and profile
+  const refreshSession = useCallback(async () => {
+    console.log("AuthProvider: Refreshing session");
+    try {
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("AuthProvider: Error getting session:", error);
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
-      } finally {
-        console.log("AuthProvider: Finished initializing auth state");
-        setLoading(false);
+        return;
       }
-    };
+      
+      if (currentSession?.user) {
+        console.log("AuthProvider: Valid session found");
+        setUser(currentSession.user);
+        setSession(currentSession);
+        
+        // Fetch user profile
+        await fetchProfile(currentSession.user.id);
+      } else {
+        console.log("AuthProvider: No valid session found");
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+      }
+    } catch (error) {
+      console.error("AuthProvider: Error in refreshSession:", error);
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+    } finally {
+      console.log("AuthProvider: Finished refreshing session");
+      setLoading(false);
+    }
+  }, [fetchProfile]);
 
-    initializeAuth();
+  // Initialize auth state
+  useEffect(() => {
+    console.log("AuthProvider: Initializing auth state");
+    refreshSession();
+  }, [refreshSession]);
 
-    // Set up auth state change listener
+  // Set up auth state change listener
+  useEffect(() => {
+    console.log("AuthProvider: Setting up auth state change listener");
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`AuthProvider: Auth state changed - ${event}`);
@@ -107,33 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           
           // Fetch user profile
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (profileError) {
-              console.error("AuthProvider: Error fetching profile:", profileError);
-              setProfile(null);
-              setRole(null);
-            } else {
-              console.log("AuthProvider: Profile fetched:", profileData);
-              setProfile(profileData);
-              setRole(profileData.role);
-            }
-          } catch (profileFetchError) {
-            console.error("AuthProvider: Exception fetching profile:", profileFetchError);
-            setProfile(null);
-            setRole(null);
-          }
-          
-          // Ensure loading is false when user is signed in
-          if (loading) {
-            console.log("AuthProvider: Setting loading to false in onAuthStateChange");
-            setLoading(false);
-          }
+          await fetchProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           console.log("AuthProvider: User signed out");
           setUser(null);
@@ -141,32 +129,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-          
-          // Ensure loading is false when user is signed out
-          if (loading) {
-            console.log("AuthProvider: Setting loading to false in onAuthStateChange (sign out)");
-            setLoading(false);
-          }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           console.log("AuthProvider: Token refreshed");
           setUser(session.user);
           setSession(session);
-          
-          // Ensure loading is false when token is refreshed
-          if (loading) {
-            console.log("AuthProvider: Setting loading to false in onAuthStateChange (token refresh)");
-            setLoading(false);
-          }
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("AuthProvider: User updated");
           setUser(session.user);
           setSession(session);
           
-          // Ensure loading is false when user is updated
-          if (loading) {
-            console.log("AuthProvider: Setting loading to false in onAuthStateChange (user update)");
-            setLoading(false);
-          }
+          // Refetch user profile in case it was updated
+          await fetchProfile(session.user.id);
+        } else if (event === 'INITIAL_SESSION') {
+          console.log("AuthProvider: Initial session event");
+          // We already handle this in refreshSession, so we can ignore it here
         }
       }
     );
@@ -175,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthProvider: Cleaning up auth listener");
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthProvider: Signing in user ${email}`);
@@ -243,6 +219,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     activeMunicipalityIdForSuperAdmin,
     setActiveMunicipalityIdForSuperAdmin,
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
