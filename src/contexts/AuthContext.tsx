@@ -33,54 +33,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfileAndRole = async (userId: string) => {
     console.log("AuthContext: Fetching user profile for:", userId);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-      if (error) {
-        console.error("AuthContext: Error fetching profile:", error);
-        setProfile(null);
-        setRole(null);
-        throw error;
-      }
-
-      if (data) {
-        setProfile(data);
-        setRole(data.role);
-        console.log("AuthContext: Profile and role set:", data.role);
-      } else {
-        setProfile(null);
-        setRole(null);
-        console.log("AuthContext: No profile found for user.");
-      }
-    } catch (error) {
-      console.error("AuthContext: Caught error in fetchUserProfileAndRole:", error);
+    if (error) {
+      console.error("AuthContext: Error fetching profile:", error);
       setProfile(null);
       setRole(null);
+      throw error; // Propagate error
+    }
+
+    if (data) {
+      setProfile(data);
+      setRole(data.role);
+      console.log("AuthContext: Profile and role set:", data.role);
+    } else {
+      setProfile(null);
+      setRole(null);
+      console.log("AuthContext: No profile found for user.");
     }
   };
 
   useEffect(() => {
     const loadInitialSession = async () => {
       console.log("AuthContext: Loading initial session...");
-      const { data: { session } } = await supabase.auth.getSession();
+      setLoading(true); // Ensure loading is true at the start
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        console.log("AuthContext: Initial session found:", session.user.id);
-        setUser(session.user);
-        setSession(session);
-        await fetchUserProfileAndRole(session.user.id);
-      } else {
-        console.log("AuthContext: No initial session.");
+        if (session?.user) {
+          console.log("AuthContext: Initial session found:", session.user.id);
+          setUser(session.user);
+          setSession(session);
+          await fetchUserProfileAndRole(session.user.id);
+        } else {
+          console.log("AuthContext: No initial session.");
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+        }
+      } catch (error) {
+        console.error("AuthContext: Error during initial session load or profile fetch:", error);
         setUser(null);
         setSession(null);
-        setProfile(null); // Ensure profile is cleared
-        setRole(null);   // Ensure role is cleared
+        setProfile(null);
+        setRole(null);
+      } finally {
+        setLoading(false); // Ensure loading is false after initial session check
       }
-      setLoading(false); // Ensure loading is false after initial session check
     };
 
     loadInitialSession();
@@ -91,18 +95,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("AuthContext: onAuthStateChange event:", event);
         setLoading(true); // Set loading true at the start of state change processing
 
-        if (session?.user) {
-          setUser(session.user);
-          setSession(session);
-          await fetchUserProfileAndRole(session.user.id);
-        } else {
+        try {
+          if (session?.user) {
+            setUser(session.user);
+            setSession(session);
+            await fetchUserProfileAndRole(session.user.id);
+          } else {
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            setRole(null);
+            setActiveMunicipalityIdForSuperAdmin(null);
+          }
+        } catch (error) {
+          console.error("AuthContext: Error during onAuthStateChange profile fetch:", error);
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
+        } finally {
+          setLoading(false); // Ensure loading is false after state change processing
         }
-        setLoading(false); // Ensure loading is false after state change processing
       }
     );
 
@@ -114,55 +128,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { error };
+      }
+      if (data.user) {
+        await fetchUserProfileAndRole(data.user.id);
+      }
+      return { error: null };
+    } catch (error: any) {
+      console.error("AuthContext: Error during signIn:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login.") };
+    } finally {
       setLoading(false);
-      return { error };
     }
-    if (data.user) {
-      await fetchUserProfileAndRole(data.user.id);
-    }
-    setLoading(false);
-    return { error: null };
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role, municipality_id, school_id },
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, role, municipality_id, school_id },
+        },
+      });
 
-    if (error) {
+      if (error) {
+        return { error };
+      }
+
+      if (data.user) {
+        await fetchUserProfileAndRole(data.user.id);
+      }
+      return { error: null };
+    } catch (error: any) {
+      console.error("AuthContext: Error during signUp:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro.") };
+    } finally {
       setLoading(false);
-      return { error };
     }
-
-    if (data.user) {
-      // The handle_new_user_profile trigger should create the profile,
-      // but we might need to explicitly update it if the trigger doesn't set all fields
-      // or if we want to ensure consistency immediately.
-      // For now, rely on the trigger and then fetch the profile.
-      await fetchUserProfileAndRole(data.user.id);
-    }
-    setLoading(false);
-    return { error: null };
   };
 
   const signOut = async () => {
     console.log("AuthContext: Attempting to sign out...");
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("AuthContext: Error during sign out:", error);
-    } else {
-      console.log("AuthContext: Sign out successful.");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("AuthContext: Error during sign out:", error);
+      } else {
+        console.log("AuthContext: Sign out successful.");
+      }
+      return { error };
+    } catch (error: any) {
+      console.error("AuthContext: Error during signOut:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout.") };
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    return { error };
   };
 
   const value = {
