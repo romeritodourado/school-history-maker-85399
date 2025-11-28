@@ -32,24 +32,15 @@ interface Municipality {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin, refreshSession } = useAuth();
+  const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [hasMunicipalities, setHasMunicipalities] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
-      // Refresh session to ensure we have the latest user data
-      refreshSession();
-      
-      if (role === 'super_admin') {
-        fetchMunicipalities();
-      } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
-        // Não redirecionar automaticamente, deixar o usuário escolher
-      } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id) {
-        // Não redirecionar automaticamente, deixar o usuário escolher
-      }
+    if (role === 'super_admin') {
+      fetchMunicipalities();
     }
-  }, [loading, user, role, profile, navigate, refreshSession]);
+  }, [role]);
 
   const fetchMunicipalities = async () => {
     const { data, error } = await supabase

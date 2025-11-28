@@ -14,7 +14,7 @@ import { signupSchema, passwordChangeSchema } from '@/lib/validationSchemas';
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 export default function AccountSettings() {
-  const { user, profile, fetchProfile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -63,7 +63,6 @@ export default function AccountSettings() {
         if (authUpdateError) throw authUpdateError;
       }
 
-      await fetchProfile(user.id); // Re-fetch profile to ensure context is updated
       toast({
         title: 'Sucesso',
         description: 'Informações pessoais atualizadas com sucesso!',

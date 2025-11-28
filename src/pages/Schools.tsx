@@ -599,7 +599,7 @@ export default function Schools() {
                   {school.official_gazette_url && (
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      Diário Oficial: {school.official_gazão_url}
+                      Diário Oficial: {school.official_gazette_url}
                     </p>
                   )}
                 </div>

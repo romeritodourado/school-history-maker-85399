@@ -63,7 +63,7 @@ export default function Users() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { role: currentUserRole, profile: currentUserProfile, signUp } = useAuth();
+  const { role: currentUserRole, profile: currentUserProfile } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -160,14 +160,17 @@ export default function Users() {
     try {
       signupSchema.parse({ email: formData.email, password: formData.password, name: formData.name });
 
-      const { error: signUpError } = await signUp(
-        formData.email,
-        formData.password,
-        formData.name,
-        formData.role,
-        formData.municipality_id || undefined,
-        formData.school_id || undefined
-      );
+      const { error: signUpError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true,
+        user_metadata: { 
+          name: formData.name,
+          role: formData.role,
+          municipality_id: formData.municipality_id || undefined,
+          school_id: formData.school_id || undefined
+        }
+      });
 
       if (signUpError) throw signUpError;
 

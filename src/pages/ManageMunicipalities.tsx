@@ -22,7 +22,7 @@ import correctLogo from "/correct-logo.png";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface Municipality {
   id: string;

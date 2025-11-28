@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
 
 type AppRole = 
   | 'super_admin'
@@ -17,7 +16,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, role, loading, refreshSession } = useAuth();
+  const { user, role, loading } = useAuth();
   const location = useLocation();
 
   // If we're still loading, show a spinner

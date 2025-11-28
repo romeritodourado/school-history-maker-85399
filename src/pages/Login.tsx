@@ -12,7 +12,7 @@ import correctLogo from "/correct-logo.png";
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, user, loading: authLoading, refreshSession } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,11 +35,10 @@ export default function Login() {
         variant: "destructive",
       });
     } else {
-      // Refresh session to ensure we have the latest user data
-      await refreshSession();
       toast({
         title: "Login realizado com sucesso!",
       });
+      // Redirect will happen via useEffect
     }
   };
 
