@@ -34,41 +34,8 @@ const ThemeLogger = () => {
   return null;
 };
 
-const AuthRedirectHandler = () => {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    console.log(`AuthRedirectHandler (${location.pathname}): authLoading=${authLoading}, user=${!!user}`);
-    
-    // Define publicOnlyPaths directly inside useEffect for debugging
-    const publicOnlyPaths = ['/login', '/initial-superadmin-setup']; 
-
-    console.log("AuthRedirectHandler Debug: Current pathname:", location.pathname);
-    console.log("AuthRedirectHandler Debug: Public only paths content:", publicOnlyPaths);
-    console.log("AuthRedirectHandler Debug: Is pathname in publicOnlyPaths?", publicOnlyPaths.includes(location.pathname));
-
-    // Only perform redirection logic if authLoading is false
-    if (!authLoading) {
-      if (user) { // User is authenticated
-        if (publicOnlyPaths.includes(location.pathname)) {
-          console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
-          navigate('/', { replace: true });
-        }
-      } else { // User is NOT authenticated
-        // If on a protected route and not authenticated, redirect to login
-        // This is a fallback, ProtectedRoute should handle most of this
-        if (!publicOnlyPaths.includes(location.pathname) && location.pathname !== '/validar') {
-          console.log(`AuthRedirectHandler (${location.pathname}): Unauthenticated user on protected path, redirecting to /login.`);
-          // navigate('/login', { replace: true, state: { from: location } }); // ProtectedRoute already handles this
-        }
-      }
-    }
-  }, [user, authLoading, navigate, location.pathname]);
-
-  return null;
-};
+// REMOVIDO: AuthRedirectHandler para simplificar o fluxo de roteamento
+// const AuthRedirectHandler = () => { ... };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -79,7 +46,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AuthRedirectHandler />
+            {/* AuthRedirectHandler foi removido. ProtectedRoute agora é o único responsável por redirecionamentos de autenticação. */}
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />

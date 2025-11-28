@@ -43,50 +43,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, profile, role]);
 
   const fetchUserProfileAndRole = async (userId: string) => {
-    console.log("AuthContext: Fetching user profile for:", userId);
+    console.log("AuthContext: fetchUserProfileAndRole - Iniciando busca de perfil para userId:", userId);
     try {
+      console.log("AuthContext: fetchUserProfileAndRole - Executando query Supabase...");
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      // AQUI ESTÁ O LOG CRÍTICO QUE PRECISAMOS VER!
-      console.log("DEBUG SUPABASE: data=", data, "error=", error); 
+      console.log("DEBUG SUPABASE: Resultado da query - data:", data, "error:", error); 
 
-      if (data) {
-        console.log("AuthContext: DEBUG: role from fetched data =", data.role);
-        setProfile(data);
-        setRole(data.role);
-        console.log("AuthContext: Profile data received:", data);
-        console.log("AuthContext: Profile and role set:", data.role);
-      } else {
+      if (error && error.code === 'PGRST116') { // No rows found
+        console.warn("AuthContext: fetchUserProfileAndRole - Nenhum perfil encontrado para o userId:", userId, ". Pode ser um novo usuário sem perfil ainda.");
         setProfile(null);
         setRole(null);
-        console.log("AuthContext: No profile found for user.");
+      } else if (error) {
+        console.error("AuthContext: fetchUserProfileAndRole - Erro na query do Supabase:", error);
+        setProfile(null);
+        setRole(null);
+      } else if (data) {
+        console.log("AuthContext: fetchUserProfileAndRole - Perfil encontrado. Role:", data.role);
+        setProfile(data);
+        setRole(data.role);
+        console.log("AuthContext: fetchUserProfileAndRole - Profile e role definidos no estado.");
+      } else {
+        console.log("AuthContext: fetchUserProfileAndRole - Nenhum dado de perfil retornado, mas sem erro. Definindo profile/role como null.");
+        setProfile(null);
+        setRole(null);
       }
     } catch (error) {
-      console.error("AuthContext: Caught error in fetchUserProfileAndRole:", error);
+      console.error("AuthContext: fetchUserProfileAndRole - Erro capturado:", error);
       setProfile(null);
       setRole(null);
     }
   };
 
   useEffect(() => {
-    console.log("AuthContext: Setting up auth state listener...");
-    setLoading(true); 
+    console.log("AuthContext: useEffect - Configurando listener de estado de autenticação...");
+    setLoading(true); // Garante que o loading é true no início do efeito
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("AuthContext: onAuthStateChange event:", event);
-        setLoading(true); 
+        console.log("AuthContext: onAuthStateChange - Evento:", event, "Sessão:", session);
+        // Apenas define loading como true se esperamos uma mudança que requer busca de dados
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+          setLoading(true);
+        }
 
         try {
           if (session?.user) {
+            console.log("AuthContext: onAuthStateChange - Usuário na sessão. Definindo user e session.");
             setUser(session.user);
             setSession(session);
             await fetchUserProfileAndRole(session.user.id);
           } else {
+            console.log("AuthContext: onAuthStateChange - Nenhum usuário na sessão. Resetando estado de autenticação.");
             setUser(null);
             setSession(null);
             setProfile(null);
@@ -94,24 +106,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setActiveMunicipalityIdForSuperAdmin(null);
           }
         } catch (error) {
-          console.error("AuthContext: Error during onAuthStateChange profile fetch:", error);
+          console.error("AuthContext: onAuthStateChange - Erro durante a busca de perfil:", error);
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
-          setLoading(false); 
-          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!userRef.current, "profile=", !!profileRef.current, "role=", roleRef.current, "loading=", false);
+          // Garante que loading seja false apenas após todas as atualizações de estado serem tentadas
+          setLoading(false);
+          console.log("AuthContext: onAuthStateChange - Finalizado. Estado final: user=", !!userRef.current, "profile=", !!profileRef.current, "role=", roleRef.current, "loading=", false);
         }
       }
     );
 
+    // Verificação inicial da sessão para garantir que o estado seja populado rapidamente na montagem
+    // Isso é importante para o caso de um refresh de página onde o listener pode ter um pequeno delay.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log("AuthContext: getSession inicial - Sessão encontrada:", session);
+      if (session?.user && !userRef.current) { // Apenas se o usuário não foi definido pelo listener ainda
+        console.log("AuthContext: getSession inicial - Usuário encontrado, buscando perfil.");
+        setUser(session.user);
+        setSession(session);
+        await fetchUserProfileAndRole(session.user.id);
+      } else if (!session?.user && userRef.current) { // Usuário estava no estado, mas a sessão sumiu
+        console.log("AuthContext: getSession inicial - Nenhuma sessão encontrada, mas user estava no estado. Resetando.");
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      }
+      setLoading(false); // Define loading como false após a verificação inicial da sessão
+      console.log("AuthContext: getSession inicial - Verificação finalizada. Estado final: user=", !!userRef.current, "profile=", !!profileRef.current, "role=", roleRef.current, "loading=", false);
+    });
+
+
     return () => {
-      console.log('AuthContext: Unsubscribing...');
+      console.log('AuthContext: useEffect - Desinscrevendo do listener...');
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Array de dependências vazio para rodar uma vez na montagem
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
@@ -123,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: null };
     } catch (error: any) {
-      console.error("AuthContext: Error during signIn:", error);
+      console.error("AuthContext: Erro durante signIn:", error);
       setLoading(false);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login.") };
     }
@@ -146,24 +181,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: null };
     } catch (error: any) {
-      console.error("AuthContext: Error during signUp:", error);
+      console.error("AuthContext: Erro durante signUp:", error);
       setLoading(false);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro.") };
     }
   };
 
   const signOut = async () => {
-    console.log("AuthContext: Attempting to sign out...");
+    console.log("AuthContext: Tentando fazer logout...");
     setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("AuthContext: Error during sign out:", error);
+        console.error("AuthContext: Erro durante logout:", error);
         setLoading(false);
       }
       return { error };
     } catch (error: any) {
-      console.error("AuthContext: Error during signOut:", error);
+      console.error("AuthContext: Erro durante signOut:", error);
       setLoading(false);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout.") };
     }
