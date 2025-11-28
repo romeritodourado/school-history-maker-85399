@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true); // Start as true
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  const fetchUserProfileAndRole = async (userId: string) => {
+  const fetchUserProfileAndRole = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -58,15 +58,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfile(null);
       setRole(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
-      setLoading(true); // Garante que o loading é true no início da inicialização
+      setLoading(true);
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
-        if (initialSession?.user) {
+        if (error) {
+          console.error("AuthContext: Erro ao buscar sessão inicial:", error);
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+        } else if (initialSession?.user) {
           setUser(initialSession.user);
           setSession(initialSession);
           await fetchUserProfileAndRole(initialSession.user.id);
@@ -85,7 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(null);
         setActiveMunicipalityIdForSuperAdmin(null);
       } finally {
-        setLoading(false); // Define loading como false APÓS a conclusão da inicialização
+        setLoading(false);
       }
     };
 
@@ -96,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         // Apenas reage a mudanças significativas que não sejam a inicialização
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          if (session?.user && user?.id !== session.user.id) { // Atualiza apenas se o usuário realmente mudou
+          if (session?.user) {
             setUser(session.user);
             setSession(session);
             await fetchUserProfileAndRole(session.user.id);
@@ -115,14 +122,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // Array de dependências vazio para rodar uma vez na montagem
+  }, [fetchUserProfileAndRole]);
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true); // Define loading como true para o processo de login
+    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setLoading(false); // Reseta loading em caso de erro
+        setLoading(false);
         return { error };
       }
       // onAuthStateChange vai lidar com a definição de user, session, profile, role e loading para false
@@ -135,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
-    setLoading(true); // Define loading como true para o processo de cadastro
+    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -146,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        setLoading(false); // Reseta loading em caso de erro
+        setLoading(false);
         return { error };
       }
       // onAuthStateChange vai lidar com a definição de user, session, profile, role e loading para false
@@ -159,12 +166,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    setLoading(true); // Define loading como true para o processo de logout
+    setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("AuthContext: Erro durante signOut:", error);
-        setLoading(false); // Reseta loading em caso de erro
+        setLoading(false);
       }
       // onAuthStateChange vai lidar com o reset de user, session, profile, role e loading para false
       return { error };

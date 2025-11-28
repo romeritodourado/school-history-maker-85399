@@ -73,10 +73,8 @@ export default function MunicipalDashboard() {
   // Effect to fetch municipality details and schools
   useEffect(() => {
     if (authLoading) {
-      console.log("MunicipalDashboard: Auth loading, waiting...");
       return;
     }
-    console.log("MunicipalDashboard: Auth loading complete. Proceeding with dashboard logic.");
 
     if (!currentMunicipalityId) {
       toast({
@@ -89,7 +87,6 @@ export default function MunicipalDashboard() {
     }
 
     if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
-      console.log(`MunicipalDashboard: Role ${role} not authorized for this dashboard. Redirecting to /.`);
       navigate('/');
       return;
     }
@@ -100,31 +97,25 @@ export default function MunicipalDashboard() {
 
   // Effect to handle initial school selection based on URL, profile, or single school
   useEffect(() => {
-    if (loadingSchools || schools.length === 0) return; // Wait for schools to load
+    if (loadingSchools || schools.length === 0) return;
 
     const schoolIdFromUrl = searchParams.get('schoolId');
     let initialSchoolToSelect: string | null = null;
 
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
       initialSchoolToSelect = schoolIdFromUrl;
-      console.log("Initial school from URL:", initialSchoolToSelect);
     } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
       initialSchoolToSelect = profile.school_id;
-      console.log("Initial school from user profile:", initialSchoolToSelect);
     } else if (schools.length === 1) {
       initialSchoolToSelect = schools[0].id;
-      console.log("Initial school (only one available):", initialSchoolToSelect);
-    } else {
-      console.log("No initial school determined from URL, profile, or single option.");
     }
 
     if (initialSchoolToSelect && initialSchoolToSelect !== selectedSchoolId) {
       setSelectedSchoolId(initialSchoolToSelect);
     } else if (!initialSchoolToSelect && selectedSchoolId) {
-      // If no school should be selected, but one is, clear it.
       setSelectedSchoolId(null);
     }
-  }, [schools, profile, role, searchParams, loadingSchools]); // Added loadingSchools to dependencies
+  }, [schools, profile, role, searchParams, loadingSchools]);
 
   // Effect to fetch selected school details when selectedSchoolId changes
   useEffect(() => {
@@ -269,6 +260,14 @@ export default function MunicipalDashboard() {
     },
   ];
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -374,7 +373,7 @@ export default function MunicipalDashboard() {
                   disabled={
                     (role === 'school_admin' || role === 'secretary' || role === 'teacher') && 
                     !!profile?.school_id && 
-                    schools.some(s => s.id === profile.school_id) // Disable if user has a fixed school and it's in the list
+                    schools.some(s => s.id === profile.school_id)
                   }
                 >
                   <SelectTrigger className="w-full">

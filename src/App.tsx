@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
@@ -19,23 +19,14 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
-import { useEffect } from "react";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
-import { useTheme } from "next-themes";
 
 const queryClient = new QueryClient();
 
 const ThemeLogger = () => {
-  const { theme } = useTheme();
-  useEffect(() => {
-    console.log("Current theme from ThemeProvider:", theme);
-  }, [theme]);
   return null;
 };
-
-// REMOVIDO: AuthRedirectHandler para simplificar o fluxo de roteamento
-// const AuthRedirectHandler = () => { ... };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -45,8 +36,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            {/* AuthRedirectHandler foi removido. ProtectedRoute agora é o único responsável por redirecionamentos de autenticação. */}
+          <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
@@ -112,6 +102,7 @@ const App = () => (
                   <AccountSettings />
                 </ProtectedRoute>
               } />
+              <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

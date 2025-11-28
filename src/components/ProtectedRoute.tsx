@@ -30,7 +30,11 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
 
   // 2. Se não estiver autenticado, redireciona para a página de login
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Evita redirecionar da página de setup inicial do super admin
+    if (location.pathname !== '/initial-superadmin-setup') {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    return <>{children}</>;
   }
 
   // 3. Se o usuário está autenticado, mas o perfil/role não foi carregado (role é null)

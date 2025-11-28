@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { loginSchema } from '@/lib/validationSchemas';
 import { z } from 'zod';
-import correctLogo from "/correct-logo.png"; // Importar a logo
+import correctLogo from "/correct-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirecionar se o usuário já estiver autenticado
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,15 +57,23 @@ export default function Login() {
         title: "Login realizado com sucesso!",
         description: "Redirecionando...",
       });
-      navigate('/');
+      // O redirecionamento será feito automaticamente pelo ProtectedRoute
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader> {/* Removido space-y-1 */}
-          <Link to="/" className="flex justify-center"> {/* Adicionado Link aqui */}
+        <CardHeader>
+          <Link to="/" className="flex justify-center">
             <img src={correctLogo} alt="Correct Logo" className="h-48 w-48 object-contain" />
           </Link>
           <CardTitle className="text-2xl font-bold text-center">Sistema de Históricos Escolares</CardTitle>

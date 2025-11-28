@@ -20,8 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
-import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
-import { Link } from 'react-router-dom'; // Importar Link
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Link } from 'react-router-dom';
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
@@ -41,14 +41,9 @@ export default function Dashboard() {
       if (role === 'super_admin') {
         fetchMunicipalities();
       } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
-        navigate(`/municipal-dashboard/${profile.municipality_id}`, { replace: true });
+        // Não redirecionar automaticamente, deixar o usuário escolher
       } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id) {
-        // For school-level roles, redirect to municipal dashboard with schoolId pre-selected
-        // Assuming there's a way to get the municipalityId from the schoolId
-        // For now, we'll redirect to the root and let ProtectedRoute handle it, or a more specific school dashboard if it exists.
-        // If a school-specific dashboard is needed, a new route and component would be created.
-        // For simplicity, if they have a school_id, they can access student list directly.
-        navigate('/lista-alunos', { replace: true });
+        // Não redirecionar automaticamente, deixar o usuário escolher
       }
     }
   }, [loading, user, role, profile, navigate]);
@@ -148,7 +143,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-4 p-2 rounded"> {/* Adicionado Link aqui */}
+          <Link to="/" className="flex items-center gap-4 p-2 rounded">
             <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
             <div>
               <h1 className="text-2xl font-bold">Sistema de Históricos Escolares</h1>
@@ -168,7 +163,7 @@ export default function Dashboard() {
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta
                 </Button>
-                <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
+                <ThemeToggle />
                 <Button variant="outline" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sair
