@@ -49,10 +49,20 @@ const AuthRedirectHandler = () => {
     console.log("AuthRedirectHandler Debug: Public only paths content:", publicOnlyPaths);
     console.log("AuthRedirectHandler Debug: Is pathname in publicOnlyPaths?", publicOnlyPaths.includes(location.pathname));
 
-    if (!authLoading && user) {
-      if (publicOnlyPaths.includes(location.pathname)) {
-        console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
-        navigate('/', { replace: true });
+    // Only perform redirection logic if authLoading is false
+    if (!authLoading) {
+      if (user) { // User is authenticated
+        if (publicOnlyPaths.includes(location.pathname)) {
+          console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
+          navigate('/', { replace: true });
+        }
+      } else { // User is NOT authenticated
+        // If on a protected route and not authenticated, redirect to login
+        // This is a fallback, ProtectedRoute should handle most of this
+        if (!publicOnlyPaths.includes(location.pathname) && location.pathname !== '/validar') {
+          console.log(`AuthRedirectHandler (${location.pathname}): Unauthenticated user on protected path, redirecting to /login.`);
+          // navigate('/login', { replace: true, state: { from: location } }); // ProtectedRoute already handles this
+        }
       }
     }
   }, [user, authLoading, navigate, location.pathname]);

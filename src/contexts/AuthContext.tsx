@@ -33,27 +33,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfileAndRole = async (userId: string) => {
     console.log("AuthContext: Fetching user profile for:", userId);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error("AuthContext: Error fetching profile:", error);
+      if (error) {
+        console.error("AuthContext: Error fetching profile:", error);
+        setProfile(null);
+        setRole(null);
+        throw error; // Propagate error
+      }
+
+      if (data) {
+        setProfile(data);
+        setRole(data.role);
+        console.log("AuthContext: Profile data received:", data);
+        console.log("AuthContext: Profile and role set:", data.role);
+      } else {
+        setProfile(null);
+        setRole(null);
+        console.log("AuthContext: No profile found for user.");
+      }
+    } catch (error) {
+      console.error("AuthContext: Caught error in fetchUserProfileAndRole:", error);
       setProfile(null);
       setRole(null);
-      throw error; // Propagate error
-    }
-
-    if (data) {
-      setProfile(data);
-      setRole(data.role);
-      console.log("AuthContext: Profile and role set:", data.role);
-    } else {
-      setProfile(null);
-      setRole(null);
-      console.log("AuthContext: No profile found for user.");
     }
   };
 
@@ -84,6 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(null);
       } finally {
         setLoading(false); // Ensure loading is false after initial session check
+        console.log("AuthContext: Initial session load finished. Final state: user=", !!user, "profile=", !!profile, "role=", role, "loading=", false);
       }
     };
 
@@ -116,6 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
           setLoading(false); // Ensure loading is false after state change processing
+          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!user, "profile=", !!profile, "role=", role, "loading=", false);
         }
       }
     );
