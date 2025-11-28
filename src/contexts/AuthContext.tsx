@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
         
         // Sempre define loading como true no início do processamento de uma mudança de autenticação
+        // Isso garante que componentes dependentes mostrem um loader enquanto o estado é resolvido
         setLoading(true);
 
         setSession(session);
@@ -97,37 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Função para verificar a sessão inicial e definir o estado de carregamento
-    const checkInitialSession = async () => {
-      setLoading(true); // Inicia o carregamento
-      console.log('AuthContext: Checking initial session...');
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      try {
-        if (session?.user) {
-          console.log('AuthContext: Initial session found, fetching profile...');
-          await fetchProfile(session.user.id);
-          console.log('AuthContext: Initial profile fetched.');
-        } else {
-          console.log('AuthContext: No initial session found.');
-          setProfile(null);
-          setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
-        }
-      } catch (error) {
-        console.error('AuthContext: Error during initial session check:', error);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
-      } finally {
-        setLoading(false); // Finaliza o carregamento após a verificação inicial
-        console.log('AuthContext: Initial session check complete, loading set to false.');
-      }
-    };
-
-    checkInitialSession(); // Chama a função de verificação inicial uma vez na montagem
+    // Não precisamos de uma função checkInitialSession separada,
+    // pois o onAuthStateChange com o evento 'INITIAL_SESSION' já cuida disso.
+    // O `loading` inicial como `true` e o `setLoading(false)` no `finally` do listener
+    // garantem que o estado seja resolvido na primeira carga.
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
@@ -138,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user?.id) return;
 
+    // Listener para mudanças em tempo real no perfil do usuário
     const profileChannel = supabase
       .channel('profile-changes')
       .on(
