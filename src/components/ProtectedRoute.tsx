@@ -17,7 +17,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, role, loading: authLoading } = useAuth(); // Renamed loading to authLoading to avoid confusion
+  const { user, role, loading: authLoading } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -26,9 +26,9 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }, [authLoading, user, role, location.pathname]);
 
-  if (authLoading) {
+  if (authLoading || role === null) { // Adicionada a verificação role === null
     console.log(
-      `ProtectedRoute (${location.pathname}): Waiting for auth to load.`
+      `ProtectedRoute (${location.pathname}): Waiting for auth to load or role to be defined. Current role: ${role}`
     );
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -44,8 +44,6 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If user exists but role is null, it means the profile/role data is missing or failed to load.
-  // This should be treated as an access denied if roles are required.
   if (requiredRoles && requiredRoles.length > 0 && (!role || !requiredRoles.includes(role as AppRole))) {
     console.log(
       `ProtectedRoute (${location.pathname}): Access denied for role ${role}. Required roles: ${requiredRoles.join(', ')}`
