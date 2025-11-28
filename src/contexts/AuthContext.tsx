@@ -70,57 +70,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthContext: Initializing auth state...");
-    const initializeAuth = async () => {
-      setLoading(true); // Ensure loading is true at the start of initialization
+    let isMounted = true; // Flag to prevent state updates on unmounted component
 
-      // Fetch initial session
+    const setupAuth = async () => {
+      setLoading(true); // Start loading
+
+      // 1. Get initial session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("AuthContext: Error fetching initial session:", sessionError);
       }
 
-      if (session?.user) {
-        setUser(session.user);
-        setSession(session);
-        await fetchUserProfileAndRole(session.user.id);
-      } else {
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
+      if (isMounted) { // Only update state if component is still mounted
+        if (session?.user) {
+          setUser(session.user);
+          setSession(session);
+          await fetchUserProfileAndRole(session.user.id); // Await profile fetch
+        } else {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+        }
+        setLoading(false); // End loading only after everything is set
+        console.log("AuthContext: Initial auth state fully resolved.");
       }
-      setLoading(false);
-      console.log("AuthContext: Initial auth state fully resolved.");
     };
 
-    initializeAuth();
+    setupAuth(); // Run initial setup
 
-    // Set up auth state listener for subsequent changes
+    // 2. Set up listener for subsequent auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthContext: onAuthStateChange event:", event, "Session:", session);
-        // Only update if the event is not INITIAL_SESSION, as we handled it above
-        // Or if the user object actually changes (e.g., SIGNED_IN, SIGNED_OUT)
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        if (!isMounted) return; // Prevent updates if unmounted
+
+        // For subsequent events, we also need to ensure profile is fetched before setting loading to false
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          setLoading(true); // Start loading for state change
           if (session?.user) {
             setUser(session.user);
             setSession(session);
             await fetchUserProfileAndRole(session.user.id);
           } else {
+            // This case should ideally be handled by SIGNED_OUT, but as a fallback
             setUser(null);
             setSession(null);
             setProfile(null);
             setRole(null);
             setActiveMunicipalityIdForSuperAdmin(null);
           }
-          setLoading(false); // Ensure loading is false after any state change
+          setLoading(false); // End loading after profile is fetched
+        } else if (event === 'SIGNED_OUT') {
+          setLoading(true); // Start loading for state change
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+          setLoading(false); // End loading after clearing state
+        } else if (event === 'INITIAL_SESSION') {
+          // This event is handled by the initial `setupAuth` call,
+          // so we don't need to re-handle it here.
         }
       }
     );
 
     return () => {
+      isMounted = false; // Cleanup flag
       console.log('AuthContext: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
