@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react'; // Importar useRef
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
@@ -42,8 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); // Começa como true para indicar carregamento inicial
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  const isInitialMount = useRef(true); // Ref para rastrear a montagem inicial
-
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -68,28 +66,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('AuthContext: onAuthStateChange event:', event, 'Session:', session);
         
+        // Sempre define loading como true no início do processamento de uma mudança de autenticação
+        setLoading(true);
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+        setProfile(null); // Reset profile and role initially to avoid stale data
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+
+        try {
+          if (session?.user) {
+            console.log('AuthContext: User found, fetching profile...');
+            await fetchProfile(session.user.id); // Isso irá atualizar profile e role
+            console.log('AuthContext: Profile fetched.');
+          } else {
+            console.log('AuthContext: No user in session.');
+          }
+        } catch (error) {
+          console.error('AuthContext: Error during auth state change processing:', error);
+          // Em caso de erro, garantir que o estado seja limpo
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+        } finally {
+          // Sempre define loading como false após todo o processamento para este evento ser concluído.
+          setLoading(false); 
+          console.log('AuthContext: Loading set to false after onAuthStateChange processing.');
+        }
+      }
+    );
+
+    // Função para verificar a sessão inicial e definir o estado de carregamento
+    const checkInitialSession = async () => {
+      setLoading(true); // Inicia o carregamento
+      console.log('AuthContext: Checking initial session...');
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      try {
         if (session?.user) {
-          console.log('AuthContext: User found, fetching profile...');
-          await fetchProfile(session.user.id); 
-          console.log('AuthContext: Profile fetched.');
+          console.log('AuthContext: Initial session found, fetching profile...');
+          await fetchProfile(session.user.id);
+          console.log('AuthContext: Initial profile fetched.');
         } else {
-          console.log('AuthContext: No user in session.');
+          console.log('AuthContext: No initial session found.');
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         }
-
-        // Apenas define loading como false após a primeira verificação completa da sessão
-        if (isInitialMount.current) {
-          setLoading(false);
-          isInitialMount.current = false; // Marca a montagem inicial como concluída
-          console.log('AuthContext: Initial session processed, loading set to false.');
-        }
+      } catch (error) {
+        console.error('AuthContext: Error during initial session check:', error);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      } finally {
+        setLoading(false); // Finaliza o carregamento após a verificação inicial
+        console.log('AuthContext: Initial session check complete, loading set to false.');
       }
-    );
+    };
+
+    checkInitialSession(); // Chama a função de verificação inicial uma vez na montagem
 
     return () => {
       console.log('AuthContext: Unsubscribing from auth state changes.');
