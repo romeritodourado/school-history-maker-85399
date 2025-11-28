@@ -70,6 +70,7 @@ export default function MunicipalDashboard() {
 
   const currentMunicipalityId = role === 'super_admin' ? paramMunicipalityId : profile?.municipality_id;
 
+  // Effect to fetch municipality details and schools
   useEffect(() => {
     if (authLoading) {
       console.log("MunicipalDashboard: Auth loading, waiting...");
@@ -94,19 +95,38 @@ export default function MunicipalDashboard() {
     }
 
     fetchMunicipalityDetails(currentMunicipalityId);
-    
+    fetchSchoolsForMunicipality(currentMunicipalityId);
+  }, [currentMunicipalityId, role, navigate, authLoading]);
+
+  // Effect to handle initial school selection based on URL, profile, or single school
+  useEffect(() => {
+    if (loadingSchools || schools.length === 0) return; // Wait for schools to load
+
     const schoolIdFromUrl = searchParams.get('schoolId');
-    // Only set selectedSchoolId from URL if it's not already set or if it changed
-    if (schoolIdFromUrl && schoolIdFromUrl !== selectedSchoolId) {
-      setSelectedSchoolId(schoolIdFromUrl);
-    } else if (!schoolIdFromUrl && selectedSchoolId) {
-      // If URL param is removed but a school is selected, clear it
+    let initialSchoolToSelect: string | null = null;
+
+    if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
+      initialSchoolToSelect = schoolIdFromUrl;
+      console.log("Initial school from URL:", initialSchoolToSelect);
+    } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+      initialSchoolToSelect = profile.school_id;
+      console.log("Initial school from user profile:", initialSchoolToSelect);
+    } else if (schools.length === 1) {
+      initialSchoolToSelect = schools[0].id;
+      console.log("Initial school (only one available):", initialSchoolToSelect);
+    } else {
+      console.log("No initial school determined from URL, profile, or single option.");
+    }
+
+    if (initialSchoolToSelect && initialSchoolToSelect !== selectedSchoolId) {
+      setSelectedSchoolId(initialSchoolToSelect);
+    } else if (!initialSchoolToSelect && selectedSchoolId) {
+      // If no school should be selected, but one is, clear it.
       setSelectedSchoolId(null);
     }
-    
-    fetchSchoolsForMunicipality(currentMunicipalityId);
-  }, [currentMunicipalityId, role, navigate, searchParams, authLoading]);
+  }, [schools, profile, role, searchParams, loadingSchools]); // Added loadingSchools to dependencies
 
+  // Effect to fetch selected school details when selectedSchoolId changes
   useEffect(() => {
     if (selectedSchoolId) {
       fetchSelectedSchoolDetails(selectedSchoolId);
@@ -160,11 +180,6 @@ export default function MunicipalDashboard() {
       setSchools([]);
     } else {
       setSchools(data || []);
-      // If a school was selected from URL, ensure it's still valid
-      const schoolIdFromUrl = searchParams.get('schoolId');
-      if (schoolIdFromUrl && data && !data.some(s => s.id === schoolIdFromUrl)) {
-        setSelectedSchoolId(null); // Clear if URL school is no longer valid
-      }
     }
     setLoadingSchools(false);
   };
@@ -330,124 +345,127 @@ export default function MunicipalDashboard() {
           </Card>
         )}
 
-        {!selectedSchoolId ? (
+        {/* Always show the school selection card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <School className="h-5 w-5" />
+              Selecione uma Escola
+            </CardTitle>
+            <CardDescription>
+              Selecione a escola para gerenciar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingSchools ? (
+              <div className="flex items-center justify-center text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
+              </div>
+            ) : schools.length === 0 ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="select-school">Escola</Label>
+                <Select
+                  value={selectedSchoolId || ""}
+                  onValueChange={(value) => setSelectedSchoolId(value)}
+                  disabled={
+                    (role === 'school_admin' || role === 'secretary' || role === 'teacher') && 
+                    !!profile?.school_id && 
+                    schools.some(s => s.id === profile.school_id) // Disable if user has a fixed school and it's in the list
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione uma escola" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schools.map((school) => (
+                      <SelectItem key={school.id} value={school.id}>
+                        {school.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Conditionally show selected school details */}
+        {selectedSchoolId && selectedSchoolDetails && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <School className="h-5 w-5" />
-                Selecione uma Escola
+                {selectedSchoolDetails.logo_url && (
+                  <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-6 w-6 object-contain" />
+                )}
+                {selectedSchoolDetails.name}
               </CardTitle>
-              <CardDescription>
-                Para continuar, por favor, selecione uma escola para gerenciar.
-              </CardDescription>
+              <CardDescription>Detalhes da Escola Selecionada</CardDescription>
             </CardHeader>
-            <CardContent>
-              {loadingSchools ? (
+            <CardContent className="space-y-2 text-sm">
+              {loadingSchoolDetails ? (
                 <div className="flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
-                </div>
-              ) : schools.length === 0 ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="select-school">Escola</Label>
-                  <Select
-                    value={selectedSchoolId || ""}
-                    onValueChange={(value) => setSelectedSchoolId(value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione uma escola" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {schools.map((school) => (
-                        <SelectItem key={school.id} value={school.id}>
-                          {school.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  {selectedSchoolDetails.inep && (
+                    <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
+                  )}
+                  {selectedSchoolDetails.address && (
+                    <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
+                  )}
+                  {selectedSchoolDetails.city && selectedSchoolDetails.state && (
+                    <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
+                  )}
+                  {selectedSchoolDetails.authorization_decree_url && (
+                    <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
+                  )}
+                  {selectedSchoolDetails.official_gazette_url && (
+                    <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
-        ) : (
-          <>
-            {selectedSchoolDetails && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {selectedSchoolDetails.logo_url && (
-                      <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-6 w-6 object-contain" />
-                    )}
-                    {selectedSchoolDetails.name}
-                  </CardTitle>
-                  <CardDescription>Detalhes da Escola Selecionada</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {loadingSchoolDetails ? (
-                    <div className="flex items-center justify-center text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
-                    </div>
-                  ) : (
-                    <>
-                      {selectedSchoolDetails.inep && (
-                        <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
-                      )}
-                      {selectedSchoolDetails.address && (
-                        <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
-                      )}
-                      {selectedSchoolDetails.city && selectedSchoolDetails.state && (
-                        <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
-                      )}
-                      {selectedSchoolDetails.authorization_decree_url && (
-                        <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
-                      )}
-                      {selectedSchoolDetails.official_gazette_url && (
-                        <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cards.map((card) => {
-                const Icon = card.icon;
-                const isDisabled = card.requiresSchool && !selectedSchoolId;
-                const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
-
-                let cardPath = card.path;
-                if (card.requiresSchool && selectedSchoolId) {
-                  cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
-                } else if (!card.requiresSchool && currentMunicipalityId) {
-                  cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
-                }
-
-                return (
-                  <Card 
-                    key={card.path}
-                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => !isDisabled && navigate(cardPath)}
-                    title={tooltipText}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Icon className="h-6 w-6 text-primary" />
-                        </div>
-                        <CardTitle>{card.title}</CardTitle>
-                      </div>
-                      <CardDescription>{card.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                );
-              })}
-            </div>
-          </>
         )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.map((card) => {
+            const Icon = card.icon;
+            const isDisabled = card.requiresSchool && !selectedSchoolId;
+            const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
+
+            let cardPath = card.path;
+            if (card.requiresSchool && selectedSchoolId) {
+              cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
+            } else if (!card.requiresSchool && currentMunicipalityId) {
+              cardPath = `${card.path}?municipalityId=${currentMunicipalityId}`;
+            }
+
+            return (
+              <Card 
+                key={card.path}
+                className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => !isDisabled && navigate(cardPath)}
+                title={tooltipText}
+              >
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle>{card.title}</CardTitle>
+                  </div>
+                  <CardDescription>{card.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            );
+          })}
+        </div>
       </main>
     </div>
   );
