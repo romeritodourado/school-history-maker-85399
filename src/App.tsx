@@ -19,7 +19,7 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react"; // Import useMemo
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { useTheme } from "next-themes";
@@ -35,21 +35,25 @@ const ThemeLogger = () => {
 };
 
 const AuthRedirectHandler = () => {
-  const { user, loading: authLoading } = useAuth(); // Use authLoading here
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const publicOnlyPaths = useMemo(() => ['/login', '/initial-superadmin-setup'], []); // Usando useMemo
+
   useEffect(() => {
     console.log(`AuthRedirectHandler (${location.pathname}): authLoading=${authLoading}, user=${!!user}`);
-    if (!authLoading && user) { // If loading finished AND user is authenticated
-      const publicOnlyPaths = ['/login', '/initial-superadmin-setup']; // REMOVED '/municipal-network-setup'
-      
+    if (!authLoading && user) {
+      console.log("AuthRedirectHandler Debug: Current pathname:", location.pathname);
+      console.log("AuthRedirectHandler Debug: Public only paths:", publicOnlyPaths);
+      console.log("AuthRedirectHandler Debug: Is pathname in publicOnlyPaths?", publicOnlyPaths.includes(location.pathname));
+
       if (publicOnlyPaths.includes(location.pathname)) {
         console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
-        navigate('/', { replace: true }); // Redirect to dashboard
+        navigate('/', { replace: true });
       }
     }
-  }, [user, authLoading, navigate, location.pathname]); // Depend on authLoading
+  }, [user, authLoading, navigate, location.pathname, publicOnlyPaths]); // Adicionando publicOnlyPaths às dependências
 
   return null;
 };
