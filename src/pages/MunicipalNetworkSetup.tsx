@@ -33,14 +33,9 @@ const MunicipalNetworkSetup = () => {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp } = useAuth();
-
-  useEffect(() => {
-    checkSuperAdminExists();
-  }, []);
+  const { signUp, user, loading: authLoading, role } = useAuth(); // Adicionado user, authLoading, role
 
   useEffect(() => {
     // Reset city if state changes or if the selected city is no longer in the list for the new state
@@ -53,18 +48,6 @@ const MunicipalNetworkSetup = () => {
       setShowCustomCityInput(false);
     }
   }, [state]);
-
-  const checkSuperAdminExists = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'super_admin')
-      .limit(1);
-
-    if (data && data.length > 0) {
-      setHasSuperAdmin(true);
-    }
-  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -195,33 +178,9 @@ const MunicipalNetworkSetup = () => {
     }
   };
 
-  if (!hasSuperAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-center mb-4">
-              <ShieldCheck className="h-12 w-12 text-primary" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-center">
-              Configuração Inicial do Sistema
-            </CardTitle>
-            <CardDescription className="text-center">
-              Crie sua conta de Super Administrador
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-center text-muted-foreground">
-              Para configurar a primeira rede municipal, um Super Administrador precisa ser criado primeiro.
-            </p>
-            <Button onClick={() => navigate('/initial-superadmin-setup')} className="w-full mt-4">
-              Criar Super Administrador
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Se o usuário não for um super_admin, ele será redirecionado pelo ProtectedRoute.
+  // Se ele chegou aqui, é um super_admin e pode ver o formulário.
+  // A lógica de 'hasSuperAdmin' foi removida para simplificar e evitar conflitos.
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">

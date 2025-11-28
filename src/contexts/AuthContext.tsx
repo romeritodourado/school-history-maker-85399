@@ -150,8 +150,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    console.log("AuthContext: Attempting to sign out...");
     setLoading(true);
     const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("AuthContext: Error during sign out:", error);
+    } else {
+      console.log("AuthContext: Sign out successful.");
+    }
     setLoading(false);
     return { error };
   };
