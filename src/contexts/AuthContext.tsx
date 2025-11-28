@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -28,8 +28,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start as true
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
+
+  // Use refs to get the latest state values in console.log
+  const userRef = useRef(user);
+  const profileRef = useRef(profile);
+  const roleRef = useRef(role);
+
+  useEffect(() => {
+    userRef.current = user;
+    profileRef.current = profile;
+    roleRef.current = role;
+  }, [user, profile, role]);
 
   const fetchUserProfileAndRole = async (userId: string) => {
     console.log("AuthContext: Fetching user profile for:", userId);
@@ -39,6 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .select('*')
         .eq('id', userId)
         .single();
+
+      console.log("AuthContext: Supabase profile query result - data:", data, "error:", error); // ADDED LOG
 
       if (error) {
         console.error("AuthContext: Error fetching profile:", error);
@@ -65,43 +78,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const loadInitialSession = async () => {
-      console.log("AuthContext: Loading initial session...");
-      setLoading(true); // Ensure loading is true at the start
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          console.log("AuthContext: Initial session found:", session.user.id);
-          setUser(session.user);
-          setSession(session);
-          await fetchUserProfileAndRole(session.user.id);
-        } else {
-          console.log("AuthContext: No initial session.");
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-        }
-      } catch (error) {
-        console.error("AuthContext: Error during initial session load or profile fetch:", error);
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-      } finally {
-        setLoading(false); // Ensure loading is false after initial session check
-        console.log("AuthContext: Initial session load finished. Final state: user=", !!user, "profile=", !!profile, "role=", role, "loading=", false);
-      }
-    };
-
-    loadInitialSession();
-
     console.log("AuthContext: Setting up auth state listener...");
+    // Set loading to true initially, it will be set to false after the first onAuthStateChange event
+    setLoading(true); 
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthContext: onAuthStateChange event:", event);
-        setLoading(true); // Set loading true at the start of state change processing
+        // For every state change, we are processing, so set loading to true
+        // This ensures components waiting for auth are aware of ongoing changes
+        setLoading(true); 
 
         try {
           if (session?.user) {
@@ -117,14 +103,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (error) {
           console.error("AuthContext: Error during onAuthStateChange profile fetch:", error);
+          // Ensure state is cleared on error
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         } finally {
-          setLoading(false); // Ensure loading is false after state change processing
-          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!user, "profile=", !!profile, "role=", role, "loading=", false);
+          // Always set loading to false after processing the event
+          setLoading(false); 
+          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!userRef.current, "profile=", !!profileRef.current, "role=", roleRef.current, "loading=", false);
         }
       }
     );
@@ -133,24 +121,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('AuthContext: Unsubscribing...');
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
+        setLoading(false); // Set loading to false on immediate error
         return { error };
       }
-      if (data.user) {
-        await fetchUserProfileAndRole(data.user.id);
-      }
+      // onAuthStateChange will handle setting user, session, profile, role, and loading=false
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Error during signIn:", error);
+      setLoading(false); // Ensure loading is false on unexpected error
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login.") };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -166,18 +152,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
+        setLoading(false); // Set loading to false on immediate error
         return { error };
       }
-
-      if (data.user) {
-        await fetchUserProfileAndRole(data.user.id);
-      }
+      // onAuthStateChange will handle setting user, session, profile, role, and loading=false
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Error during signUp:", error);
+      setLoading(false); // Ensure loading is false on unexpected error
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro.") };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -188,15 +171,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("AuthContext: Error during sign out:", error);
-      } else {
-        console.log("AuthContext: Sign out successful.");
+        setLoading(false); // Set loading to false on immediate error
       }
+      // onAuthStateChange will handle clearing state and setting loading=false
       return { error };
     } catch (error: any) {
       console.error("AuthContext: Error during signOut:", error);
+      setLoading(false); // Ensure loading is false on unexpected error
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout.") };
-    } finally {
-      setLoading(false);
     }
   };
 
