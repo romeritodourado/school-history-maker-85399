@@ -72,11 +72,14 @@ export default function MunicipalDashboard() {
 
   // Effect to fetch municipality details and schools
   useEffect(() => {
+    console.log("MunicipalDashboard: Checking auth state and municipality access");
     if (authLoading) {
+      console.log("MunicipalDashboard: Auth still loading...");
       return;
     }
 
     if (!currentMunicipalityId) {
+      console.log("MunicipalDashboard: No municipality ID found");
       toast({
         title: 'Erro de acesso',
         description: 'ID da rede municipal não encontrado. Redirecionando.',
@@ -87,38 +90,50 @@ export default function MunicipalDashboard() {
     }
 
     if (role !== 'super_admin' && role !== 'municipal_secretary' && role !== 'network_manager') {
+      console.log("MunicipalDashboard: User role not authorized for municipal dashboard");
       navigate('/');
       return;
     }
 
+    console.log("MunicipalDashboard: Fetching municipality details and schools");
     fetchMunicipalityDetails(currentMunicipalityId);
     fetchSchoolsForMunicipality(currentMunicipalityId);
   }, [currentMunicipalityId, role, navigate, authLoading]);
 
   // Effect to handle initial school selection based on URL, profile, or single school
   useEffect(() => {
-    if (loadingSchools || schools.length === 0) return;
+    console.log("MunicipalDashboard: Checking school selection logic");
+    if (loadingSchools || schools.length === 0) {
+      console.log("MunicipalDashboard: Schools still loading or none found");
+      return;
+    }
 
     const schoolIdFromUrl = searchParams.get('schoolId');
     let initialSchoolToSelect: string | null = null;
 
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
+      console.log("MunicipalDashboard: Found school ID in URL params");
       initialSchoolToSelect = schoolIdFromUrl;
     } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+      console.log("MunicipalDashboard: Using school from user profile");
       initialSchoolToSelect = profile.school_id;
     } else if (schools.length === 1) {
+      console.log("MunicipalDashboard: Only one school available, selecting it");
       initialSchoolToSelect = schools[0].id;
     }
 
     if (initialSchoolToSelect && initialSchoolToSelect !== selectedSchoolId) {
+      console.log("MunicipalDashboard: Setting initial school selection");
       setSelectedSchoolId(initialSchoolToSelect);
     } else if (!initialSchoolToSelect && selectedSchoolId) {
+      console.log("MunicipalDashboard: Clearing school selection");
       setSelectedSchoolId(null);
     }
   }, [schools, profile, role, searchParams, loadingSchools]);
 
   // Effect to fetch selected school details when selectedSchoolId changes
   useEffect(() => {
+    console.log("MunicipalDashboard: Selected school ID changed:", selectedSchoolId);
     if (selectedSchoolId) {
       fetchSelectedSchoolDetails(selectedSchoolId);
       setSearchParams(prev => {
@@ -135,6 +150,7 @@ export default function MunicipalDashboard() {
   }, [selectedSchoolId, setSearchParams]);
 
   const fetchMunicipalityDetails = async (id: string) => {
+    console.log("MunicipalDashboard: Fetching municipality details for ID:", id);
     const { data, error } = await supabase
       .from('municipalities')
       .select('id, name, cnpj, emblem_url, address, city, state')
@@ -142,6 +158,7 @@ export default function MunicipalDashboard() {
       .single();
 
     if (error) {
+      console.error("MunicipalDashboard: Error fetching municipality details:", error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os detalhes da rede municipal.',
@@ -150,10 +167,12 @@ export default function MunicipalDashboard() {
       navigate('/');
       return;
     }
+    console.log("MunicipalDashboard: Municipality details fetched:", data);
     setMunicipalityDetails(data as MunicipalityDetails);
   };
 
   const fetchSchoolsForMunicipality = async (id: string) => {
+    console.log("MunicipalDashboard: Fetching schools for municipality ID:", id);
     setLoadingSchools(true);
     const { data, error } = await supabase
       .from('schools')
@@ -162,7 +181,7 @@ export default function MunicipalDashboard() {
       .order('name');
 
     if (error) {
-      console.error('Error fetching schools:', error);
+      console.error("MunicipalDashboard: Error fetching schools:", error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar as escolas.',
@@ -170,12 +189,14 @@ export default function MunicipalDashboard() {
       });
       setSchools([]);
     } else {
+      console.log("MunicipalDashboard: Schools fetched:", data);
       setSchools(data || []);
     }
     setLoadingSchools(false);
   };
 
   const fetchSelectedSchoolDetails = async (schoolId: string) => {
+    console.log("MunicipalDashboard: Fetching details for selected school ID:", schoolId);
     setLoadingSchoolDetails(true);
     const { data, error } = await supabase
       .from('schools')
@@ -184,7 +205,7 @@ export default function MunicipalDashboard() {
       .single();
 
     if (error) {
-      console.error('Error fetching school details:', error);
+      console.error("MunicipalDashboard: Error fetching school details:", error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os detalhes da escola selecionada.',
@@ -192,12 +213,14 @@ export default function MunicipalDashboard() {
       });
       setSelectedSchoolDetails(null);
     } else {
+      console.log("MunicipalDashboard: School details fetched:", data);
       setSelectedSchoolDetails(data as SelectedSchoolDetails);
     }
     setLoadingSchoolDetails(false);
   };
 
   const handleBackToSuperAdminDashboard = () => {
+    console.log("MunicipalDashboard: Returning to super admin dashboard");
     setActiveMunicipalityIdForSuperAdmin(null);
     navigate('/');
   };
@@ -261,9 +284,11 @@ export default function MunicipalDashboard() {
   ];
 
   if (authLoading) {
+    console.log("MunicipalDashboard: Still loading auth...");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Carregando...</span>
       </div>
     );
   }
