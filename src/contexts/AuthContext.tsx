@@ -141,6 +141,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setSession(session);
         }
+        
+        // Garantir que loading seja false após qualquer mudança de estado
+        if (loading) {
+          console.log("AuthProvider: Setting loading to false after auth state change");
+          setLoading(false);
+        }
       }
     );
 
