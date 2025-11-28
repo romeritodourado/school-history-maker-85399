@@ -107,6 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session.user);
           setSession(session);
           await fetchUserProfileAndRole(session.user.id);
+          setLoading(false); // Ensure loading is false after profile fetch
         } else if (event === 'SIGNED_OUT') {
           console.log("AuthProvider: User signed out");
           setUser(null);
@@ -114,15 +115,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
+          setLoading(false); // Ensure loading is false after sign out
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           console.log("AuthProvider: Token refreshed");
           setUser(session.user);
           setSession(session);
+          setLoading(false); // Ensure loading is false after token refresh
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("AuthProvider: User updated");
           setUser(session.user);
           setSession(session);
           await fetchUserProfileAndRole(session.user.id);
+          setLoading(false); // Ensure loading is false after profile fetch
         }
       }
     );
@@ -148,7 +152,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign in exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign in") };
     } finally {
-      setLoading(false);
+      // Note: We don't set loading to false here because onAuthStateChange will handle it
     }
   };
 
@@ -174,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign up exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign up") };
     } finally {
-      setLoading(false);
+      // Note: We don't set loading to false here because onAuthStateChange will handle it
     }
   };
 
@@ -193,7 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthProvider: Sign out exception:", error);
       return { error: error instanceof Error ? error : new Error("Unknown error during sign out") };
     } finally {
-      setLoading(false);
+      // Note: We don't set loading to false here because onAuthStateChange will handle it
     }
   };
 

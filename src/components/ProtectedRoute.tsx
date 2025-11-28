@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 type AppRole = 
   | 'super_admin'
@@ -19,19 +18,11 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, role, loading: authLoading } = useAuth();
   const location = useLocation();
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Track when initial auth load is complete
-  useEffect(() => {
-    if (!authLoading) {
-      setInitialLoadComplete(true);
-    }
-  }, [authLoading]);
-
-  console.log(`ProtectedRoute (${location.pathname}): authLoading=${authLoading}, user=${!!user}, role=${role}, initialLoadComplete=${initialLoadComplete}`);
+  console.log(`ProtectedRoute (${location.pathname}): authLoading=${authLoading}, user=${!!user}, role=${role}`);
 
   // Show loading spinner while auth is initializing
-  if (authLoading || !initialLoadComplete) {
+  if (authLoading) {
     console.log(`ProtectedRoute (${location.pathname}): Showing loading spinner`);
     return (
       <div className="min-h-screen flex items-center justify-center">
