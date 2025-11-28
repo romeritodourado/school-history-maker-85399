@@ -20,7 +20,7 @@ import {
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface UserProfile {
   id: string;
@@ -57,7 +57,7 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'assistente_administrativo' as AppRole, // Default role
+    role: 'teacher' as AppRole, // Default role changed to 'teacher'
     municipality_id: '',
     school_id: '',
   });
@@ -251,16 +251,16 @@ export default function Users() {
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
       secretary: 'Secretário(a) Escolar',
-      assistente_administrativo: 'Assistente Administrativo',
+      teacher: 'Professor(a)',
     };
     return labels[role] || role;
   };
 
   const getAvailableRoles = () => {
-    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'];
+    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'];
     if (currentUserRole === 'super_admin') return allRoles;
     if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') return allRoles.filter(r => r !== 'super_admin');
-    if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'assistente_administrativo');
+    if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'teacher');
     return [];
   };
 
@@ -269,7 +269,7 @@ export default function Users() {
       email: '',
       password: '',
       name: '',
-      role: 'assistente_administrativo',
+      role: 'teacher',
       municipality_id: '',
       school_id: '',
     });
@@ -371,7 +371,7 @@ export default function Users() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
+                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
@@ -392,7 +392,7 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
-                {(formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'assistente_administrativo') && (
+                {(formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select

@@ -23,7 +23,7 @@ import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle'; // Importar ThemeToggle
 import { Link } from 'react-router-dom'; // Importar Link
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface Municipality {
   id: string;
@@ -42,6 +42,13 @@ export default function Dashboard() {
         fetchMunicipalities();
       } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
         navigate(`/municipal-dashboard/${profile.municipality_id}`, { replace: true });
+      } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id) {
+        // For school-level roles, redirect to municipal dashboard with schoolId pre-selected
+        // Assuming there's a way to get the municipalityId from the schoolId
+        // For now, we'll redirect to the root and let ProtectedRoute handle it, or a more specific school dashboard if it exists.
+        // If a school-specific dashboard is needed, a new route and component would be created.
+        // For simplicity, if they have a school_id, they can access student list directly.
+        navigate('/lista-alunos', { replace: true });
       }
     }
   }, [loading, user, role, profile, navigate]);
@@ -79,7 +86,7 @@ export default function Dashboard() {
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
       secretary: 'Secretário(a) Escolar',
-      assistente_administrativo: 'Assistente Administrativo',
+      teacher: 'Professor(a)',
     };
     return labels[role] || role;
   };
@@ -90,14 +97,14 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
     },
     {
       title: 'Carga Horária',
@@ -125,7 +132,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo'],
+      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
     },
   ];
 

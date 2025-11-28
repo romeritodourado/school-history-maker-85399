@@ -497,10 +497,10 @@ export type Database = {
       app_role:
         | "super_admin"
         | "municipal_secretary"
-        | "network_manager"
         | "school_admin"
         | "secretary"
-        | "assistente_administrativo"
+        | "teacher"
+        | "network_manager"
     }
     CompositeTypes: {
       [_ in never]: never

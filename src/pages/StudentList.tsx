@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import correctLogo from "/correct-logo.png";
 import { useAuth } from '@/contexts/AuthContext';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface Student {
   id: string;
@@ -77,7 +77,7 @@ const StudentList = () => {
         query = query.eq('school_id', schoolIdFromUrl);
       } else if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.in('school_id', supabase.from('schools').select('id').eq('municipality_id', currentUserProfile.municipality_id));
-      } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') {
+      } else if (currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'teacher') {
         query = query.eq('school_id', currentUserProfile?.school_id);
       }
 
@@ -200,7 +200,7 @@ const StudentList = () => {
                     </Link>
                     {(currentUserRole === 'super_admin' || 
                       ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && student.schools?.municipality_id === currentUserProfile?.municipality_id) ||
-                      ((currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'assistente_administrativo') && student.school_id === currentUserProfile?.school_id)) && (
+                      ((currentUserRole === 'school_admin' || currentUserRole === 'secretary' || currentUserRole === 'teacher') && student.school_id === currentUserProfile?.school_id)) && (
                       <Button variant="destructive" size="sm" onClick={() => handleDelete(student.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

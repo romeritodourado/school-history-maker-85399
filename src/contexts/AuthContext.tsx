@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { loginSchema, signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface Profile {
   id: string;

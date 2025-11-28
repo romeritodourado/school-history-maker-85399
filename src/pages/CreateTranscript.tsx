@@ -68,6 +68,8 @@ interface SchoolOption {
   id: string;
   name: string;
   municipality_id: string;
+  city: string | null;
+  state: string | null;
 }
 
 const CreateTranscript = () => {
@@ -100,9 +102,9 @@ const CreateTranscript = () => {
     {
       calendar_year: new Date().getFullYear(),
       grade_level: "1º Ano",
-      school_name: "",
-      city: "",
-      state: "",
+      school_name: "", // Default empty, will be set by selectedSchoolId
+      city: "", // Default empty
+      state: "", // Default empty
       shift: "",
       class_name: "",
       reclassified: false,
@@ -153,11 +155,15 @@ const CreateTranscript = () => {
 
     if (id) {
       loadTranscriptData();
-    } else if (schools.length > 0 && (schoolIdFromUrl || profile?.school_id)) {
-      const initialSchool = schoolIdFromUrl || profile?.school_id;
-      if (initialSchool) {
-        setSelectedSchoolId(initialSchool);
-        updateAcademicYearsSchoolInfo(initialSchool);
+    } else if (schools.length > 0) {
+      const initialSchoolId = schoolIdFromUrl || profile?.school_id;
+      if (initialSchoolId) {
+        setSelectedSchoolId(initialSchoolId);
+        updateAcademicYearsSchoolInfo(initialSchoolId);
+      } else if (schools.length === 1) {
+        // If only one school is available and no schoolId is pre-selected, select it
+        setSelectedSchoolId(schools[0].id);
+        updateAcademicYearsSchoolInfo(schools[0].id);
       }
     }
   }, [id, schools, profile, searchParams]);
@@ -166,11 +172,11 @@ const CreateTranscript = () => {
     try {
       let query = supabase
         .from('schools')
-        .select('id, name, municipality_id');
+        .select('id, name, municipality_id, city, state');
 
       if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
         query = query.eq('municipality_id', profile.municipality_id);
-      } else if (role === 'school_admin' || role === 'secretary' || role === 'assistente_administrativo') {
+      } else if (role === 'school_admin' || role === 'secretary' || role === 'teacher') {
         query = query.eq('id', profile?.school_id);
       }
 
@@ -185,17 +191,11 @@ const CreateTranscript = () => {
   const updateAcademicYearsSchoolInfo = async (schoolId: string) => {
     const school = schools.find(s => s.id === schoolId);
     if (school) {
-      const { data: municipality, error } = await supabase
-        .from('municipalities')
-        .select('name')
-        .eq('id', school.municipality_id)
-        .single();
-
       setAcademicYears(prevYears => prevYears.map(year => ({
         ...year,
         school_name: school.name,
-        city: municipality?.name || "Luís Eduardo Magalhães", // Use municipality name for city
-        state: "BA", // Assuming state is fixed for now
+        city: school.city || "",
+        state: school.state || "",
       })));
     }
   };

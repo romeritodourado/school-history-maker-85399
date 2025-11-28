@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface SchoolOption {
   id: string;
@@ -204,7 +204,7 @@ export default function MunicipalDashboard() {
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
       secretary: 'Secretário(a) Escolar',
-      assistente_administrativo: 'Assistente Administrativo',
+      teacher: 'Professor(a)',
     };
     return labels[role] || role;
   };

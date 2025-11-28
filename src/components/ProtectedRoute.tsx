@@ -9,7 +9,7 @@ type AppRole =
   | 'network_manager'
   | 'school_admin'
   | 'secretary'
-  | 'assistente_administrativo';
+  | 'teacher';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

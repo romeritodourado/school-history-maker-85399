@@ -87,22 +87,22 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/lista-alunos" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
                   <StudentList />
                 </ProtectedRoute>
               } />
               <Route path="/novo-historico" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
                   <CreateTranscript />
                 </ProtectedRoute>
               } />
               <Route path="/visualizar/:id" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
                   <ViewTranscript />
                 </ProtectedRoute>
               } />
               <Route path="/editar/:id" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'assistente_administrativo']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
                   <CreateTranscript />
                 </ProtectedRoute>
               } />

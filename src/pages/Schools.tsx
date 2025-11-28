@@ -24,7 +24,7 @@ import correctLogo from "/correct-logo.png"; // Importar a logo
 import { Link } from 'react-router-dom'; // Importar Link
 import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'assistente_administrativo';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
 interface SchoolData {
   id: string;
@@ -599,7 +599,7 @@ export default function Schools() {
                   {school.official_gazette_url && (
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      Diário Oficial: {school.official_gazette_url}
+                      Diário Oficial: {school.official_gazão_url}
                     </p>
                   )}
                 </div>

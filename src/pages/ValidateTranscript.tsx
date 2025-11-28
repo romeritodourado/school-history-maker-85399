@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
 
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+
 interface TranscriptValidation {
   student_name: string;
   school_name: string;
