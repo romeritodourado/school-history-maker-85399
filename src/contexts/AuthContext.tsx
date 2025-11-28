@@ -77,17 +77,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("AuthContext: No initial session.");
         setUser(null);
         setSession(null);
+        setProfile(null); // Ensure profile is cleared
+        setRole(null);   // Ensure role is cleared
       }
-
-      setLoading(false); // Só libera depois do profile carregar
+      setLoading(false); // Ensure loading is false after initial session check
     };
 
-    loadInitialSession(); // Carrega antes do listener
+    loadInitialSession();
 
     console.log("AuthContext: Setting up auth state listener...");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthContext: onAuthStateChange event:", event);
+        setLoading(true); // Set loading true at the start of state change processing
 
         if (session?.user) {
           setUser(session.user);
@@ -100,6 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
         }
+        setLoading(false); // Ensure loading is false after state change processing
       }
     );
 

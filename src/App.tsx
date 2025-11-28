@@ -19,7 +19,7 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
-import { useEffect, useMemo } from "react"; // Import useMemo
+import { useEffect } from "react";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { useTheme } from "next-themes";
@@ -39,21 +39,23 @@ const AuthRedirectHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const publicOnlyPaths = useMemo(() => ['/login', '/initial-superadmin-setup'], []); // Usando useMemo
-
   useEffect(() => {
     console.log(`AuthRedirectHandler (${location.pathname}): authLoading=${authLoading}, user=${!!user}`);
-    if (!authLoading && user) {
-      console.log("AuthRedirectHandler Debug: Current pathname:", location.pathname);
-      console.log("AuthRedirectHandler Debug: Public only paths:", publicOnlyPaths);
-      console.log("AuthRedirectHandler Debug: Is pathname in publicOnlyPaths?", publicOnlyPaths.includes(location.pathname));
+    
+    // Define publicOnlyPaths directly inside useEffect for debugging
+    const publicOnlyPaths = ['/login', '/initial-superadmin-setup']; 
 
+    console.log("AuthRedirectHandler Debug: Current pathname:", location.pathname);
+    console.log("AuthRedirectHandler Debug: Public only paths content:", publicOnlyPaths);
+    console.log("AuthRedirectHandler Debug: Is pathname in publicOnlyPaths?", publicOnlyPaths.includes(location.pathname));
+
+    if (!authLoading && user) {
       if (publicOnlyPaths.includes(location.pathname)) {
         console.log(`AuthRedirectHandler (${location.pathname}): Authenticated user on public path, redirecting to /.`);
         navigate('/', { replace: true });
       }
     }
-  }, [user, authLoading, navigate, location.pathname, publicOnlyPaths]); // Adicionando publicOnlyPaths às dependências
+  }, [user, authLoading, navigate, location.pathname]);
 
   return null;
 };
