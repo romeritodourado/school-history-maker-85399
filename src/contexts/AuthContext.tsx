@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -30,17 +30,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true); // Start as true
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
-
-  // Use refs to get the latest state values in console.log
-  const userRef = useRef(user);
-  const profileRef = useRef(profile);
-  const roleRef = useRef(role);
-
-  useEffect(() => {
-    userRef.current = user;
-    profileRef.current = profile;
-    roleRef.current = role;
-  }, [user, profile, role]);
 
   const fetchUserProfileAndRole = async (userId: string) => {
     console.log("AuthContext: Fetching user profile for:", userId);
@@ -89,11 +78,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // This ensures components waiting for auth are aware of ongoing changes
         setLoading(true); 
 
+        let currentUser: User | null = null;
+        let currentSession: Session | null = null;
+        let currentProfile: Profile | null = null;
+        let currentRole: AppRole | null = null;
+
         try {
           if (session?.user) {
+            currentUser = session.user;
+            currentSession = session;
             setUser(session.user);
             setSession(session);
             await fetchUserProfileAndRole(session.user.id);
+            // After fetchUserProfileAndRole, profile and role states are updated.
+            // We need to read them directly for the final log.
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profileData) {
+              currentProfile = profileData;
+              currentRole = profileData.role;
+            }
           } else {
             setUser(null);
             setSession(null);
@@ -112,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
           // Always set loading to false after processing the event
           setLoading(false); 
-          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!userRef.current, "profile=", !!profileRef.current, "role=", roleRef.current, "loading=", false);
+          console.log("AuthContext: onAuthStateChange finished. Final state: user=", !!currentUser, "profile=", !!currentProfile, "role=", currentRole, "loading=", false);
         }
       }
     );
@@ -126,7 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setLoading(false); // Set loading to false on immediate error
         return { error };
@@ -143,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
