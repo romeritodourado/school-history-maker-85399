@@ -19,10 +19,9 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   const { user, role, loading } = useAuth();
   const location = useLocation();
 
-  // Se ainda estiver carregando a autenticação, mostra o spinner
+  // Se ainda estiver carregando o estado de autenticação (sessão e perfil), mostra o spinner
   if (loading) {
-    console.log(`ProtectedRoute (${location.pathname}): authLoading=true, user=${!!user}, role=${role}`);
-    console.log(`ProtectedRoute (${location.pathname}): Mostrando spinner de carregamento`);
+    console.log(`ProtectedRoute (${location.pathname}): Carregando estado de autenticação...`);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -31,13 +30,13 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
-  // Se não houver usuário autenticado, redireciona para a página de login
+  // Se não estiver carregando e não houver usuário, redireciona para a página de login
   if (!user) {
     console.log(`ProtectedRoute (${location.pathname}): Nenhum usuário, redirecionando para /login`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Se houver roles requeridas e o usuário não tiver uma delas, nega o acesso
+  // Se o usuário existir, mas não tiver as roles necessárias, nega o acesso
   if (requiredRoles && requiredRoles.length > 0 && (!role || !requiredRoles.includes(role as AppRole))) {
     console.log(`ProtectedRoute (${location.pathname}): Acesso negado. Role do usuário: ${role}, Roles requeridas: ${requiredRoles.join(', ')}`);
     return (
@@ -52,7 +51,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
-  // Se tudo estiver ok, renderiza os filhos
+  // Se todas as verificações passarem, renderiza os filhos
   console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${role}`);
   return <>{children}</>;
 }

@@ -31,116 +31,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // SOLUÇÃO 1: Carregamento inicial da sessão (executa apenas uma vez)
-  useEffect(() => {
-    let ignore = false;
+  // Função para buscar o perfil do usuário
+  const fetchProfile = useCallback(async (userId: string) => {
+    console.log("AuthContext: Buscando perfil para o usuário:", userId);
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    const loadInitialSession = async () => {
-      console.log("AuthContext: Carregando sessão inicial...");
-      const { data, error } = await supabase.auth.getSession();
-      if (!ignore) {
-        if (error) {
-          console.error("AuthContext: Erro ao carregar sessão inicial:", error);
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-        } else {
-          setUser(data.session?.user ?? null);
-          setSession(data.session ?? null);
-          // O perfil e o role serão carregados pelo useEffect que depende de 'session'
-        }
-        setLoading(false); // Define loading como false após a tentativa de carregar a sessão inicial
-      }
-    };
-
-    loadInitialSession();
-
-    return () => {
-      ignore = true;
-    };
-  }, []); // Sem dependências para rodar apenas uma vez
-
-  // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
-  useEffect(() => {
-    console.log("AuthContext: Configurando listener de auth state change.");
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      // O perfil e o role serão carregados pelo useEffect que depende de 'session'
-      setLoading(false); // Garante que o loading seja false após qualquer mudança de estado de auth
-    });
-
-    return () => {
-      console.log("AuthContext: Desinscrevendo listener de auth state change.");
-      subscription.unsubscribe();
-    };
-  }, []); // Sem dependências para rodar apenas uma vez
-
-  // SOLUÇÃO 3: Carregar perfil e role (depende apenas de 'session')
-  useEffect(() => {
-    if (!session?.user) {
-      console.log("AuthContext: Nenhuma sessão de usuário ativa, limpando perfil e role.");
+    if (profileError) {
+      console.error("AuthContext: Erro ao buscar perfil:", profileError);
       setProfile(null);
       setRole(null);
-      return;
+      return null;
+    } else {
+      console.log("AuthContext: Perfil carregado:", profileData);
+      setProfile(profileData);
+      setRole(profileData.role);
+      return profileData;
     }
+  }, []);
 
-    let ignore = false;
-
-    const loadProfile = async () => {
-      console.log("AuthContext: Carregando perfil para o usuário:", session.user.id);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (!ignore) {
-        if (error) {
-          console.error("AuthContext: Erro ao carregar perfil:", error);
-          setProfile(null);
-          setRole(null);
-        } else {
-          console.log("AuthContext: Perfil carregado:", data);
-          setProfile(data);
-          setRole(data.role);
-        }
-      }
-    };
-
-    loadProfile();
-    return () => {
-      ignore = true;
-    };
-  }, [session]); // Depende apenas de 'session'
-
+  // Função para atualizar a sessão e o perfil de forma consistente
   const refreshSession = useCallback(async () => {
-    setLoading(true); // Define loading como true ao iniciar o refresh
-    console.log("AuthContext: Refreshing session manualmente.");
+    setLoading(true); // Inicia o carregamento
+    console.log("AuthContext: Atualizando sessão e perfil.");
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error("AuthContext: Erro ao obter sessão durante refresh:", error);
+        console.error("AuthContext: Erro ao obter sessão:", error);
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
       } else if (currentSession?.user) {
-        console.log("AuthContext: Sessão válida encontrada durante refresh.");
+        console.log("AuthContext: Sessão válida encontrada.");
         setUser(currentSession.user);
         setSession(currentSession);
         await fetchProfile(currentSession.user.id); // Garante que o perfil seja carregado
       } else {
-        console.log("AuthContext: Nenhuma sessão válida durante refresh.");
+        console.log("AuthContext: Nenhuma sessão válida.");
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null); // Limpa o ID da rede municipal ativa
       }
     } catch (error) {
       console.error("AuthContext: Erro no refreshSession:", error);
@@ -149,9 +86,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfile(null);
       setRole(null);
     } finally {
-      setLoading(false); // Define loading como false após o refresh
+      console.log("AuthContext: Finalizado refreshSession, definindo loading para false.");
+      setLoading(false); // Finaliza o carregamento
     }
   }, [fetchProfile]);
+
+  // SOLUÇÃO 1: Carregamento inicial da sessão (executa apenas uma vez)
+  useEffect(() => {
+    let ignore = false;
+    const initializeAuth = async () => {
+      if (!ignore) {
+        await refreshSession();
+      }
+    };
+    initializeAuth();
+    return () => { ignore = true; };
+  }, [refreshSession]); // Depende de refreshSession para garantir que seja chamado na montagem
+
+  // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
+  useEffect(() => {
+    console.log("AuthContext: Configurando listener de auth state change.");
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
+      // Chama refreshSession para lidar com todas as mudanças de estado de forma consistente
+      await refreshSession(); 
+    });
+
+    return () => {
+      console.log("AuthContext: Desinscrevendo listener de auth state change.");
+      subscription.unsubscribe();
+    };
+  }, [refreshSession]); // Depende de refreshSession
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
