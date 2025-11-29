@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+// src/contexts/AuthContext.tsx
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -31,94 +32,161 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // Função para buscar o perfil do usuário
+  // refs para controle de concorrência e montagem
+  const isMountedRef = useRef(true);
+  const isRefreshingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Função para buscar o perfil do usuário (resiliente)
   const fetchProfile = useCallback(async (userId: string) => {
     console.log("AuthContext: Buscando perfil para o usuário:", userId);
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      // Tenta buscar o perfil completo primeiro
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (profileError) {
-      console.error("AuthContext: Erro ao buscar perfil:", profileError);
-      setProfile(null);
-      setRole(null);
+      if (profileError) {
+        // Log detalhado para debug
+        console.warn("AuthContext: Erro ao buscar perfil (single *). Tentando buscar apenas role. Erro:", profileError);
+        // Tenta buscar apenas role (fallback)
+        const { data: roleData, error: roleError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        if (roleError || !roleData) {
+          console.error("AuthContext: Falha ao buscar role do perfil:", roleError);
+          // Não lançar — apenas retorna null para não travar o app
+          if (isMountedRef.current) {
+            setProfile(null);
+            setRole(null);
+          }
+          return null;
+        } else {
+          if (isMountedRef.current) {
+            setProfile(roleData as unknown as Profile); // perfil parcial
+            setRole((roleData as any).role ?? null);
+          }
+          console.log("AuthContext: Perfil (fallback role) carregado:", roleData);
+          return roleData as unknown as Profile;
+        }
+      } else {
+        if (isMountedRef.current) {
+          setProfile(profileData as Profile);
+          setRole((profileData as any).role ?? null);
+        }
+        console.log("AuthContext: Perfil carregado:", profileData);
+        return profileData as Profile;
+      }
+    } catch (err) {
+      console.error("AuthContext: Exceção ao buscar perfil:", err);
+      if (isMountedRef.current) {
+        setProfile(null);
+        setRole(null);
+      }
       return null;
-    } else {
-      console.log("AuthContext: Perfil carregado:", profileData);
-      setProfile(profileData);
-      setRole(profileData.role);
-      return profileData;
     }
   }, []);
 
   // Função para atualizar a sessão e o perfil de forma consistente
   const refreshSession = useCallback(async () => {
-    setLoading(true); // Inicia o carregamento
+    // Evita chamadas concorrentes
+    if (isRefreshingRef.current) {
+      console.log("AuthContext: refreshSession já em andamento — ignorando chamada concorrente.");
+      return;
+    }
+    isRefreshingRef.current = true;
+    if (isMountedRef.current) setLoading(true);
+
     console.log("AuthContext: Atualizando sessão e perfil.");
     try {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-      
+      const res = await supabase.auth.getSession();
+      // compatibilidade com diferentes versões do client
+      const currentSession = (res as any)?.data?.session ?? (res as any)?.session ?? null;
+      const error = (res as any)?.error ?? null;
+
       if (error) {
         console.error("AuthContext: Erro ao obter sessão:", error);
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
+        if (isMountedRef.current) {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+        }
       } else if (currentSession?.user) {
-        console.log("AuthContext: Sessão válida encontrada.");
-        setUser(currentSession.user);
-        setSession(currentSession);
-        await fetchProfile(currentSession.user.id); // Garante que o perfil seja carregado
+        console.log("AuthContext: Sessão válida encontrada. User id:", currentSession.user.id);
+        if (isMountedRef.current) {
+          setUser(currentSession.user);
+          setSession(currentSession);
+        }
+        // Buscar o perfil (não bloqueia o carregamento se falhar)
+        await fetchProfile(currentSession.user.id);
       } else {
         console.log("AuthContext: Nenhuma sessão válida.");
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null); // Limpa o ID da rede municipal ativa
+        if (isMountedRef.current) {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+        }
       }
     } catch (error) {
       console.error("AuthContext: Erro no refreshSession:", error);
-      setUser(null);
-      setSession(null);
-      setProfile(null);
-      setRole(null);
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+      }
     } finally {
-      console.log("AuthContext: Finalizado refreshSession, definindo loading para false.");
-      setLoading(false); // Finaliza o carregamento
+      // Garantir que loading seja desativado — evita spinner infinito
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isRefreshingRef.current = false;
+      console.log("AuthContext: Finalizado refreshSession. loading=false");
     }
   }, [fetchProfile]);
 
-  // SOLUÇÃO 1: Carregamento inicial da sessão (executa apenas uma vez)
+  // Carregamento inicial (executa apenas uma vez na montagem)
   useEffect(() => {
-    let ignore = false;
+    let cancelled = false;
     const initializeAuth = async () => {
-      if (!ignore) {
-        await refreshSession();
-      }
+      if (cancelled) return;
+      await refreshSession();
     };
     initializeAuth();
-    return () => { ignore = true; };
-  }, [refreshSession]); // Depende de refreshSession para garantir que seja chamado na montagem
+    return () => { cancelled = true; };
+  }, [refreshSession]);
 
-  // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
+  // Listener de mudanças na autenticação — desencadeia refreshSession,
+  // mas não aguarda por ele para evitar conflitos/loops.
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
-      // Chama refreshSession para lidar com todas as mudanças de estado de forma consistente
-      await refreshSession(); 
+    } = supabase.auth.onAuthStateChange((_event, _session) => {
+      console.log(`AuthContext: Evento auth state change recebido: ${_event} - user: ${_session?.user?.id ?? 'null'}`);
+      // Não await aqui — chama o refresh, mas sem criar concorrência
+      // refreshSession já previne execuções concorrentes via isRefreshingRef
+      void refreshSession();
     });
 
     return () => {
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [refreshSession]); // Depende de refreshSession
+  }, [refreshSession]);
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
@@ -129,6 +197,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
       }
       console.log("AuthContext: Login bem-sucedido.");
+      // refreshSession será chamado pelo listener onAuthStateChange, mas
+      // garantimos também chamar aqui de forma não-bloqueante para acelerar o fluxo
+      void refreshSession();
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o login:", error);
@@ -136,14 +207,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
+  const signUp = async (email: string, password: string, name: string, roleParam: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthContext: Tentando cadastro para ${email}`);
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, role, municipality_id, school_id },
+          data: { name, role: roleParam, municipality_id, school_id },
         },
       });
 
@@ -152,6 +223,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
       }
       console.log("AuthContext: Cadastro bem-sucedido.");
+      // refreshSession será chamado automaticamente pelo listener
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o cadastro:", error);
@@ -168,6 +240,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
       }
       console.log("AuthContext: Logout bem-sucedido.");
+      // refreshSession será chamado pelo listener
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o logout:", error);
@@ -175,7 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     session,
     profile,
