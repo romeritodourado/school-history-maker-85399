@@ -31,151 +31,148 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
-  // Fetch user profile
-  const fetchProfile = useCallback(async (userId: string) => {
-    try {
-      console.log("AuthProvider: Fetching profile for user ID:", userId);
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+  // SOLUÇÃO 1: Carregamento inicial da sessão (executa apenas uma vez)
+  useEffect(() => {
+    let ignore = false;
 
-      if (profileError) {
-        console.error("AuthProvider: Error fetching profile:", profileError);
-        setProfile(null);
-        setRole(null);
-        return null;
-      } else {
-        console.log("AuthProvider: Profile fetched:", profileData);
-        setProfile(profileData);
-        setRole(profileData.role);
-        return profileData;
+    const loadInitialSession = async () => {
+      console.log("AuthContext: Carregando sessão inicial...");
+      const { data, error } = await supabase.auth.getSession();
+      if (!ignore) {
+        if (error) {
+          console.error("AuthContext: Erro ao carregar sessão inicial:", error);
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+        } else {
+          setUser(data.session?.user ?? null);
+          setSession(data.session ?? null);
+          // O perfil e o role serão carregados pelo useEffect que depende de 'session'
+        }
+        setLoading(false); // Define loading como false após a tentativa de carregar a sessão inicial
       }
-    } catch (profileFetchError) {
-      console.error("AuthProvider: Exception fetching profile:", profileFetchError);
+    };
+
+    loadInitialSession();
+
+    return () => {
+      ignore = true;
+    };
+  }, []); // Sem dependências para rodar apenas uma vez
+
+  // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
+  useEffect(() => {
+    console.log("AuthContext: Configurando listener de auth state change.");
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      // O perfil e o role serão carregados pelo useEffect que depende de 'session'
+      setLoading(false); // Garante que o loading seja false após qualquer mudança de estado de auth
+    });
+
+    return () => {
+      console.log("AuthContext: Desinscrevendo listener de auth state change.");
+      subscription.unsubscribe();
+    };
+  }, []); // Sem dependências para rodar apenas uma vez
+
+  // SOLUÇÃO 3: Carregar perfil e role (depende apenas de 'session')
+  useEffect(() => {
+    if (!session?.user) {
+      console.log("AuthContext: Nenhuma sessão de usuário ativa, limpando perfil e role.");
       setProfile(null);
       setRole(null);
-      return null;
+      return;
     }
-  }, []);
 
-  // Refresh session and profile
+    let ignore = false;
+
+    const loadProfile = async () => {
+      console.log("AuthContext: Carregando perfil para o usuário:", session.user.id);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!ignore) {
+        if (error) {
+          console.error("AuthContext: Erro ao carregar perfil:", error);
+          setProfile(null);
+          setRole(null);
+        } else {
+          console.log("AuthContext: Perfil carregado:", data);
+          setProfile(data);
+          setRole(data.role);
+        }
+      }
+    };
+
+    loadProfile();
+    return () => {
+      ignore = true;
+    };
+  }, [session]); // Depende apenas de 'session'
+
   const refreshSession = useCallback(async () => {
-    console.log("AuthProvider: Refreshing session");
+    setLoading(true); // Define loading como true ao iniciar o refresh
+    console.log("AuthContext: Refreshing session manualmente.");
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error("AuthProvider: Error getting session:", error);
+        console.error("AuthContext: Erro ao obter sessão durante refresh:", error);
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
-        return;
-      }
-      
-      if (currentSession?.user) {
-        console.log("AuthProvider: Valid session found");
+      } else if (currentSession?.user) {
+        console.log("AuthContext: Sessão válida encontrada durante refresh.");
         setUser(currentSession.user);
         setSession(currentSession);
-        
-        // Fetch user profile
-        await fetchProfile(currentSession.user.id);
+        await fetchProfile(currentSession.user.id); // Garante que o perfil seja carregado
       } else {
-        console.log("AuthProvider: No valid session found");
+        console.log("AuthContext: Nenhuma sessão válida durante refresh.");
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
       }
     } catch (error) {
-      console.error("AuthProvider: Error in refreshSession:", error);
+      console.error("AuthContext: Erro no refreshSession:", error);
       setUser(null);
       setSession(null);
       setProfile(null);
       setRole(null);
     } finally {
-      console.log("AuthProvider: Finished refreshing session");
-      setLoading(false);
+      setLoading(false); // Define loading como false após o refresh
     }
   }, [fetchProfile]);
 
-  // Initialize auth state
-  useEffect(() => {
-    console.log("AuthProvider: Initializing auth state");
-    refreshSession();
-  }, [refreshSession]);
-
-  // Set up auth state change listener
-  useEffect(() => {
-    console.log("AuthProvider: Setting up auth state change listener");
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log(`AuthProvider: Auth state changed - ${event}`);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log("AuthProvider: User signed in");
-          setUser(session.user);
-          setSession(session);
-          
-          // Fetch user profile
-          await fetchProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          console.log("AuthProvider: User signed out");
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-          setActiveMunicipalityIdForSuperAdmin(null);
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          console.log("AuthProvider: Token refreshed");
-          setUser(session.user);
-          setSession(session);
-        } else if (event === 'USER_UPDATED' && session?.user) {
-          console.log("AuthProvider: User updated");
-          setUser(session.user);
-          setSession(session);
-          
-          // Refetch user profile in case it was updated
-          await fetchProfile(session.user.id);
-        } else if (event === 'INITIAL_SESSION') {
-          console.log("AuthProvider: Initial session event");
-          // We already handle this in refreshSession, so we can ignore it here
-        }
-        
-        // Ensure loading is set to false after any auth state change
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      console.log("AuthProvider: Cleaning up auth listener");
-      subscription.unsubscribe();
-    };
-  }, [fetchProfile]);
-
   const signIn = async (email: string, password: string) => {
-    console.log(`AuthProvider: Signing in user ${email}`);
+    console.log(`AuthContext: Tentando login para ${email}`);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        console.error("AuthProvider: Sign in error:", error);
+        console.error("AuthContext: Erro de login:", error);
         return { error };
       }
-      console.log("AuthProvider: Sign in successful");
+      console.log("AuthContext: Login bem-sucedido.");
       return { error: null };
     } catch (error: any) {
-      console.error("AuthProvider: Sign in exception:", error);
-      return { error: error instanceof Error ? error : new Error("Unknown error during sign in") };
+      console.error("AuthContext: Exceção durante o login:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login") };
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
-    console.log(`AuthProvider: Signing up user ${email}`);
+    console.log(`AuthContext: Tentando cadastro para ${email}`);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -184,30 +181,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error("AuthProvider: Sign up error:", error);
+        console.error("AuthContext: Erro de cadastro:", error);
         return { error };
       }
-      console.log("AuthProvider: Sign up successful");
+      console.log("AuthContext: Cadastro bem-sucedido.");
       return { error: null };
     } catch (error: any) {
-      console.error("AuthProvider: Sign up exception:", error);
-      return { error: error instanceof Error ? error : new Error("Unknown error during sign up") };
+      console.error("AuthContext: Exceção durante o cadastro:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro") };
     }
   };
 
   const signOut = async () => {
-    console.log("AuthProvider: Signing out user");
+    console.log("AuthContext: Tentando logout.");
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("AuthProvider: Sign out error:", error);
+        console.error("AuthContext: Erro de logout:", error);
         return { error };
       }
-      console.log("AuthProvider: Sign out successful");
+      console.log("AuthContext: Logout bem-sucedido.");
       return { error: null };
     } catch (error: any) {
-      console.error("AuthProvider: Sign out exception:", error);
-      return { error: error instanceof Error ? error : new Error("Unknown error during sign out") };
+      console.error("AuthContext: Exceção durante o logout:", error);
+      return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout") };
     }
   };
 
