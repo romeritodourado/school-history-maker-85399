@@ -12,11 +12,11 @@ type AppRole =
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: AppRole[];
+  requiredRoles?: AppRole[]; // Mantido para compatibilidade, mas a lógica de verificação de role será removida daqui
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+  const { user, loading } = useAuth(); // Removido 'role' pois não será mais usado aqui
   const location = useLocation();
 
   // Se ainda estiver carregando o estado de autenticação (sessão e perfil), mostra o spinner
@@ -36,22 +36,11 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Se o usuário existir, mas não tiver as roles necessárias, nega o acesso
-  if (requiredRoles && requiredRoles.length > 0 && (!role || !requiredRoles.includes(role as AppRole))) {
-    console.log(`ProtectedRoute (${location.pathname}): Acesso negado. Role do usuário: ${role}, Roles requeridas: ${requiredRoles.join(', ')}`);
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold">Acesso Negado</h1>
-          <p className="text-muted-foreground">
-            Você não tem permissão para acessar esta página.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // A lógica de verificação de roles foi removida daqui.
+  // Se a verificação de roles for necessária, ela deve ser implementada
+  // dentro dos componentes das páginas ou em um nível superior.
 
-  // Se todas as verificações passarem, renderiza os filhos
-  console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${role}`);
+  // Se todas as verificações passarem (carregamento e usuário autenticado), renderiza os filhos
+  console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}`);
   return <>{children}</>;
 }
