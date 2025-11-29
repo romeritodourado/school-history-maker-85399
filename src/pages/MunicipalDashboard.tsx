@@ -58,7 +58,7 @@ export default function MunicipalDashboard() {
   const navigate = useNavigate();
   const { municipalityId: paramMunicipalityId } = useParams<{ municipalityId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, profile, role, signOut, setActiveMunicipalityIdForSuperAdmin, loading: authLoading } = useAuth();
+  const { user, profile, role, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
@@ -221,7 +221,6 @@ export default function MunicipalDashboard() {
 
   const handleBackToSuperAdminDashboard = () => {
     console.log("MunicipalDashboard: Returning to super admin dashboard");
-    setActiveMunicipalityIdForSuperAdmin(null);
     navigate('/');
   };
 

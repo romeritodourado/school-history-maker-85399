@@ -37,16 +37,10 @@ export default function Dashboard() {
   const [hasMunicipalities, setHasMunicipalities] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
-      if (role === 'super_admin') {
-        fetchMunicipalities();
-      } else if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
-        // Não redirecionar automaticamente, deixar o usuário escolher
-      } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id) {
-        // Não redirecionar automaticamente, deixar o usuário escolher
-      }
+    if (role === 'super_admin') {
+      fetchMunicipalities();
     }
-  }, [loading, user, role, profile, navigate]);
+  }, [role]);
 
   const fetchMunicipalities = async () => {
     const { data, error } = await supabase

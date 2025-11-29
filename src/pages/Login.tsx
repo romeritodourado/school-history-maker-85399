@@ -38,6 +38,7 @@ export default function Login() {
       toast({
         title: "Login realizado com sucesso!",
       });
+      // Redirect will happen via useEffect
     }
   };
 
