@@ -29,6 +29,40 @@ interface CustomRole {
   created_at: string;
 }
 
+// Definição dos cargos padrão do sistema
+const systemRoles = [
+  { 
+    id: 'super_admin', 
+    name: 'Super Administrador',
+    description: 'Administrador do sistema com acesso total',
+    isSystemRole: true
+  },
+  { 
+    id: 'municipal_secretary', 
+    name: 'Secretário(a) Municipal',
+    description: 'Responsável pela gestão municipal de ensino',
+    isSystemRole: true
+  },
+  { 
+    id: 'network_manager', 
+    name: 'Gerente de Estatísticas',
+    description: 'Responsável pelas estatísticas e dados da rede',
+    isSystemRole: true
+  },
+  { 
+    id: 'school_admin', 
+    name: 'Diretor Escolar',
+    description: 'Responsável pela administração escolar',
+    isSystemRole: true
+  },
+  { 
+    id: 'secretary', 
+    name: 'Assistente Administrativo',
+    description: 'Auxiliar administrativo da escola',
+    isSystemRole: true
+  }
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin } = useAuth();
@@ -430,86 +464,130 @@ export default function Dashboard() {
                   {/* Listagem de cargos existentes */}
                   <div className="border rounded-lg p-4">
                     <h3 className="font-semibold mb-4">Cargos Existentes</h3>
-                    {customRoles.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">
-                        Nenhum cargo personalizado cadastrado ainda.
-                      </p>
-                    ) : (
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                        {customRoles.map((role) => (
-                          <div key={role.id} className="border rounded-lg p-3">
-                            {editingRoleId === role.id ? (
-                              <div className="space-y-3">
-                                <div className="space-y-2">
-                                  <Label htmlFor={`edit-role-name-${role.id}`}>Nome do Cargo *</Label>
-                                  <Input
-                                    id={`edit-role-name-${role.id}`}
-                                    value={editingRoleName}
-                                    onChange={(e) => setEditingRoleName(e.target.value)}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor={`edit-role-desc-${role.id}`}>Descrição (Opcional)</Label>
-                                  <Textarea
-                                    id={`edit-role-desc-${role.id}`}
-                                    value={editingRoleDescription}
-                                    onChange={(e) => setEditingRoleDescription(e.target.value)}
-                                    className="min-h-[80px]"
-                                  />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={cancelEditingRole}
-                                    disabled={isUpdatingRole}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                  <Button 
-                                    size="sm"
-                                    onClick={handleUpdateRole}
-                                    disabled={isUpdatingRole || !editingRoleName.trim()}
-                                  >
-                                    {isUpdatingRole ? "Salvando..." : "Salvar"}
-                                  </Button>
-                                </div>
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                      {/* Cargos padrão do sistema */}
+                      {systemRoles.map((systemRole) => (
+                        <div key={systemRole.id} className="border rounded-lg p-3 bg-muted/50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium">{systemRole.name}</h4>
+                              {systemRole.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{systemRole.description}</p>
+                              )}
+                              <div className="flex items-center mt-2">
+                                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                  Cargo Padrão
+                                </span>
                               </div>
-                            ) : (
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h4 className="font-medium">{role.name}</h4>
-                                  {role.description && (
-                                    <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
-                                  )}
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Criado em: {new Date(role.created_at).toLocaleDateString()}
-                                  </p>
-                                </div>
-                                <div className="flex gap-1 ml-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => startEditingRole(role)}
-                                    className="h-8 w-8"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteRole(role.id, role.name)}
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
+                            </div>
+                            <div className="flex gap-1 ml-2">
+                              {/* Cargos padrão não podem ser editados ou excluídos */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled
+                                className="h-8 w-8 opacity-50 cursor-not-allowed"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled
+                                className="h-8 w-8 opacity-50 cursor-not-allowed"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+
+                      {/* Cargos personalizados */}
+                      {customRoles.length > 0 && (
+                        <div className="pt-4 border-t border-border">
+                          <h4 className="font-semibold mb-3 text-sm text-muted-foreground">CARGOS PERSONALIZADOS</h4>
+                          {customRoles.map((role) => (
+                            <div key={role.id} className="border rounded-lg p-3 mb-3">
+                              {editingRoleId === role.id ? (
+                                <div className="space-y-3">
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`edit-role-name-${role.id}`}>Nome do Cargo *</Label>
+                                    <Input
+                                      id={`edit-role-name-${role.id}`}
+                                      value={editingRoleName}
+                                      onChange={(e) => setEditingRoleName(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`edit-role-desc-${role.id}`}>Descrição (Opcional)</Label>
+                                    <Textarea
+                                      id={`edit-role-desc-${role.id}`}
+                                      value={editingRoleDescription}
+                                      onChange={(e) => setEditingRoleDescription(e.target.value)}
+                                      className="min-h-[80px]"
+                                    />
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={cancelEditingRole}
+                                      disabled={isUpdatingRole}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                    <Button 
+                                      size="sm"
+                                      onClick={handleUpdateRole}
+                                      disabled={isUpdatingRole || !editingRoleName.trim()}
+                                    >
+                                      {isUpdatingRole ? "Salvando..." : "Salvar"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <h4 className="font-medium">{role.name}</h4>
+                                    {role.description && (
+                                      <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Criado em: {new Date(role.created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1 ml-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => startEditingRole(role)}
+                                      className="h-8 w-8"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteRole(role.id, role.name)}
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {customRoles.length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">
+                          Nenhum cargo personalizado cadastrado ainda.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
