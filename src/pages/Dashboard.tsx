@@ -15,12 +15,20 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 interface Municipality {
   id: string;
   name: string;
+}
+
+interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
 }
 
 interface CustomRole {
@@ -31,6 +39,7 @@ interface CustomRole {
   scope: 'global' | 'municipal';
   municipality_id: string | null;
   municipality_name?: string;
+  permissions: string[];
 }
 
 // Definição dos cargos padrão do sistema
@@ -67,6 +76,88 @@ const systemRoles = [
   }
 ];
 
+// Definição das permissões disponíveis no sistema
+const availablePermissions: Permission[] = [
+  {
+    id: 'create_student',
+    name: 'Criar Alunos',
+    description: 'Permite criar novos registros de alunos',
+    category: 'Alunos'
+  },
+  {
+    id: 'edit_student',
+    name: 'Editar Alunos',
+    description: 'Permite editar informações de alunos existentes',
+    category: 'Alunos'
+  },
+  {
+    id: 'delete_student',
+    name: 'Excluir Alunos',
+    description: 'Permite excluir registros de alunos',
+    category: 'Alunos'
+  },
+  {
+    id: 'view_student_list',
+    name: 'Visualizar Lista de Alunos',
+    description: 'Permite visualizar a lista de alunos',
+    category: 'Alunos'
+  },
+  {
+    id: 'create_transcript',
+    name: 'Criar Históricos',
+    description: 'Permite criar novos históricos escolares',
+    category: 'Históricos'
+  },
+  {
+    id: 'edit_transcript',
+    name: 'Editar Históricos',
+    description: 'Permite editar históricos escolares existentes',
+    category: 'Históricos'
+  },
+  {
+    id: 'delete_transcript',
+    name: 'Excluir Históricos',
+    description: 'Permite excluir históricos escolares',
+    category: 'Históricos'
+  },
+  {
+    id: 'export_transcript',
+    name: 'Exportar Históricos',
+    description: 'Permite exportar históricos em PDF ou Excel',
+    category: 'Históricos'
+  },
+  {
+    id: 'view_transcript',
+    name: 'Visualizar Históricos',
+    description: 'Permite visualizar históricos escolares',
+    category: 'Históricos'
+  },
+  {
+    id: 'manage_workload',
+    name: 'Gerenciar Carga Horária',
+    description: 'Permite configurar disciplinas e cargas horárias',
+    category: 'Configurações'
+  },
+  {
+    id: 'manage_schools',
+    name: 'Gerenciar Escolas',
+    description: 'Permite criar e editar escolas',
+    category: 'Configurações'
+  },
+  {
+    id: 'manage_users',
+    name: 'Gerenciar Usuários',
+    description: 'Permite criar e editar contas de usuários',
+    category: 'Configurações'
+  },
+  {
+    id: 'validate_transcript',
+    name: 'Validar Históricos',
+    description: 'Permite validar a autenticidade de históricos',
+    category: 'Validação'
+  }
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin } = useAuth();
@@ -77,12 +168,14 @@ export default function Dashboard() {
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [newRoleScope, setNewRoleScope] = useState<'global' | 'municipal'>('global');
   const [newRoleMunicipalityId, setNewRoleMunicipalityId] = useState<string>('');
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
   const [isCreatingRole, setIsCreatingRole] = useState(false);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [editingRoleName, setEditingRoleName] = useState('');
   const [editingRoleDescription, setEditingRoleDescription] = useState('');
   const [editingRoleScope, setEditingRoleScope] = useState<'global' | 'municipal'>('global');
   const [editingRoleMunicipalityId, setEditingRoleMunicipalityId] = useState<string>('');
+  const [editingRolePermissions, setEditingRolePermissions] = useState<string[]>([]);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -153,6 +246,22 @@ export default function Dashboard() {
     return labels[role] || role;
   };
 
+  const handlePermissionChange = (permissionId: string, checked: boolean) => {
+    if (editingRoleId) {
+      if (checked) {
+        setEditingRolePermissions(prev => [...prev, permissionId]);
+      } else {
+        setEditingRolePermissions(prev => prev.filter(id => id !== permissionId));
+      }
+    } else {
+      if (checked) {
+        setNewRolePermissions(prev => [...prev, permissionId]);
+      } else {
+        setNewRolePermissions(prev => prev.filter(id => id !== permissionId));
+      }
+    }
+  };
+
   const handleCreateRole = async () => {
     if (!newRoleName.trim()) {
       toast({
@@ -182,7 +291,8 @@ export default function Dashboard() {
             name: newRoleName.trim(),
             description: newRoleDescription.trim() || null,
             scope: newRoleScope,
-            municipality_id: newRoleScope === 'municipal' ? newRoleMunicipalityId : null
+            municipality_id: newRoleScope === 'municipal' ? newRoleMunicipalityId : null,
+            permissions: newRolePermissions
           }
         ]);
 
@@ -198,6 +308,7 @@ export default function Dashboard() {
       setNewRoleDescription('');
       setNewRoleScope('global');
       setNewRoleMunicipalityId('');
+      setNewRolePermissions([]);
       fetchCustomRoles();
     } catch (error: any) {
       toast({
@@ -216,6 +327,7 @@ export default function Dashboard() {
     setEditingRoleDescription(role.description || '');
     setEditingRoleScope(role.scope || 'global');
     setEditingRoleMunicipalityId(role.municipality_id || '');
+    setEditingRolePermissions(role.permissions || []);
   };
 
   const cancelEditingRole = () => {
@@ -224,6 +336,7 @@ export default function Dashboard() {
     setEditingRoleDescription('');
     setEditingRoleScope('global');
     setEditingRoleMunicipalityId('');
+    setEditingRolePermissions([]);
   };
 
   const handleUpdateRole = async () => {
@@ -254,7 +367,8 @@ export default function Dashboard() {
           name: editingRoleName.trim(),
           description: editingRoleDescription.trim() || null,
           scope: editingRoleScope,
-          municipality_id: editingRoleScope === 'municipal' ? editingRoleMunicipalityId : null
+          municipality_id: editingRoleScope === 'municipal' ? editingRoleMunicipalityId : null,
+          permissions: editingRolePermissions
         })
         .eq('id', editingRoleId);
 
@@ -578,6 +692,46 @@ export default function Dashboard() {
                         </div>
                       )}
                       
+                      <div className="space-y-4">
+                        <Label>Permissões do Cargo</Label>
+                        <div className="border rounded-lg p-3 max-h-60 overflow-y-auto">
+                          {Array.from(
+                            new Set(availablePermissions.map(p => p.category))
+                          ).map(category => (
+                            <div key={category} className="mb-3 last:mb-0">
+                              <h4 className="font-medium text-sm mb-2">{category}</h4>
+                              <div className="space-y-2">
+                                {availablePermissions
+                                  .filter(p => p.category === category)
+                                  .map(permission => (
+                                    <div key={permission.id} className="flex items-start space-x-2">
+                                      <Checkbox
+                                        id={`permission-${permission.id}`}
+                                        checked={newRolePermissions.includes(permission.id)}
+                                        onCheckedChange={(checked) => 
+                                          handlePermissionChange(permission.id, checked as boolean)
+                                        }
+                                      />
+                                      <div className="grid gap-1.5">
+                                        <Label 
+                                          htmlFor={`permission-${permission.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                          {permission.name}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                          {permission.description}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
                       <Button 
                         onClick={handleCreateRole} 
                         disabled={isCreatingRole || !newRoleName.trim() || (newRoleScope === 'municipal' && !newRoleMunicipalityId)}
@@ -591,7 +745,7 @@ export default function Dashboard() {
                   {/* Listagem de cargos existentes */}
                   <div className="border rounded-lg p-4">
                     <h3 className="font-semibold mb-4">Cargos Existentes</h3>
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                       {/* Cargos padrão do sistema */}
                       {systemRoles.map((systemRole) => (
                         <div key={systemRole.id} className="border rounded-lg p-3 bg-muted/50">
@@ -696,6 +850,46 @@ export default function Dashboard() {
                                     </div>
                                   )}
                                   
+                                  <div className="space-y-4">
+                                    <Label>Permissões do Cargo</Label>
+                                    <div className="border rounded-lg p-3 max-h-60 overflow-y-auto">
+                                      {Array.from(
+                                        new Set(availablePermissions.map(p => p.category))
+                                      ).map(category => (
+                                        <div key={category} className="mb-3 last:mb-0">
+                                          <h4 className="font-medium text-sm mb-2">{category}</h4>
+                                          <div className="space-y-2">
+                                            {availablePermissions
+                                              .filter(p => p.category === category)
+                                              .map(permission => (
+                                                <div key={permission.id} className="flex items-start space-x-2">
+                                                  <Checkbox
+                                                    id={`edit-permission-${permission.id}-${role.id}`}
+                                                    checked={editingRolePermissions.includes(permission.id)}
+                                                    onCheckedChange={(checked) => 
+                                                      handlePermissionChange(permission.id, checked as boolean)
+                                                    }
+                                                  />
+                                                  <div className="grid gap-1.5">
+                                                    <Label 
+                                                      htmlFor={`edit-permission-${permission.id}-${role.id}`}
+                                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                      {permission.name}
+                                                    </Label>
+                                                    <p className="text-xs text-muted-foreground">
+                                                      {permission.description}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              ))
+                                            }
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
                                   <div className="flex justify-end gap-2">
                                     <Button 
                                       variant="outline" 
@@ -734,6 +928,11 @@ export default function Dashboard() {
                                           ({role.municipality_name})
                                         </span>
                                       )}
+                                    </div>
+                                    <div className="mt-2">
+                                      <p className="text-xs text-muted-foreground">
+                                        {role.permissions?.length || 0} permissão(ões) atribuída(s)
+                                      </p>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-2">
                                       Criado em: {new Date(role.created_at).toLocaleDateString()}
