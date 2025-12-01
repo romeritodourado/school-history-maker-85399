@@ -76,6 +76,10 @@ export default function Dashboard() {
   const [editingRoleName, setEditingRoleName] = useState('');
   const [editingRoleDescription, setEditingRoleDescription] = useState('');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -226,17 +230,35 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteRole = async (roleId: string, roleName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o cargo "${roleName}"? Esta ação não pode ser desfeita.`)) {
+  const openDeleteConfirmation = (roleId: string, roleName: string) => {
+    setRoleToDelete({ id: roleId, name: roleName });
+    setDeleteConfirmationOpen(true);
+    setDeletePassword('');
+  };
+
+  const closeDeleteConfirmation = () => {
+    setDeleteConfirmationOpen(false);
+    setRoleToDelete(null);
+    setDeletePassword('');
+  };
+
+  const handleDeleteRole = async () => {
+    if (!roleToDelete || !deletePassword) {
+      toast({
+        title: "Erro",
+        description: "Por favor, informe sua senha para confirmar a exclusão",
+        variant: "destructive"
+      });
       return;
     }
 
+    setIsDeletingRole(true);
     try {
       // Verificar se existem usuários com este cargo
       const { data: usersWithRole, error: countError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('role', roleName)
+        .eq('role', roleToDelete.name)
         .limit(1);
 
       if (countError) throw countError;
@@ -247,13 +269,26 @@ export default function Dashboard() {
           description: `Não é possível excluir este cargo pois existem ${usersWithRole.length} usuário(s) atribuído(s) a ele.`,
           variant: "destructive"
         });
+        closeDeleteConfirmation();
         return;
+      }
+
+      // Verificar senha do usuário atual antes de excluir
+      if (!user?.email) throw new Error("Usuário não autenticado");
+      
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: deletePassword
+      });
+
+      if (signInError) {
+        throw new Error("Senha incorreta. Não foi possível confirmar a exclusão.");
       }
 
       const { error } = await supabase
         .from('custom_roles')
         .delete()
-        .eq('id', roleId);
+        .eq('id', roleToDelete.id);
 
       if (error) throw error;
 
@@ -262,6 +297,7 @@ export default function Dashboard() {
         description: "Cargo excluído com sucesso"
       });
 
+      closeDeleteConfirmation();
       fetchCustomRoles();
     } catch (error: any) {
       toast({
@@ -269,6 +305,8 @@ export default function Dashboard() {
         description: error.message || "Não foi possível excluir o cargo",
         variant: "destructive"
       });
+    } finally {
+      setIsDeletingRole(false);
     }
   };
 
@@ -569,7 +607,7 @@ export default function Dashboard() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => handleDeleteRole(role.id, role.name)}
+                                      onClick={() => openDeleteConfirmation(role.id, role.name)}
                                       className="h-8 w-8 text-destructive hover:text-destructive"
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -618,6 +656,47 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Diálogo de confirmação de exclusão */}
+      <Dialog open={deleteConfirmationOpen} onOpenChange={closeDeleteConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão de Cargo</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o cargo "{roleToDelete?.name}"? Esta ação não pode ser desfeita.
+              Por favor, informe sua senha para confirmar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="deletePassword">Senha</Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Digite sua senha"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={closeDeleteConfirmation}
+                disabled={isDeletingRole}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteRole}
+                disabled={isDeletingRole || !deletePassword}
+              >
+                {isDeletingRole ? "Excluindo..." : "Excluir Cargo"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
