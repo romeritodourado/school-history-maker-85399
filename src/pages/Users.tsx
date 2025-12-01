@@ -9,18 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, UserCog, Trash2, Mail, Building2, School, Loader2, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 interface UserProfile {
   id: string;
@@ -57,7 +50,7 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'teacher' as AppRole, // Default role changed to 'teacher'
+    role: 'secretary' as AppRole, // Default role changed to 'secretary'
     municipality_id: '',
     school_id: '',
   });
@@ -117,12 +110,7 @@ export default function Users() {
       let query = supabase
         .from('profiles')
         .select(`
-          id,
-          name,
-          email,
-          municipality_id,
-          school_id,
-          role,
+          id, name, email, municipality_id, school_id, role,
           municipalities (name),
           schools (name)
         `)
@@ -135,7 +123,6 @@ export default function Users() {
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       const usersWithNames = (data || []).map(profile => ({
@@ -143,6 +130,7 @@ export default function Users() {
         municipality_name: (profile.municipalities as { name: string } | null)?.name,
         school_name: (profile.schools as { name: string } | null)?.name,
       }));
+
       setUsers(usersWithNames as UserProfile[]);
     } catch (error) {
       toast({
@@ -156,15 +144,18 @@ export default function Users() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
     try {
-      signupSchema.parse({ email: formData.email, password: formData.password, name: formData.name });
+      signupSchema.parse({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name
+      });
 
       const { error: signUpError } = await supabase.auth.admin.createUser({
         email: formData.email,
         password: formData.password,
         email_confirm: true,
-        user_metadata: { 
+        user_metadata: {
           name: formData.name,
           role: formData.role,
           municipality_id: formData.municipality_id || undefined,
@@ -174,7 +165,9 @@ export default function Users() {
 
       if (signUpError) throw signUpError;
 
-      toast({ title: 'Usuário criado com sucesso!' });
+      toast({
+        title: 'Usuário criado com sucesso!'
+      });
       setDialogOpen(false);
       resetForm();
       fetchUsers();
@@ -210,11 +203,15 @@ export default function Users() {
 
       // Update auth.users email if changed
       if (editingUser.email !== formData.email) {
-        const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, { email: formData.email });
+        const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
+          email: formData.email
+        });
         if (authUpdateError) throw authUpdateError;
       }
 
-      toast({ title: 'Usuário atualizado com sucesso!' });
+      toast({
+        title: 'Usuário atualizado com sucesso!'
+      });
       setDialogOpen(false);
       resetForm();
       fetchUsers();
@@ -231,12 +228,12 @@ export default function Users() {
 
   const handleDelete = async (userId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação é irreversível.')) return;
-
     try {
       const { error } = await supabase.auth.admin.deleteUser(userId);
-
       if (error) throw error;
-      toast({ title: 'Usuário excluído com sucesso!' });
+      toast({
+        title: 'Usuário excluído com sucesso!'
+      });
       fetchUsers();
     } catch (error) {
       toast({
@@ -253,17 +250,20 @@ export default function Users() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar',
-      teacher: 'Professor(a)',
+      secretary: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
 
   const getAvailableRoles = () => {
-    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'];
+    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'];
+    
     if (currentUserRole === 'super_admin') return allRoles;
-    if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') return allRoles.filter(r => r !== 'super_admin');
-    if (currentUserRole === 'school_admin') return allRoles.filter(r => r === 'secretary' || r === 'teacher');
+    if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') 
+      return allRoles.filter(r => r !== 'super_admin');
+    if (currentUserRole === 'school_admin') 
+      return allRoles.filter(r => r === 'secretary' || r === 'school_admin');
+    
     return [];
   };
 
@@ -272,7 +272,7 @@ export default function Users() {
       email: '',
       password: '',
       name: '',
-      role: 'teacher',
+      role: 'secretary',
       municipality_id: '',
       school_id: '',
     });
@@ -301,7 +301,6 @@ export default function Users() {
               Gerenciar Usuários
             </h1>
           </div>
-          
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
@@ -360,7 +359,10 @@ export default function Users() {
                   <Select
                     value={formData.role}
                     onValueChange={(value: AppRole) => setFormData({ ...formData, role: value })}
-                    disabled={editingUser?.id === currentUserProfile?.id || !getAvailableRoles().includes(formData.role)}
+                    disabled={
+                      editingUser?.id === currentUserProfile?.id || 
+                      !getAvailableRoles().includes(formData.role)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o cargo" />
@@ -374,13 +376,16 @@ export default function Users() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
+                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary') && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
                       value={formData.municipality_id}
                       onValueChange={(value) => setFormData({ ...formData, municipality_id: value })}
-                      disabled={(currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id !== formData.municipality_id}
+                      disabled={
+                        (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && 
+                        currentUserProfile?.municipality_id !== formData.municipality_id
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a rede municipal (opcional)" />
@@ -395,13 +400,16 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
-                {(formData.role === 'school_admin' || formData.role === 'secretary' || formData.role === 'teacher') && (
+                {(formData.role === 'school_admin' || formData.role === 'secretary') && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select
                       value={formData.school_id}
                       onValueChange={(value) => setFormData({ ...formData, school_id: value })}
-                      disabled={currentUserRole === 'school_admin' && currentUserProfile?.school_id !== formData.school_id}
+                      disabled={
+                        currentUserRole === 'school_admin' && 
+                        currentUserProfile?.school_id !== formData.school_id
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a escola (opcional)" />
@@ -435,7 +443,6 @@ export default function Users() {
             </DialogContent>
           </Dialog>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {users.map((user) => (
             <Card key={user.id}>
@@ -443,30 +450,21 @@ export default function Users() {
                 <CardTitle className="flex items-center justify-between">
                   <span className="truncate">{user.name || user.email}</span>
                   <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingUser(user);
-                        setFormData({
-                          email: user.email || '',
-                          password: '', // Password is not editable directly
-                          name: user.name || '',
-                          role: user.role,
-                          municipality_id: user.municipality_id || '',
-                          school_id: user.school_id || '',
-                        });
-                        setDialogOpen(true);
-                      }}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => {
+                      setEditingUser(user);
+                      setFormData({
+                        email: user.email || '',
+                        password: '', // Password is not editable directly
+                        name: user.name || '',
+                        role: user.role,
+                        municipality_id: user.municipality_id || '',
+                        school_id: user.school_id || '',
+                      });
+                      setDialogOpen(true);
+                    }}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(user.id)}
-                      disabled={user.id === currentUserProfile?.id}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)} disabled={user.id === currentUserProfile?.id}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>

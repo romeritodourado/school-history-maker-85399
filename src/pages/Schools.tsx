@@ -8,14 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, School, Trash2, Edit, Building2, UploadCloud, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { schoolSchema } from '@/lib/validationSchemas';
@@ -24,7 +17,7 @@ import correctLogo from "/correct-logo.png"; // Importar a logo
 import { Link } from 'react-router-dom'; // Importar Link
 import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 interface SchoolData {
   id: string;
@@ -62,12 +55,10 @@ export default function Schools() {
     authorization_decree_url: '',
     official_gazette_url: '',
   });
-
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [showCustomCityInput, setShowCustomCityInput] = useState(false); // Estado para controlar input de cidade personalizada
-
   const { toast } = useToast();
   const navigate = useNavigate();
   const { role: currentUserRole, profile: currentUserProfile } = useAuth();
@@ -109,6 +100,7 @@ export default function Schools() {
       const { data, error } = await query;
       if (error) throw error;
       setMunicipalities(data || []);
+
       if (data && data.length > 0 && (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         setFormData(prev => ({ ...prev, municipality_id: data[0].id }));
       }
@@ -122,16 +114,7 @@ export default function Schools() {
       let query = supabase
         .from('schools')
         .select(`
-          id,
-          name,
-          inep,
-          municipality_id,
-          address,
-          city,
-          state,
-          logo_url,
-          authorization_decree_url,
-          official_gazette_url,
+          id, name, inep, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url,
           municipalities (name)
         `)
         .order('name');
@@ -143,13 +126,13 @@ export default function Schools() {
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       const schoolsWithMunicipalityName = (data || []).map(school => ({
         ...school,
         municipality_name: (school.municipalities as { name: string } | null)?.name,
       }));
+
       setSchools(schoolsWithMunicipalityName as SchoolData[]);
     } catch (error) {
       toast({
@@ -191,10 +174,12 @@ export default function Schools() {
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, [field]: publicUrlData.publicUrl }));
+
       toast({
         title: 'Upload concluído!',
         description: `O arquivo para ${field} foi enviado com sucesso.`,
       });
+
       return publicUrlData.publicUrl;
     } catch (error: any) {
       console.error(`Error uploading ${field}:`, error);
@@ -223,7 +208,6 @@ export default function Schools() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       schoolSchema.parse(formData);
 
@@ -241,16 +225,18 @@ export default function Schools() {
           .from('schools')
           .update(formData)
           .eq('id', editingSchool.id);
-
         if (error) throw error;
-        toast({ title: 'Escola atualizada com sucesso!' });
+        toast({
+          title: 'Escola atualizada com sucesso!'
+        });
       } else {
         const { error } = await supabase
           .from('schools')
           .insert([formData]);
-
         if (error) throw error;
-        toast({ title: 'Escola criada com sucesso!' });
+        toast({
+          title: 'Escola criada com sucesso!'
+        });
       }
 
       setDialogOpen(false);
@@ -268,15 +254,15 @@ export default function Schools() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta escola? Esta ação é irreversível e removerá todos os alunos e históricos associados.')) return;
-
     try {
       const { error } = await supabase
         .from('schools')
         .delete()
         .eq('id', id);
-
       if (error) throw error;
-      toast({ title: 'Escola excluída com sucesso!' });
+      toast({
+        title: 'Escola excluída com sucesso!'
+      });
       fetchSchools();
     } catch (error) {
       toast({
@@ -338,7 +324,6 @@ export default function Schools() {
               Gerenciar Escolas
             </h1>
           </div>
-          
           {(currentUserRole === 'super_admin' || currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && (
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
@@ -463,7 +448,6 @@ export default function Schools() {
                       )}
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="logo_url">Logo da Escola</Label>
                     <div className="flex items-center space-x-2">
@@ -477,7 +461,12 @@ export default function Schools() {
                         disabled={uploading}
                       />
                       {formData.logo_url && (
-                        <Button variant="destructive" size="icon" onClick={() => handleFileRemove('logo_url', logoFileInputRef)} disabled={uploading}>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleFileRemove('logo_url', logoFileInputRef)}
+                          disabled={uploading}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -496,7 +485,6 @@ export default function Schools() {
                       </div>
                     )}
                   </div>
-
                   {/* Campo de texto para Decreto de Autorização */}
                   <div className="space-y-2">
                     <Label htmlFor="authorization_decree_url">Decreto de Autorização</Label>
@@ -507,7 +495,6 @@ export default function Schools() {
                       placeholder="Ex: Decreto Nº 123/2024"
                     />
                   </div>
-
                   {/* Campo de texto para Diário Oficial */}
                   <div className="space-y-2">
                     <Label htmlFor="official_gazette_url">Diário Oficial</Label>
@@ -518,7 +505,6 @@ export default function Schools() {
                       placeholder="Ex: Diário Oficial do Município, Edição 456"
                     />
                   </div>
-
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={uploading}>
                       Cancelar
@@ -532,7 +518,6 @@ export default function Schools() {
             </Dialog>
           )}
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {schools.map((school) => (
             <Card key={school.id}>
@@ -541,18 +526,10 @@ export default function Schools() {
                   <span className="truncate">{school.name}</span>
                   {(currentUserRole === 'super_admin' || ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && school.municipality_id === currentUserProfile?.municipality_id)) && (
                     <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(school)}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(school)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(school.id)}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(school.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>

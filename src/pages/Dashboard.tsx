@@ -1,19 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  FileText, 
-  Users, 
-  Clock, 
-  School, 
-  ShieldCheck,
-  Building2,
-  UserCog,
-  LogOut,
-  Settings,
-  User as UserIcon,
-  Loader2
-} from 'lucide-react';
+import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +11,7 @@ import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Link } from 'react-router-dom';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 interface Municipality {
   id: string;
@@ -47,12 +35,10 @@ export default function Dashboard() {
       .from('municipalities')
       .select('id, name')
       .order('name');
-    
     if (error) {
       console.error('Error fetching municipalities:', error);
       return;
     }
-    
     setMunicipalities(data || []);
     setHasMunicipalities(data && data.length > 0);
   };
@@ -74,8 +60,7 @@ export default function Dashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar',
-      teacher: 'Professor(a)',
+      secretary: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
@@ -86,14 +71,14 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
     },
     {
       title: 'Carga Horária',
@@ -121,7 +106,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher'],
+      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
     },
   ];
 
@@ -167,7 +152,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {role === 'super_admin' ? (
           <div className="space-y-6">
@@ -200,10 +184,7 @@ export default function Dashboard() {
                 {hasMunicipalities && (
                   <div className="space-y-2">
                     <Label htmlFor="select-municipality">Selecionar Rede Municipal</Label>
-                    <Select
-                      value={activeMunicipalityIdForSuperAdmin || ""}
-                      onValueChange={handleSelectMunicipality}
-                    >
+                    <Select value={activeMunicipalityIdForSuperAdmin || ""} onValueChange={handleSelectMunicipality}>
                       <SelectTrigger className="w-[280px]">
                         <SelectValue placeholder="Selecione uma rede municipal" />
                       </SelectTrigger>
@@ -231,11 +212,7 @@ export default function Dashboard() {
               const Icon = card.icon;
               if (card.roles && role && card.roles.includes(role)) {
                 return (
-                  <Card 
-                    key={card.path}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                    onClick={() => navigate(card.path)}
-                  >
+                  <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105" onClick={() => navigate(card.path)}>
                     <CardHeader>
                       <div className="flex items-center space-x-2">
                         <div className="p-2 bg-primary/10 rounded-lg">

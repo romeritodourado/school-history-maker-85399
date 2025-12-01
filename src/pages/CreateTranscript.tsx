@@ -80,7 +80,6 @@ const CreateTranscript = () => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!id);
   const { user, profile, role } = useAuth();
-
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
 
@@ -102,9 +101,9 @@ const CreateTranscript = () => {
     {
       calendar_year: new Date().getFullYear(),
       grade_level: "1º Ano",
-      school_name: "", 
-      city: "", 
-      state: "", 
+      school_name: "",
+      city: "",
+      state: "",
       shift: "",
       class_name: "",
       reclassified: false,
@@ -131,7 +130,7 @@ const CreateTranscript = () => {
 
   // Trimester grades for current year
   const [trimesterGrades, setTrimesterGrades] = useState<TrimesterGrade[]>([]);
-  
+
   // School period for trimester grades
   const [schoolPeriod, setSchoolPeriod] = useState({
     startDate: "",
@@ -153,7 +152,7 @@ const CreateTranscript = () => {
 
         if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
           query = query.eq('municipality_id', profile.municipality_id);
-        } else if (role === 'school_admin' || role === 'secretary' || role === 'teacher') {
+        } else if (role === 'school_admin' || role === 'secretary') {
           query = query.eq('id', profile?.school_id);
         }
 
@@ -164,6 +163,7 @@ const CreateTranscript = () => {
         console.error('Error fetching schools:', error);
       }
     };
+
     fetchSchools();
   }, [profile, role]);
 
@@ -236,7 +236,7 @@ const CreateTranscript = () => {
           setYearGrades(prevGrades => {
             const updatedGrades = { ...prevGrades };
             const level = year.grade_level;
-            
+
             if (updatedGrades[level]) {
               updatedGrades[level] = updatedGrades[level].map(grade => {
                 const dbConfig = data.find(d => d.subject_name === grade.subject_name);
@@ -249,7 +249,7 @@ const CreateTranscript = () => {
                 return grade;
               });
             }
-            
+
             return updatedGrades;
           });
         }
@@ -261,7 +261,7 @@ const CreateTranscript = () => {
 
   useEffect(() => {
     updateWorkloadsFromDatabase();
-    
+
     const channel = supabase
       .channel('workload-changes')
       .on(
@@ -292,7 +292,6 @@ const CreateTranscript = () => {
   const loadTranscriptData = async () => {
     try {
       setLoadingData(true);
-
       const { data: student, error: studentError } = await supabase
         .from("students")
         .select("*")
@@ -312,6 +311,7 @@ const CreateTranscript = () => {
         grade_series: student.grade_series || "",
         observations: student.observations || "",
       });
+
       setSelectedSchoolId(student.school_id); // Set selected school from loaded student data
 
       const { data: yearsData, error: yearsError } = await supabase
@@ -341,7 +341,6 @@ const CreateTranscript = () => {
         );
 
         const loadedYearGrades: { [key: string]: Grade[] } = {};
-        
         for (const year of yearsData) {
           const { data: gradesData, error: gradesError } = await supabase
             .from("annual_grades")
@@ -377,7 +376,6 @@ const CreateTranscript = () => {
         const latestYear = yearsData[yearsData.length - 1];
         if (latestYear) {
           setLatestAcademicYearId(latestYear.id);
-          
           setSchoolPeriod({
             startDate: latestYear.school_period_start || "",
             endDate: latestYear.school_period_end || "",
@@ -385,7 +383,7 @@ const CreateTranscript = () => {
             shift: latestYear.trimester_shift || "",
           });
         }
-        
+
         const { data: trimesterData, error: trimesterError } = await supabase
           .from("trimester_grades")
           .select("*")
@@ -452,7 +450,7 @@ const CreateTranscript = () => {
 
         await supabase.from("academic_years").delete().eq("student_id", id);
         await supabase.from("annual_grades").delete().eq("student_id", id);
-        
+
         const existingTrimesterYears = (await supabase.from("academic_years").select("id").eq("student_id", id)).data?.map(y => y.id) || [];
         if (existingTrimesterYears.length > 0) {
           await supabase.from("trimester_grades").delete().in("academic_year_id", existingTrimesterYears);
@@ -471,18 +469,19 @@ const CreateTranscript = () => {
       for (let i = 0; i < academicYears.length; i++) {
         const year = academicYears[i];
         const isLatestYear = i === academicYears.length - 1;
-        
-        const yearData = isLatestYear 
-          ? {
-              ...year,
-              student_id: studentId,
-              school_period_start: schoolPeriod.startDate,
-              school_period_end: schoolPeriod.endDate,
-              trimester_year: schoolPeriod.gradeClass,
-              trimester_shift: schoolPeriod.shift,
-            }
-          : { ...year, student_id: studentId };
-        
+
+        const yearData = isLatestYear ? {
+          ...year,
+          student_id: studentId,
+          school_period_start: schoolPeriod.startDate,
+          school_period_end: schoolPeriod.endDate,
+          trimester_year: schoolPeriod.gradeClass,
+          trimester_shift: schoolPeriod.shift,
+        } : {
+          ...year,
+          student_id: studentId
+        };
+
         const { data: academicYear, error: yearError } = await supabase
           .from("academic_years")
           .insert([yearData])
@@ -507,6 +506,7 @@ const CreateTranscript = () => {
           const { error: gradesError } = await supabase
             .from("annual_grades")
             .insert(gradesToInsert);
+
           if (gradesError) throw gradesError;
         }
 
@@ -525,6 +525,7 @@ const CreateTranscript = () => {
             const { error: trimesterError } = await supabase
               .from("trimester_grades")
               .insert(trimesterGradesToInsert);
+
             if (trimesterError) throw trimesterError;
           }
         }
@@ -534,6 +535,7 @@ const CreateTranscript = () => {
         title: "Sucesso",
         description: id ? "Histórico escolar atualizado com sucesso" : "Histórico escolar criado com sucesso",
       });
+
       navigate(`/visualizar/${studentId}`);
     } catch (error: any) {
       toast({
@@ -577,7 +579,6 @@ const CreateTranscript = () => {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="student" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
@@ -587,7 +588,6 @@ const CreateTranscript = () => {
             <TabsTrigger value="trimester">Notas Trimestrais</TabsTrigger>
             <TabsTrigger value="observations">Observações</TabsTrigger>
           </TabsList>
-
           <TabsContent value="student">
             <Card>
               <CardHeader>
@@ -599,72 +599,55 @@ const CreateTranscript = () => {
                   <Input
                     id="full_name"
                     value={studentData.full_name}
-                    onChange={(e) =>
-                      setStudentData({ ...studentData, full_name: e.target.value })
-                    }
+                    onChange={(e) => setStudentData({ ...studentData, full_name: e.target.value })}
                     placeholder="Nome completo do aluno"
                   />
                 </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="mother_name">Nome da Mãe *</Label>
                     <Input
                       id="mother_name"
                       value={studentData.mother_name}
-                      onChange={(e) =>
-                        setStudentData({ ...studentData, mother_name: e.target.value })
-                      }
+                      onChange={(e) => setStudentData({ ...studentData, mother_name: e.target.value })}
                       placeholder="Nome completo da mãe"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="father_name">Nome do Pai</Label>
                     <Input
                       id="father_name"
                       value={studentData.father_name}
-                      onChange={(e) =>
-                        setStudentData({ ...studentData, father_name: e.target.value })
-                      }
+                      onChange={(e) => setStudentData({ ...studentData, father_name: e.target.value })}
                       placeholder="Nome completo do pai"
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="birth_date">Data de Nascimento *</Label>
                   <Input
                     id="birth_date"
                     type="date"
                     value={studentData.birth_date}
-                    onChange={(e) =>
-                      setStudentData({ ...studentData, birth_date: e.target.value })
-                    }
+                    onChange={(e) => setStudentData({ ...studentData, birth_date: e.target.value })}
                   />
                 </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="birth_place">Naturalidade (Cidade) *</Label>
                     <Input
                       id="birth_place"
                       value={studentData.birth_place}
-                      onChange={(e) =>
-                        setStudentData({ ...studentData, birth_place: e.target.value })
-                      }
+                      onChange={(e) => setStudentData({ ...studentData, birth_place: e.target.value })}
                       placeholder="Nome da cidade"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="birth_state">Estado (UF) *</Label>
                     <select
                       id="birth_state"
                       value={studentData.birth_state}
-                      onChange={(e) =>
-                        setStudentData({ ...studentData, birth_state: e.target.value })
-                      }
+                      onChange={(e) => setStudentData({ ...studentData, birth_state: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <option value="AC">AC</option>
@@ -697,7 +680,6 @@ const CreateTranscript = () => {
                     </select>
                   </div>
                 </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="student_status">Status do Aluno *</Label>
@@ -713,15 +695,12 @@ const CreateTranscript = () => {
                       <option value="conservado">Conservado</option>
                     </select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="grade_series">Séries Cursadas</Label>
                     <select
                       id="grade_series"
                       value={studentData.grade_series}
-                      onChange={(e) =>
-                        setStudentData({ ...studentData, grade_series: e.target.value })
-                      }
+                      onChange={(e) => setStudentData({ ...studentData, grade_series: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <option value="">Selecione</option>
@@ -743,7 +722,6 @@ const CreateTranscript = () => {
                     </select>
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="school_id">Escola *</Label>
                   <Select
@@ -751,7 +729,7 @@ const CreateTranscript = () => {
                     onValueChange={(value) => {
                       setSelectedSchoolId(value);
                     }}
-                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary' || role === 'teacher')}
+                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary')}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a escola" />
@@ -768,7 +746,6 @@ const CreateTranscript = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="years">
             <AcademicYearsTable
               academicYears={academicYears}
@@ -778,7 +755,6 @@ const CreateTranscript = () => {
               selectedSchoolId={selectedSchoolId} // Passando selectedSchoolId
             />
           </TabsContent>
-
           <TabsContent value="grades">
             <Card>
               <CardHeader>
@@ -793,19 +769,14 @@ const CreateTranscript = () => {
                       </TabsTrigger>
                     ))}
                   </TabsList>
-
                   {GRADE_LEVELS.map((level) => (
                     <TabsContent key={level} value={level}>
                       <GradesTable
                         gradeLevel={level}
                         grades={yearGrades[level] || []}
-                        setGrades={(grades) =>
-                          setYearGrades({ ...yearGrades, [level]: grades })
-                        }
+                        setGrades={(grades) => setYearGrades({ ...yearGrades, [level]: grades })}
                         customSubjects={customSubjects[level]}
-                        setCustomSubjects={(subjects) =>
-                          setCustomSubjects({ ...customSubjects, [level]: subjects })
-                        }
+                        setCustomSubjects={(subjects) => setCustomSubjects({ ...customSubjects, [level]: subjects })}
                       />
                     </TabsContent>
                   ))}
@@ -813,7 +784,6 @@ const CreateTranscript = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="trimester">
             <TrimesterGradesTable
               subjects={SUBJECTS}
@@ -823,7 +793,6 @@ const CreateTranscript = () => {
               setSchoolPeriod={setSchoolPeriod}
             />
           </TabsContent>
-
           <TabsContent value="observations">
             <Card>
               <CardHeader>
@@ -855,7 +824,6 @@ const CreateTranscript = () => {
             </Card>
           </TabsContent>
         </Tabs>
-
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSave} disabled={loading} size="lg">
             <Save className="mr-2 h-4 w-4" />
@@ -863,7 +831,6 @@ const CreateTranscript = () => {
           </Button>
         </div>
       </main>
-
     </div>
   );
 };

@@ -2,21 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { 
-  FileText, 
-  Users, 
-  Clock, 
-  School, 
-  UserCog,
-  ArrowLeft,
-  Building2,
-  ShieldCheck,
-  Info,
-  Loader2,
-  LogOut,
-  Settings,
-  User as UserIcon
-} from 'lucide-react';
+import { FileText, Users, Clock, School, UserCog, ArrowLeft, Building2, ShieldCheck, Info, Loader2, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 interface SchoolOption {
   id: string;
@@ -60,7 +46,6 @@ export default function MunicipalDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, role, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
-
   const [municipalityDetails, setMunicipalityDetails] = useState<MunicipalityDetails | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
@@ -114,7 +99,7 @@ export default function MunicipalDashboard() {
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
       console.log("MunicipalDashboard: Found school ID in URL params");
       initialSchoolToSelect = schoolIdFromUrl;
-    } else if ((role === 'school_admin' || role === 'secretary' || role === 'teacher') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+    } else if ((role === 'school_admin' || role === 'secretary') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
       console.log("MunicipalDashboard: Using school from user profile");
       initialSchoolToSelect = profile.school_id;
     } else if (schools.length === 1) {
@@ -167,6 +152,7 @@ export default function MunicipalDashboard() {
       navigate('/');
       return;
     }
+
     console.log("MunicipalDashboard: Municipality details fetched:", data);
     setMunicipalityDetails(data as MunicipalityDetails);
   };
@@ -231,8 +217,7 @@ export default function MunicipalDashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar',
-      teacher: 'Professor(a)',
+      secretary: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
@@ -332,18 +317,13 @@ export default function MunicipalDashboard() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {municipalityDetails && (
           <Card className="mb-6 border-primary/20 bg-primary/5">
             <CardHeader>
               <div className="flex items-center gap-4">
                 {municipalityDetails.emblem_url && (
-                  <img 
-                    src={municipalityDetails.emblem_url} 
-                    alt="Brasão da Rede Municipal" 
-                    className="h-20 w-20 object-contain"
-                  />
+                  <img src={municipalityDetails.emblem_url} alt="Brasão da Rede Municipal" className="h-20 w-20 object-contain" />
                 )}
                 <div className="flex-1 space-y-1">
                   <CardTitle className="flex items-center gap-2">
@@ -382,20 +362,20 @@ export default function MunicipalDashboard() {
           <CardContent>
             {loadingSchools ? (
               <div className="flex items-center justify-center text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando escolas...
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Carregando escolas...
               </div>
             ) : schools.length === 0 ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Info className="h-4 w-4" /> Nenhuma escola encontrada para esta rede municipal.
+                <Info className="h-4 w-4" />
+                Nenhuma escola encontrada para esta rede municipal.
               </div>
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="select-school">Escola</Label>
-                <Select
-                  value={selectedSchoolId || ""}
-                  onValueChange={(value) => setSelectedSchoolId(value)}
+                <Select value={selectedSchoolId || ""} onValueChange={(value) => setSelectedSchoolId(value)}
                   disabled={
-                    (role === 'school_admin' || role === 'secretary' || role === 'teacher') && 
+                    (role === 'school_admin' || role === 'secretary') && 
                     !!profile?.school_id && 
                     schools.some(s => s.id === profile.school_id)
                   }
@@ -431,7 +411,8 @@ export default function MunicipalDashboard() {
             <CardContent className="space-y-2 text-sm">
               {loadingSchoolDetails ? (
                 <div className="flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando detalhes...
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Carregando detalhes...
                 </div>
               ) : (
                 <>
@@ -461,7 +442,7 @@ export default function MunicipalDashboard() {
             const Icon = card.icon;
             const isDisabled = card.requiresSchool && !selectedSchoolId;
             const tooltipText = card.requiresSchool && !selectedSchoolId ? "Selecione uma escola para habilitar" : "";
-
+            
             let cardPath = card.path;
             if (card.requiresSchool && selectedSchoolId) {
               cardPath = `${card.path}?schoolId=${selectedSchoolId}`;
@@ -470,9 +451,7 @@ export default function MunicipalDashboard() {
             }
 
             return (
-              <Card 
-                key={card.path}
-                className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              <Card key={card.path} className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => !isDisabled && navigate(cardPath)}
                 title={tooltipText}
               >

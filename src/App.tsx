@@ -41,7 +41,6 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/validar" element={<ValidateTranscript />} />
-              
               <Route path="/" element={
                 <ProtectedRoute>
                   <Dashboard />
@@ -58,22 +57,22 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/lista-alunos" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
                   <StudentList />
                 </ProtectedRoute>
               } />
               <Route path="/novo-historico" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
                   <CreateTranscript />
                 </ProtectedRoute>
               } />
               <Route path="/visualizar/:id" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
                   <ViewTranscript />
                 </ProtectedRoute>
               } />
               <Route path="/editar/:id" element={
-                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'teacher']}>
+                <ProtectedRoute requiredRoles={['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary']}>
                   <CreateTranscript />
                 </ProtectedRoute>
               } />
