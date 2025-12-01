@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2 } from 'lucide-react';
+import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
@@ -37,6 +38,10 @@ export default function Dashboard() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [isCreatingRole, setIsCreatingRole] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [editingRoleName, setEditingRoleName] = useState('');
+  const [editingRoleDescription, setEditingRoleDescription] = useState('');
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -132,6 +137,58 @@ export default function Dashboard() {
       });
     } finally {
       setIsCreatingRole(false);
+    }
+  };
+
+  const startEditingRole = (role: CustomRole) => {
+    setEditingRoleId(role.id);
+    setEditingRoleName(role.name);
+    setEditingRoleDescription(role.description || '');
+  };
+
+  const cancelEditingRole = () => {
+    setEditingRoleId(null);
+    setEditingRoleName('');
+    setEditingRoleDescription('');
+  };
+
+  const handleUpdateRole = async () => {
+    if (!editingRoleId || !editingRoleName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome do cargo é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUpdatingRole(true);
+    try {
+      const { error } = await supabase
+        .from('custom_roles')
+        .update({
+          name: editingRoleName.trim(),
+          description: editingRoleDescription.trim() || null
+        })
+        .eq('id', editingRoleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cargo atualizado com sucesso"
+      });
+
+      cancelEditingRole();
+      fetchCustomRoles();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível atualizar o cargo",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingRole(false);
     }
   };
 
@@ -330,87 +387,131 @@ export default function Dashboard() {
                     <UserCog className="h-5 w-5" />
                     Gerenciar Cargos do Sistema
                   </span>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Cargo
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Criar Novo Cargo</DialogTitle>
-                        <DialogDescription>
-                          Defina um novo cargo que poderá ser atribuído aos usuários do sistema.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="roleName">Nome do Cargo *</Label>
-                          <Input
-                            id="roleName"
-                            value={newRoleName}
-                            onChange={(e) => setNewRoleName(e.target.value)}
-                            placeholder="Ex: Coordenador Pedagógico"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="roleDescription">Descrição (Opcional)</Label>
-                          <Input
-                            id="roleDescription"
-                            value={newRoleDescription}
-                            onChange={(e) => setNewRoleDescription(e.target.value)}
-                            placeholder="Descrição do cargo"
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => {
-                            setNewRoleName('');
-                            setNewRoleDescription('');
-                          }}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleCreateRole} disabled={isCreatingRole || !newRoleName.trim()}>
-                            {isCreatingRole ? "Criando..." : "Criar Cargo"}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                 </CardTitle>
                 <CardDescription>
                   Crie e gerencie cargos personalizados para os usuários do sistema.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {customRoles.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhum cargo personalizado cadastrado ainda.
-                  </p>
-                ) : (
-                  <div className="grid gap-3">
-                    {customRoles.map((role) => (
-                      <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <h3 className="font-medium">{role.name}</h3>
-                          {role.description && (
-                            <p className="text-sm text-muted-foreground">{role.description}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Criado em: {new Date(role.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteRole(role.id, role.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Formulário para criar novo cargo */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-4">Criar Novo Cargo</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="roleName">Nome do Cargo *</Label>
+                        <Input
+                          id="roleName"
+                          value={newRoleName}
+                          onChange={(e) => setNewRoleName(e.target.value)}
+                          placeholder="Ex: Coordenador Pedagógico"
+                        />
                       </div>
-                    ))}
+                      <div className="space-y-2">
+                        <Label htmlFor="roleDescription">Descrição (Opcional)</Label>
+                        <Textarea
+                          id="roleDescription"
+                          value={newRoleDescription}
+                          onChange={(e) => setNewRoleDescription(e.target.value)}
+                          placeholder="Descrição do cargo"
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleCreateRole} 
+                        disabled={isCreatingRole || !newRoleName.trim()}
+                        className="w-full"
+                      >
+                        {isCreatingRole ? "Criando..." : "Criar Cargo"}
+                      </Button>
+                    </div>
                   </div>
-                )}
+
+                  {/* Listagem de cargos existentes */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-4">Cargos Existentes</h3>
+                    {customRoles.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">
+                        Nenhum cargo personalizado cadastrado ainda.
+                      </p>
+                    ) : (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        {customRoles.map((role) => (
+                          <div key={role.id} className="border rounded-lg p-3">
+                            {editingRoleId === role.id ? (
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`edit-role-name-${role.id}`}>Nome do Cargo *</Label>
+                                  <Input
+                                    id={`edit-role-name-${role.id}`}
+                                    value={editingRoleName}
+                                    onChange={(e) => setEditingRoleName(e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor={`edit-role-desc-${role.id}`}>Descrição (Opcional)</Label>
+                                  <Textarea
+                                    id={`edit-role-desc-${role.id}`}
+                                    value={editingRoleDescription}
+                                    onChange={(e) => setEditingRoleDescription(e.target.value)}
+                                    className="min-h-[80px]"
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={cancelEditingRole}
+                                    disabled={isUpdatingRole}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    onClick={handleUpdateRole}
+                                    disabled={isUpdatingRole || !editingRoleName.trim()}
+                                  >
+                                    {isUpdatingRole ? "Salvando..." : "Salvar"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-medium">{role.name}</h4>
+                                  {role.description && (
+                                    <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Criado em: {new Date(role.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div className="flex gap-1 ml-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => startEditingRole(role)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteRole(role.id, role.name)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
