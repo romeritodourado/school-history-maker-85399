@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 const MunicipalNetworkSetup = () => {
   const [municipalityName, setMunicipalityName] = useState('');
@@ -28,7 +28,6 @@ const MunicipalNetworkSetup = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCustomCityInput, setShowCustomCityInput] = useState(false);
-
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -86,6 +85,7 @@ const MunicipalNetworkSetup = () => {
         .getPublicUrl(filePath);
 
       setUploadedEmblemUrl(publicUrlData.publicUrl);
+
       toast({
         title: 'Upload de brasão concluído!',
         description: 'A imagem foi enviada com sucesso.',
@@ -120,19 +120,37 @@ const MunicipalNetworkSetup = () => {
     try {
       // 1. Validate municipality data
       console.log('Validando dados da rede municipal...');
-      municipalitySchema.parse({ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl || '', address, city, state });
+      municipalitySchema.parse({
+        name: municipalityName,
+        cnpj,
+        emblem_url: uploadedEmblemUrl || '',
+        address,
+        city,
+        state
+      });
       console.log('Dados da rede municipal validados.');
 
       // 2. Validate admin user data
       console.log('Validando dados do administrador...');
-      signupSchema.parse({ email: adminEmail, password: adminPassword, name: adminName });
+      signupSchema.parse({
+        email: adminEmail,
+        password: adminPassword,
+        name: adminName
+      });
       console.log('Dados do administrador validados.');
 
       // 3. Create Municipality
       console.log('Criando rede municipal no Supabase...');
       const { data: municipalityData, error: municipalityError } = await supabase
         .from('municipalities')
-        .insert([{ name: municipalityName, cnpj, emblem_url: uploadedEmblemUrl, address, city, state }])
+        .insert([{
+          name: municipalityName,
+          cnpj,
+          emblem_url: uploadedEmblemUrl,
+          address,
+          city,
+          state
+        }])
         .select()
         .single();
 
@@ -162,9 +180,7 @@ const MunicipalNetworkSetup = () => {
         title: 'Rede Municipal e Secretário de Educação criados com sucesso!',
         description: 'Você já pode fazer login com a conta do Secretário de Educação Municipal.',
       });
-
       navigate('/login');
-
     } catch (error) {
       console.error('Erro geral no handleSubmit:', error);
       toast({
@@ -307,7 +323,12 @@ const MunicipalNetworkSetup = () => {
                     disabled={uploading}
                   />
                   {uploadedEmblemUrl && (
-                    <Button variant="destructive" size="icon" onClick={removeEmblem} disabled={uploading}>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={removeEmblem}
+                      disabled={uploading}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -326,7 +347,6 @@ const MunicipalNetworkSetup = () => {
                 </p>
               </div>
             </fieldset>
-
             <fieldset className="space-y-4 border p-4 rounded-lg">
               <legend className="text-lg font-semibold px-2">Dados do Secretário de Educação Municipal</legend>
               <div className="space-y-2">
@@ -365,7 +385,6 @@ const MunicipalNetworkSetup = () => {
                 </p>
               </div>
             </fieldset>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>

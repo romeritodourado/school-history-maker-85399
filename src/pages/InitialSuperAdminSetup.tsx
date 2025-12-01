@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 import { useAuth } from '@/contexts/AuthContext';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 export default function InitialSuperAdminSetup() {
   const [email, setEmail] = useState('');
@@ -66,6 +66,7 @@ export default function InitialSuperAdminSetup() {
       } else {
         setSuperAdminExists(false);
       }
+
       setPageLoading(false);
     };
 
@@ -78,16 +79,13 @@ export default function InitialSuperAdminSetup() {
 
     try {
       signupSchema.parse({ email, password, name });
-
       const { error } = await signUp(email, password, name, 'super_admin');
-
       if (error) throw error;
 
       toast({
         title: 'Conta Super Administrador criada com sucesso!',
         description: 'Você já pode fazer login.',
       });
-
       navigate('/login');
     } catch (error) {
       toast({
@@ -151,20 +149,20 @@ export default function InitialSuperAdminSetup() {
               />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="password">Senha *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                  minLength={8}
-                />
-                <p className="text-xs text-muted-foreground">
-                  A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas e números.
-                </p>
-              </div>
+              <Label htmlFor="password">Senha *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                minLength={8}
+              />
+              <p className="text-xs text-muted-foreground">
+                A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas e números.
+              </p>
+            </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>

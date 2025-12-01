@@ -11,13 +11,12 @@ import { Loader2, User, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { signupSchema, passwordChangeSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
 export default function AccountSettings() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -97,7 +96,6 @@ export default function AccountSettings() {
       passwordChangeSchema.parse({ newPassword, confirmPassword });
 
       const { error } = await supabase.auth.updateUser({ password: newPassword });
-
       if (error) throw error;
 
       toast({
@@ -145,7 +143,6 @@ export default function AccountSettings() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8 max-w-3xl space-y-8">
         <Card>
           <CardHeader>
@@ -191,7 +188,6 @@ export default function AccountSettings() {
             </form>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

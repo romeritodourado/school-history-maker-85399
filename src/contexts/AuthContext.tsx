@@ -57,9 +57,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshSession = useCallback(async () => {
     setLoading(true); // Inicia o carregamento
     console.log("AuthContext: Atualizando sessão e perfil.");
+
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         console.error("AuthContext: Erro ao obter sessão:", error);
         setUser(null);
@@ -99,19 +100,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await refreshSession();
       }
     };
+
     initializeAuth();
-    return () => { ignore = true; };
+
+    return () => {
+      ignore = true;
+    };
   }, [refreshSession]); // Depende de refreshSession para garantir que seja chamado na montagem
 
   // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
       // Chama refreshSession para lidar com todas as mudanças de estado de forma consistente
-      await refreshSession(); 
+      await refreshSession();
     });
 
     return () => {
@@ -143,7 +146,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email,
         password,
         options: {
-          data: { name, role, municipality_id, school_id },
+          data: {
+            name,
+            role,
+            municipality_id,
+            school_id
+          },
         },
       });
 
