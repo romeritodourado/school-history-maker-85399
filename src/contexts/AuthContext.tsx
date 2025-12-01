@@ -52,47 +52,57 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // Efeito para lidar com a sessão inicial e mudanças no estado de autenticação
+  // Efeito para lidar com a sessão inicial e configurar o listener de onAuthStateChange
   useEffect(() => {
     let isMounted = true;
 
-    const handleAuthStateChange = async (event: string, newSession: Session | null) => {
+    // 1. Carregamento inicial da sessão
+    supabase.auth.getSession().then(async ({ data: { session: initialSession }, error }) => {
       if (!isMounted) return;
+      console.log("AuthContext: Initial getSession result.");
 
-      console.log(`AuthContext: Auth state changed - Event: ${event}, User: ${newSession?.user?.id}`);
-      
-      // Define loading como true apenas para eventos significativos que requerem um loader de página inteira
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setLoading(true); 
-      }
-
-      if (newSession?.user) {
-        setUser(newSession.user);
-        setSession(newSession);
-        await fetchProfileForUser(newSession.user.id);
+      if (error) {
+        console.error("AuthContext: Erro ao obter sessão inicial:", error);
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      } else if (initialSession?.user) {
+        setUser(initialSession.user);
+        setSession(initialSession);
+        await fetchProfileForUser(initialSession.user.id);
       } else {
-        // Limpa todos os dados do usuário em caso de logout ou nenhuma sessão
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
         setActiveMunicipalityIdForSuperAdmin(null);
       }
-      setLoading(false); // Sempre define loading como false após processar a mudança de estado
-    };
-
-    // Obtém a sessão inicial e configura o listener
-    supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
-      if (!isMounted) return;
-      if (error) {
-        console.error("AuthContext: Erro ao obter sessão inicial:", error);
-        handleAuthStateChange('INITIAL_SESSION_ERROR', null);
-      } else {
-        handleAuthStateChange('INITIAL_SESSION', initialSession);
-      }
+      setLoading(false); // Define loading como false APENAS após a verificação inicial da sessão
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+    // 2. Listener para mudanças subsequentes no estado de autenticação (eventos passivos)
+    // Este listener NÃO deve gerenciar o estado `loading` global, pois é para atualizações passivas.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!isMounted) return;
+      console.log(`AuthContext: Passive Auth state changed - Event: ${event}, User: ${newSession?.user?.id}`);
+
+      // Apenas atualiza user/session/profile, mas não toca no estado `loading` global aqui.
+      // O `loading` para ações explícitas (signIn, signOut) é gerenciado pelas próprias funções.
+      if (newSession?.user) {
+        setUser(newSession.user);
+        setSession(newSession);
+        // Não `await` aqui, permite que a busca do perfil ocorra em segundo plano
+        fetchProfileForUser(newSession.user.id); 
+      } else {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      }
+    });
 
     return () => {
       isMounted = false;
@@ -103,7 +113,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
-    setLoading(true); // Define loading como true antes da chamada da API
+    // O `loading` aqui é para a ação de login, não para o estado global da aplicação.
+    // A página de login deve ter seu próprio estado de carregamento para o botão.
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -112,23 +123,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) {
         console.error("AuthContext: Erro de login:", error);
-        setLoading(false); // Define loading como false em caso de erro
         return { error };
       }
       
       console.log("AuthContext: Login bem-sucedido. O listener onAuthStateChange irá atualizar o estado.");
-      // O listener onAuthStateChange irá lidar com a definição de user, session, profile, role e o setLoading(false) final
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o login:", error);
-      setLoading(false); // Define loading como false em caso de exceção
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login") };
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthContext: Tentando cadastro para ${email}`);
-    setLoading(true); // Define loading como true antes da chamada da API
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -145,38 +152,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) {
         console.error("AuthContext: Erro de cadastro:", error);
-        setLoading(false); // Define loading como false em caso de erro
         return { error };
       }
       
       console.log("AuthContext: Cadastro bem-sucedido. O listener onAuthStateChange irá atualizar o estado.");
-      // O listener onAuthStateChange irá lidar com a definição de user, session, profile, role e o setLoading(false) final
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o cadastro:", error);
-      setLoading(false); // Define loading como false em caso de exceção
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro") };
     }
   };
 
   const signOut = async () => {
     console.log("AuthContext: Tentando logout.");
-    setLoading(true); // Define loading como true antes da chamada da API
     try {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error("AuthContext: Erro de logout:", error);
-        setLoading(false); // Define loading como false em caso de erro
         return { error };
       }
       
       console.log("AuthContext: Logout bem-sucedido. O listener onAuthStateChange irá atualizar o estado.");
-      // O listener onAuthStateChange irá lidar com a limpeza do estado e o setLoading(false) final
       return { error: null };
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o logout:", error);
-      setLoading(false); // Define loading como false em caso de exceção
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout") };
     }
   };
