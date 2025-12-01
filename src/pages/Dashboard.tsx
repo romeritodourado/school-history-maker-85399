@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2 } from 'lucide-react';
+import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Link } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from '@/hooks/use-toast';
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
@@ -18,15 +21,28 @@ interface Municipality {
   name: string;
 }
 
+interface CustomRole {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut, user, profile, role, loading, activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin } = useAuth();
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [hasMunicipalities, setHasMunicipalities] = useState(false);
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (role === 'super_admin') {
       fetchMunicipalities();
+      fetchCustomRoles();
     }
   }, [role]);
 
@@ -41,6 +57,18 @@ export default function Dashboard() {
     }
     setMunicipalities(data || []);
     setHasMunicipalities(data && data.length > 0);
+  };
+
+  const fetchCustomRoles = async () => {
+    const { data, error } = await supabase
+      .from('custom_roles')
+      .select('*')
+      .order('name');
+    if (error) {
+      console.error('Error fetching custom roles:', error);
+      return;
+    }
+    setCustomRoles(data || []);
   };
 
   const handleSelectMunicipality = (municipalityId: string) => {
@@ -63,6 +91,94 @@ export default function Dashboard() {
       secretary: 'Assistente Administrativo',
     };
     return labels[role] || role;
+  };
+
+  const handleCreateRole = async () => {
+    if (!newRoleName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome do cargo é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingRole(true);
+    try {
+      const { error } = await supabase
+        .from('custom_roles')
+        .insert([
+          {
+            name: newRoleName.trim(),
+            description: newRoleDescription.trim() || null
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cargo criado com sucesso"
+      });
+
+      setNewRoleName('');
+      setNewRoleDescription('');
+      fetchCustomRoles();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar o cargo",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingRole(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string, roleName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o cargo "${roleName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      // Verificar se existem usuários com este cargo
+      const { data: usersWithRole, error: countError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', roleName)
+        .limit(1);
+
+      if (countError) throw countError;
+
+      if (usersWithRole && usersWithRole.length > 0) {
+        toast({
+          title: "Erro",
+          description: `Não é possível excluir este cargo pois existem ${usersWithRole.length} usuário(s) atribuído(s) a ele.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('custom_roles')
+        .delete()
+        .eq('id', roleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cargo excluído com sucesso"
+      });
+
+      fetchCustomRoles();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível excluir o cargo",
+        variant: "destructive"
+      });
+    }
   };
 
   const cards = [
@@ -205,6 +321,98 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Gerenciamento de Cargos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <UserCog className="h-5 w-5" />
+                    Gerenciar Cargos do Sistema
+                  </span>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Cargo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Criar Novo Cargo</DialogTitle>
+                        <DialogDescription>
+                          Defina um novo cargo que poderá ser atribuído aos usuários do sistema.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="roleName">Nome do Cargo *</Label>
+                          <Input
+                            id="roleName"
+                            value={newRoleName}
+                            onChange={(e) => setNewRoleName(e.target.value)}
+                            placeholder="Ex: Coordenador Pedagógico"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="roleDescription">Descrição (Opcional)</Label>
+                          <Input
+                            id="roleDescription"
+                            value={newRoleDescription}
+                            onChange={(e) => setNewRoleDescription(e.target.value)}
+                            placeholder="Descrição do cargo"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => {
+                            setNewRoleName('');
+                            setNewRoleDescription('');
+                          }}>
+                            Cancelar
+                          </Button>
+                          <Button onClick={handleCreateRole} disabled={isCreatingRole || !newRoleName.trim()}>
+                            {isCreatingRole ? "Criando..." : "Criar Cargo"}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardTitle>
+                <CardDescription>
+                  Crie e gerencie cargos personalizados para os usuários do sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {customRoles.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Nenhum cargo personalizado cadastrado ainda.
+                  </p>
+                ) : (
+                  <div className="grid gap-3">
+                    {customRoles.map((role) => (
+                      <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <h3 className="font-medium">{role.name}</h3>
+                          {role.description && (
+                            <p className="text-sm text-muted-foreground">{role.description}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Criado em: {new Date(role.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteRole(role.id, role.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -212,7 +420,8 @@ export default function Dashboard() {
               const Icon = card.icon;
               if (card.roles && role && card.roles.includes(role)) {
                 return (
-                  <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105" onClick={() => navigate(card.path)}>
+                  <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+                    onClick={() => navigate(card.path)}>
                     <CardHeader>
                       <div className="flex items-center space-x-2">
                         <div className="p-2 bg-primary/10 rounded-lg">

@@ -21,7 +21,7 @@ interface UserProfile {
   email: string | null;
   municipality_id: string | null;
   school_id: string | null;
-  role: AppRole;
+  role: string; // Agora é string para incluir cargos personalizados
   municipality_name?: string;
   school_name?: string;
 }
@@ -37,10 +37,17 @@ interface School {
   municipality_id: string;
 }
 
+interface CustomRole {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true); // For initial data fetch
   const [isSubmitting, setIsSubmitting] = useState(false); // For form submission
@@ -50,7 +57,7 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'secretary' as AppRole, // Default role changed to 'secretary'
+    role: 'secretary', // Default role
     municipality_id: '',
     school_id: '',
   });
@@ -75,6 +82,7 @@ export default function Users() {
     setLoading(true);
     await fetchMunicipalities();
     await fetchSchools();
+    await fetchCustomRoles();
     await fetchUsers();
     setLoading(false);
   };
@@ -102,6 +110,19 @@ export default function Users() {
       setSchools(data || []);
     } catch (error) {
       console.error('Error fetching schools:', error);
+    }
+  };
+
+  const fetchCustomRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_roles')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      setCustomRoles(data || []);
+    } catch (error) {
+      console.error('Error fetching custom roles:', error);
     }
   };
 
@@ -244,19 +265,32 @@ export default function Users() {
     }
   };
 
-  const getRoleLabel = (role: AppRole) => {
-    const labels: Record<AppRole, string> = {
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
       super_admin: 'Super Administrador',
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
       secretary: 'Assistente Administrativo',
     };
+    
+    // Verificar se é um cargo personalizado
+    const customRole = customRoles.find(r => r.name === role);
+    if (customRole) {
+      return customRole.name + (customRole.description ? ` (${customRole.description})` : '');
+    }
+    
     return labels[role] || role;
   };
 
+  const getAllAvailableRoles = () => {
+    const systemRoles: string[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'];
+    const customRoleNames = customRoles.map(r => r.name);
+    return [...systemRoles, ...customRoleNames];
+  };
+
   const getAvailableRoles = () => {
-    const allRoles: AppRole[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'];
+    const allRoles = getAllAvailableRoles();
     
     if (currentUserRole === 'super_admin') return allRoles;
     if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') 
@@ -358,7 +392,7 @@ export default function Users() {
                   <Label htmlFor="role">Cargo *</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value: AppRole) => setFormData({ ...formData, role: value })}
+                    onValueChange={(value: string) => setFormData({ ...formData, role: value })}
                     disabled={
                       editingUser?.id === currentUserProfile?.id || 
                       !getAvailableRoles().includes(formData.role)
@@ -376,7 +410,8 @@ export default function Users() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary') && (
+                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || 
+                  ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(formData.role)) && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
@@ -400,7 +435,8 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
-                {(formData.role === 'school_admin' || formData.role === 'secretary') && (
+                {(formData.role === 'school_admin' || formData.role === 'secretary' || 
+                  ['school_admin', 'secretary'].includes(formData.role)) && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select
