@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
@@ -27,6 +28,9 @@ interface CustomRole {
   name: string;
   description: string | null;
   created_at: string;
+  scope: 'global' | 'municipal';
+  municipality_id: string | null;
+  municipality_name?: string;
 }
 
 // Definição dos cargos padrão do sistema
@@ -71,10 +75,14 @@ export default function Dashboard() {
   const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [newRoleScope, setNewRoleScope] = useState<'global' | 'municipal'>('global');
+  const [newRoleMunicipalityId, setNewRoleMunicipalityId] = useState<string>('');
   const [isCreatingRole, setIsCreatingRole] = useState(false);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [editingRoleName, setEditingRoleName] = useState('');
   const [editingRoleDescription, setEditingRoleDescription] = useState('');
+  const [editingRoleScope, setEditingRoleScope] = useState<'global' | 'municipal'>('global');
+  const [editingRoleMunicipalityId, setEditingRoleMunicipalityId] = useState<string>('');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -105,13 +113,22 @@ export default function Dashboard() {
   const fetchCustomRoles = async () => {
     const { data, error } = await supabase
       .from('custom_roles')
-      .select('*')
+      .select(`
+        *,
+        municipalities (name)
+      `)
       .order('name');
     if (error) {
       console.error('Error fetching custom roles:', error);
       return;
     }
-    setCustomRoles(data || []);
+    
+    const rolesWithMunicipalityName = (data || []).map(role => ({
+      ...role,
+      municipality_name: (role.municipalities as { name: string } | null)?.name || null
+    }));
+    
+    setCustomRoles(rolesWithMunicipalityName as CustomRole[]);
   };
 
   const handleSelectMunicipality = (municipalityId: string) => {
@@ -146,6 +163,16 @@ export default function Dashboard() {
       return;
     }
 
+    // Se for cargo municipal, verificar se selecionou uma rede
+    if (newRoleScope === 'municipal' && !newRoleMunicipalityId) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione uma rede municipal para o cargo específico",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsCreatingRole(true);
     try {
       const { error } = await supabase
@@ -153,7 +180,9 @@ export default function Dashboard() {
         .insert([
           {
             name: newRoleName.trim(),
-            description: newRoleDescription.trim() || null
+            description: newRoleDescription.trim() || null,
+            scope: newRoleScope,
+            municipality_id: newRoleScope === 'municipal' ? newRoleMunicipalityId : null
           }
         ]);
 
@@ -164,8 +193,11 @@ export default function Dashboard() {
         description: "Cargo criado com sucesso"
       });
 
+      // Resetar formulário
       setNewRoleName('');
       setNewRoleDescription('');
+      setNewRoleScope('global');
+      setNewRoleMunicipalityId('');
       fetchCustomRoles();
     } catch (error: any) {
       toast({
@@ -182,12 +214,16 @@ export default function Dashboard() {
     setEditingRoleId(role.id);
     setEditingRoleName(role.name);
     setEditingRoleDescription(role.description || '');
+    setEditingRoleScope(role.scope || 'global');
+    setEditingRoleMunicipalityId(role.municipality_id || '');
   };
 
   const cancelEditingRole = () => {
     setEditingRoleId(null);
     setEditingRoleName('');
     setEditingRoleDescription('');
+    setEditingRoleScope('global');
+    setEditingRoleMunicipalityId('');
   };
 
   const handleUpdateRole = async () => {
@@ -200,13 +236,25 @@ export default function Dashboard() {
       return;
     }
 
+    // Se for cargo municipal, verificar se selecionou uma rede
+    if (editingRoleScope === 'municipal' && !editingRoleMunicipalityId) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione uma rede municipal para o cargo específico",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsUpdatingRole(true);
     try {
       const { error } = await supabase
         .from('custom_roles')
         .update({
           name: editingRoleName.trim(),
-          description: editingRoleDescription.trim() || null
+          description: editingRoleDescription.trim() || null,
+          scope: editingRoleScope,
+          municipality_id: editingRoleScope === 'municipal' ? editingRoleMunicipalityId : null
         })
         .eq('id', editingRoleId);
 
@@ -479,6 +527,7 @@ export default function Dashboard() {
                           placeholder="Ex: Coordenador Pedagógico"
                         />
                       </div>
+                      
                       <div className="space-y-2">
                         <Label htmlFor="roleDescription">Descrição (Opcional)</Label>
                         <Textarea
@@ -489,9 +538,49 @@ export default function Dashboard() {
                           className="min-h-[100px]"
                         />
                       </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Escopo do Cargo</Label>
+                        <RadioGroup 
+                          value={newRoleScope} 
+                          onValueChange={(value: 'global' | 'municipal') => setNewRoleScope(value)}
+                          className="flex flex-col space-y-1"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="global" id="global" />
+                            <Label htmlFor="global">Global (visível para todas as redes)</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="municipal" id="municipal" />
+                            <Label htmlFor="municipal">Específico de Rede Municipal</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                      
+                      {newRoleScope === 'municipal' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="roleMunicipality">Rede Municipal *</Label>
+                          <Select 
+                            value={newRoleMunicipalityId} 
+                            onValueChange={setNewRoleMunicipalityId}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma rede municipal" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {municipalities.map((municipality) => (
+                                <SelectItem key={municipality.id} value={municipality.id}>
+                                  {municipality.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      
                       <Button 
                         onClick={handleCreateRole} 
-                        disabled={isCreatingRole || !newRoleName.trim()}
+                        disabled={isCreatingRole || !newRoleName.trim() || (newRoleScope === 'municipal' && !newRoleMunicipalityId)}
                         className="w-full"
                       >
                         {isCreatingRole ? "Criando..." : "Criar Cargo"}
@@ -557,6 +646,7 @@ export default function Dashboard() {
                                       onChange={(e) => setEditingRoleName(e.target.value)}
                                     />
                                   </div>
+                                  
                                   <div className="space-y-2">
                                     <Label htmlFor={`edit-role-desc-${role.id}`}>Descrição (Opcional)</Label>
                                     <Textarea
@@ -566,6 +656,46 @@ export default function Dashboard() {
                                       className="min-h-[80px]"
                                     />
                                   </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label>Escopo do Cargo</Label>
+                                    <RadioGroup 
+                                      value={editingRoleScope} 
+                                      onValueChange={(value: 'global' | 'municipal') => setEditingRoleScope(value)}
+                                      className="flex flex-col space-y-1"
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="global" id={`edit-global-${role.id}`} />
+                                        <Label htmlFor={`edit-global-${role.id}`}>Global (visível para todas as redes)</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="municipal" id={`edit-municipal-${role.id}`} />
+                                        <Label htmlFor={`edit-municipal-${role.id}`}>Específico de Rede Municipal</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+                                  
+                                  {editingRoleScope === 'municipal' && (
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`edit-role-municipality-${role.id}`}>Rede Municipal *</Label>
+                                      <Select 
+                                        value={editingRoleMunicipalityId} 
+                                        onValueChange={setEditingRoleMunicipalityId}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Selecione uma rede municipal" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {municipalities.map((municipality) => (
+                                            <SelectItem key={municipality.id} value={municipality.id}>
+                                              {municipality.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  
                                   <div className="flex justify-end gap-2">
                                     <Button 
                                       variant="outline" 
@@ -578,7 +708,7 @@ export default function Dashboard() {
                                     <Button 
                                       size="sm"
                                       onClick={handleUpdateRole}
-                                      disabled={isUpdatingRole || !editingRoleName.trim()}
+                                      disabled={isUpdatingRole || !editingRoleName.trim() || (editingRoleScope === 'municipal' && !editingRoleMunicipalityId)}
                                     >
                                       {isUpdatingRole ? "Salvando..." : "Salvar"}
                                     </Button>
@@ -591,6 +721,20 @@ export default function Dashboard() {
                                     {role.description && (
                                       <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
                                     )}
+                                    <div className="flex items-center mt-2">
+                                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                        role.scope === 'global' 
+                                          ? 'bg-primary/10 text-primary' 
+                                          : 'bg-secondary/10 text-secondary'
+                                      }`}>
+                                        {role.scope === 'global' ? 'Global' : 'Rede Municipal'}
+                                      </span>
+                                      {role.scope === 'municipal' && role.municipality_name && (
+                                        <span className="ml-2 text-xs text-muted-foreground">
+                                          ({role.municipality_name})
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground mt-2">
                                       Criado em: {new Date(role.created_at).toLocaleDateString()}
                                     </p>
