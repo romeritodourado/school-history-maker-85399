@@ -3,12 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 type AppRole = 
-  | 'super_admin'
-  | 'municipal_secretary'
-  | 'network_manager'
-  | 'school_admin'
-  | 'secretary'
-  | 'teacher';
+  | 'super_admin' 
+  | 'municipal_secretary' 
+  | 'network_manager' 
+  | 'school_admin' 
+  | 'secretary';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

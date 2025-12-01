@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .select('*')
       .eq('id', userId)
       .single();
-
+    
     if (profileError) {
       console.error("AuthContext: Erro ao buscar perfil:", profileError);
       setProfile(null);
@@ -57,10 +57,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshSession = useCallback(async () => {
     setLoading(true); // Inicia o carregamento
     console.log("AuthContext: Atualizando sessão e perfil.");
-
+    
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-
+      
       if (error) {
         console.error("AuthContext: Erro ao obter sessão:", error);
         setUser(null);
@@ -95,14 +95,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // SOLUÇÃO 1: Carregamento inicial da sessão (executa apenas uma vez)
   useEffect(() => {
     let ignore = false;
+    
     const initializeAuth = async () => {
       if (!ignore) {
         await refreshSession();
       }
     };
-
+    
     initializeAuth();
-
+    
     return () => {
       ignore = true;
     };
@@ -111,12 +112,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // SOLUÇÃO 2: Configurar o listener de sessão (fora do estado, com cleanup)
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       console.log(`AuthContext: Auth state changed - Event: ${_event}, User: ${newSession?.user?.id}`);
+      
       // Chama refreshSession para lidar com todas as mudanças de estado de forma consistente
       await refreshSession();
     });
-
+    
     return () => {
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
       subscription.unsubscribe();
@@ -125,12 +128,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
+    
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
       if (error) {
         console.error("AuthContext: Erro de login:", error);
         return { error };
       }
+      
       console.log("AuthContext: Login bem-sucedido.");
       return { error: null };
     } catch (error: any) {
@@ -141,6 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthContext: Tentando cadastro para ${email}`);
+    
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -151,14 +161,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             role,
             municipality_id,
             school_id
-          },
-        },
+          }
+        }
       });
-
+      
       if (error) {
         console.error("AuthContext: Erro de cadastro:", error);
         return { error };
       }
+      
       console.log("AuthContext: Cadastro bem-sucedido.");
       return { error: null };
     } catch (error: any) {
@@ -169,12 +180,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     console.log("AuthContext: Tentando logout.");
+    
     try {
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
         console.error("AuthContext: Erro de logout:", error);
         return { error };
       }
+      
       console.log("AuthContext: Logout bem-sucedido.");
       return { error: null };
     } catch (error: any) {
