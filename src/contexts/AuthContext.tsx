@@ -12,8 +12,10 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
-  loading: boolean; // 'loading' agora é para operações ativas (login, logout, etc.)
-  initialSessionChecked: boolean; // Renomeado de 'initializing'
+  sessionLoading: boolean; // Loading for initial session check (getSession)
+  authLoading: boolean;    // Loading for profile fetch after auth state change (onAuthStateChange)
+  operationLoading: boolean; // Loading for explicit auth operations (signIn, signOut, signUp)
+  initialSessionChecked: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
@@ -28,8 +30,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(false); // 'loading' agora é para operações ativas (login, logout, etc.)
-  const [initialSessionChecked, setInitialSessionChecked] = useState(false); // Novo estado para a carga inicial da sessão
+  const [sessionLoading, setSessionLoading] = useState(true); // Initial session check
+  const [authLoading, setAuthLoading] = useState(false);    // Profile fetching via listener
+  const [operationLoading, setOperationLoading] = useState(false); // Explicit auth operations
+  const [initialSessionChecked, setInitialSessionChecked] = useState(false);
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
   // Função para buscar o perfil do usuário
@@ -58,17 +62,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const init = async () => {
       console.log("AuthContext: Recuperando sessão inicial...");
-      setLoading(true); // Ativa loading para a operação de login
+      setSessionLoading(true); // Ativa loading para a checagem inicial da sessão
 
       const { data } = await supabase.auth.getSession();
       const sessionData = data.session;
 
       if (sessionData?.user) {
-        console.log("AuthContext: Usuário encontrado. Carregando perfil...");
+        console.log("AuthContext: Usuário encontrado na sessão inicial. Carregando perfil...");
         setUser(sessionData.user);
         setSession(sessionData);
         await fetchProfileForUser(sessionData.user.id);
       } else {
+        console.log("AuthContext: Nenhum usuário encontrado na sessão inicial.");
         setUser(null);
         setSession(null);
         setProfile(null);
@@ -76,9 +81,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setActiveMunicipalityIdForSuperAdmin(null);
       }
 
-      setInitialSessionChecked(true);   // 🔥 SÓ AQUI LIBERA ProtectedRoute
-      setLoading(false);
-      console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true. Loading: false.");
+      setInitialSessionChecked(true); // Libera o ProtectedRoute após a checagem inicial
+      setSessionLoading(false); // Desativa loading após a operação
+      console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true. sessionLoading: false.");
     };
 
     init();
@@ -94,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (session?.user) { // Se houver um usuário na sessão (SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED)
           console.log("AuthContext: Buscando perfil para o usuário:", session.user.id);
-          setLoading(true); // 🔥 trava ProtectedRoute enquanto carrega perfil
+          setAuthLoading(true); // Ativa loading para esta operação específica
           
           const profileData = await fetchProfileForUser(session.user.id);
           
@@ -103,16 +108,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(profileData);
           setRole(profileData?.role || null);
           
-          setLoading(false); // 🔥 só libera quando tudo terminou
+          setAuthLoading(false); // Desativa loading após o perfil ser carregado
         } else if (event === "SIGNED_OUT") {
-          setLoading(true); // Ativa loading para esta operação específica
+          setAuthLoading(true); // Ativa loading para esta operação específica
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-          setLoading(false); // Desativa loading após o estado ser limpo
+          setAuthLoading(false); // Desativa loading após o estado ser limpo
         }
+        // Para outros eventos como TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY,
+        // não precisamos de um estado de loading global, pois são geralmente passivos ou tratados localmente.
       }
     );
 
@@ -125,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
-    setLoading(true); // Ativa loading para a operação de login
+    setOperationLoading(true); // Ativa loading para a operação de login
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -143,13 +150,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o login:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login") };
     } finally {
-      // setLoading(false) is handled by onAuthStateChange for SIGNED_IN event
+      setOperationLoading(false); // Desativa loading após a operação (mesmo em caso de erro)
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthContext: Tentando cadastro para ${email}`);
-    setLoading(true); // Ativa loading para a operação de cadastro
+    setOperationLoading(true); // Ativa loading para a operação de cadastro
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -175,13 +182,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o cadastro:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro") };
     } finally {
-      // setLoading(false) is handled by onAuthStateChange for SIGNED_IN event
+      setOperationLoading(false); // Desativa loading após a operação (mesmo em caso de erro)
     }
   };
 
   const signOut = async () => {
     console.log("AuthContext: Tentando logout.");
-    setLoading(true); // Ativa loading para a operação de logout
+    setOperationLoading(true); // Ativa loading para a operação de logout
     try {
       const { error } = await supabase.auth.signOut();
       
@@ -196,7 +203,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o logout:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout") };
     } finally {
-      // setLoading(false) is handled by onAuthStateChange for SIGNED_OUT event
+      setOperationLoading(false); // Desativa loading após a operação (mesmo em caso de erro)
     }
   };
 
@@ -205,7 +212,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     session,
     profile,
     role,
-    loading,
+    sessionLoading,
+    authLoading,
+    operationLoading,
     initialSessionChecked, // Expondo o estado de inicialização
     signIn,
     signUp,

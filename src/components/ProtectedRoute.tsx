@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import FullPageLoader from '@/components/FullPageLoader';
 
 type AppRole = 
   | 'super_admin' 
@@ -15,31 +15,29 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, initializing } = useAuth(); // Removido 'loading'
+  const { user, profile, sessionLoading, authLoading, operationLoading, initialSessionChecked } = useAuth();
   const location = useLocation();
 
-  // Se ainda estiver inicializando a sessão (primeira carga da página), mostra o spinner
-  if (initializing) {
+  // 1. Se a sessão inicial ainda não foi verificada, mostra o loader de verificação de acesso
+  if (!initialSessionChecked) {
     console.log(`ProtectedRoute (${location.pathname}): Aguardando sessão inicial...`);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Carregando...</span>
-      </div>
-    );
+    return <FullPageLoader message="Verificando acesso..." />;
   }
 
-  // Se não estiver carregando e não houver usuário, redireciona para a página de login
-  if (!user) {
-    console.log(`ProtectedRoute (${location.pathname}): Nenhum usuário, redirecionando para /login`);
+  // 2. Se a sessão inicial foi verificada, mas ainda estamos carregando o perfil ou uma operação de auth
+  if (sessionLoading || authLoading || operationLoading) {
+    console.log(`ProtectedRoute (${location.pathname}): Carregando dados...`);
+    return <FullPageLoader message="Carregando dados..." />;
+  }
+
+  // 3. Se a sessão inicial foi verificada, não há carregamentos ativos, mas não há usuário ou perfil
+  // Isso significa que o usuário não está autenticado ou o perfil não pôde ser carregado
+  if (!user || !profile) {
+    console.log(`ProtectedRoute (${location.pathname}): Nenhum usuário ou perfil, redirecionando para /login`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // A lógica de verificação de roles foi removida daqui.
-  // Se a verificação de roles for necessária, ela deve ser implementada
-  // dentro dos componentes das páginas ou em um nível superior.
-
-  // Se todas as verificações passarem (inicialização completa e usuário autenticado), renderiza os filhos
-  console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}`);
+  // 4. Se todas as verificações passarem (inicialização completa, sem carregamentos ativos, usuário e perfil existem), renderiza os filhos
+  console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${profile.role}`);
   return <>{children}</>;
 }
