@@ -60,15 +60,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthContext: Recuperando sessão inicial...");
       setLoading(true); // Ativa loading para a operação de login
       
-      const { data } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await supabase.auth.getSession();
       const sessionData = data.session;
 
+      if (sessionError) {
+        console.error("AuthContext: Erro ao obter sessão inicial:", sessionError);
+      }
+
+      console.log("AuthContext: Resultado de getSession() -> sessionData:", sessionData);
+
       if (sessionData?.user) {
-        console.log("AuthContext: Usuário encontrado. Carregando perfil...");
+        console.log("AuthContext: Usuário encontrado na sessão inicial. Carregando perfil...");
         setUser(sessionData.user);
         setSession(sessionData);
-        await fetchProfileForUser(sessionData.user.id);
+        const fetchedProfile = await fetchProfileForUser(sessionData.user.id);
+        console.log("AuthContext: Perfil carregado na sessão inicial:", fetchedProfile);
       } else {
+        console.log("AuthContext: Nenhum usuário encontrado na sessão inicial.");
         setUser(null);
         setSession(null);
         setProfile(null);
@@ -78,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setInitialSessionChecked(true); // Libera o ProtectedRoute após a checagem inicial
       setLoading(false); // Desativa loading após a operação
-      console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true.");
+      console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true. Loading: false.");
     };
 
     getInitialSession();
