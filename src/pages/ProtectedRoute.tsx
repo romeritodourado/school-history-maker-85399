@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import FullPageLoader from '@/components/FullPageLoader'; // Importar o novo componente
 
 type AppRole = 
   | 'super_admin' 
@@ -15,21 +15,22 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading } = useAuth(); // Removido 'role' pois não será mais usado aqui
+  const { user, loading, initialSessionChecked } = useAuth(); // Usando 'loading' e 'initialSessionChecked'
   const location = useLocation();
 
-  // Se ainda estiver carregando o estado de autenticação (sessão e perfil), mostra o spinner
-  if (loading) {
-    console.log(`ProtectedRoute (${location.pathname}): Carregando estado de autenticação...`);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Carregando...</span>
-      </div>
-    );
+  // Se a sessão inicial ainda não foi verificada, mostra o loader de verificação de acesso
+  if (!initialSessionChecked) {
+    console.log(`ProtectedRoute (${location.pathname}): Aguardando sessão inicial...`);
+    return <FullPageLoader message="Verificando acesso..." />;
   }
 
-  // Se não estiver carregando e não houver usuário, redireciona para a página de login
+  // Se houver uma operação de autenticação ativa (login/logout/signup), mostra o loader de carregamento
+  if (loading) {
+    console.log(`ProtectedRoute (${location.pathname}): Carregando dados...`);
+    return <FullPageLoader message="Carregando dados..." />;
+  }
+
+  // Se a sessão inicial foi verificada e não há usuário, redireciona para a página de login
   if (!user) {
     console.log(`ProtectedRoute (${location.pathname}): Nenhum usuário, redirecionando para /login`);
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -39,7 +40,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   // Se a verificação de roles for necessária, ela deve ser implementada
   // dentro dos componentes das páginas ou em um nível superior.
 
-  // Se todas as verificações passarem (carregamento e usuário autenticado), renderiza os filhos
+  // Se todas as verificações passarem (inicialização completa e usuário autenticado), renderiza os filhos
   console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}`);
   return <>{children}</>;
 }

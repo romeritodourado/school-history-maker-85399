@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -12,8 +12,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
-  loading: boolean;
-  initializing: boolean; // Adicionado o estado de inicialização
+  loading: boolean; // 'loading' agora é para operações ativas (login, logout, etc.)
+  initialSessionChecked: boolean; // Renomeado de 'initializing'
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
@@ -29,12 +29,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(false); // 'loading' agora é para operações ativas (login, logout, etc.)
-  const [initializing, setInitializing] = useState(true); // Novo estado para a carga inicial da sessão
+  const [initialSessionChecked, setInitialSessionChecked] = useState(false); // Novo estado para a carga inicial da sessão
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
-
-  // Usamos useRef para o user para que o useEffect não precise depender do estado 'user'
-  // e, assim, não seja recriado em cada mudança de 'user'.
-  const userRef = useRef<User | null>(null);
 
   // Função para buscar o perfil do usuário
   const fetchProfileForUser = useCallback(async (userId: string) => {
@@ -62,30 +58,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const getInitialSession = async () => {
       console.log("AuthContext: Recuperando sessão inicial...");
-      setInitializing(true); // Garante que está true no início da inicialização
+      setLoading(true); // Ativa loading para a operação de login
       
       const { data } = await supabase.auth.getSession();
+      const sessionData = data.session;
 
-      if (data.session) {
-        setUser(data.session.user);
-        setSession(data.session);
-        userRef.current = data.session.user;
-        await fetchProfileForUser(data.session.user.id);
+      if (sessionData?.user) {
+        console.log("AuthContext: Usuário encontrado. Carregando perfil...");
+        setUser(sessionData.user);
+        setSession(sessionData);
+        await fetchProfileForUser(sessionData.user.id);
       } else {
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
         setActiveMunicipalityIdForSuperAdmin(null);
-        userRef.current = null;
       }
 
-      setInitializing(false); // Libera o ProtectedRoute após a checagem inicial
-      console.log("AuthContext: Sessão inicial recuperada. Initializing: false.");
+      setInitialSessionChecked(true); // Libera o ProtectedRoute após a checagem inicial
+      setLoading(false); // Desativa loading após a operação
+      console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true.");
     };
 
     getInitialSession();
-  }, [fetchProfileForUser]); // Depende de fetchProfileForUser para garantir que a função esteja atualizada
+  }, [fetchProfileForUser]);
 
   // Efeito para configurar o listener de onAuthStateChange (apenas uma vez na montagem)
   useEffect(() => {
@@ -95,40 +92,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         console.log("Auth state changed - Event:", event);
 
-        // User's suggestion: Set initializing to false on SIGNED_IN event
-        if (event === "SIGNED_IN") {
-          setInitializing(false);     // <-- IMPORTANTE
-        }
-
-        // 🔥 EVITA DUPLICATE SIGNED_IN (previous fix)
-        if (event === "SIGNED_IN" && userRef.current) {
-          console.log("AuthContext: Ignorando SIGNED_IN duplicado.");
-          return;
-        }
-
-        // Apenas mostramos o loading para eventos que realmente mudam o estado de autenticação
-        // e não para refreshes passivos de token.
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') { // INITIAL_SESSION is handled by getInitialSession
-          setLoading(true);
-        }
-        
-        if (!session) {
+        if (event === "SIGNED_IN" && session?.user) {
+          console.log("AuthContext: Buscando perfil para o usuário:", session.user.id);
+          setLoading(true); // Ativa loading para esta operação específica
+          
+          const profileData = await fetchProfileForUser(session.user.id);
+          
+          setUser(session.user);
+          setSession(session);
+          setProfile(profileData);
+          setRole(profileData?.role || null);
+          
+          setLoading(false); // Desativa loading após o perfil ser carregado
+        } else if (event === "SIGNED_OUT") {
+          setLoading(true); // Ativa loading para esta operação específica
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-          userRef.current = null;
-        } else {
-          setUser(session.user);
-          setSession(session);
-          userRef.current = session.user;
-          await fetchProfileForUser(session.user.id);
+          setLoading(false); // Desativa loading após o estado ser limpo
         }
-        
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-          setLoading(false);
-        }
+        // Para outros eventos como TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY,
+        // não precisamos de um estado de loading global, pois são geralmente passivos ou tratados localmente.
       }
     );
 
@@ -137,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
       listener.subscription.unsubscribe();
     };
-  }, [fetchProfileForUser]); // Depende de fetchProfileForUser
+  }, [fetchProfileForUser]);
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
@@ -159,7 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o login:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login") };
     } finally {
-      setLoading(false); // Desativa loading após a operação
+      // setLoading(false) is handled by onAuthStateChange for SIGNED_IN event
     }
   };
 
@@ -191,7 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o cadastro:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro") };
     } finally {
-      setLoading(false); // Desativa loading após a operação
+      // setLoading(false) is handled by onAuthStateChange for SIGNED_IN event
     }
   };
 
@@ -212,7 +198,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("AuthContext: Exceção durante o logout:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout") };
     } finally {
-      setLoading(false); // Desativa loading após a operação
+      // setLoading(false) is handled by onAuthStateChange for SIGNED_OUT event
     }
   };
 
@@ -222,7 +208,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     role,
     loading,
-    initializing, // Expondo o estado de inicialização
+    initialSessionChecked, // Expondo o estado de inicialização
     signIn,
     signUp,
     signOut,
