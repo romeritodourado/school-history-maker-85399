@@ -158,27 +158,42 @@ export default function MunicipalDashboard() {
   };
 
   const fetchSchoolsForMunicipality = async (id: string) => {
-    console.log("MunicipalDashboard: Fetching schools for municipality ID:", id);
+    console.log("MunicipalDashboard: [fetchSchools] Iniciando busca de escolas para municipality ID:", id);
     setLoadingSchools(true);
-    const { data, error } = await supabase
-      .from('schools')
-      .select('id, name')
-      .eq('municipality_id', id)
-      .order('name');
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('id, name')
+        .eq('municipality_id', id)
+        .order('name');
 
-    if (error) {
-      console.error("MunicipalDashboard: Error fetching schools:", error);
+      if (error) {
+        console.error("MunicipalDashboard: [fetchSchools] Erro do Supabase:", error);
+        toast({
+          title: 'Erro',
+          description: `Não foi possível carregar as escolas: ${error.message}`,
+          variant: 'destructive',
+        });
+        setSchools([]);
+      } else {
+        console.log("MunicipalDashboard: [fetchSchools] Escolas buscadas com sucesso:", data);
+        setSchools(data || []);
+        if (!data || data.length === 0) {
+          console.log("MunicipalDashboard: [fetchSchools] Nenhuma escola encontrada para esta rede municipal.");
+        }
+      }
+    } catch (catchError: any) {
+      console.error("MunicipalDashboard: [fetchSchools] Erro inesperado no catch:", catchError);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar as escolas.',
+        title: 'Erro inesperado',
+        description: `Ocorreu um erro ao carregar as escolas: ${catchError.message}`,
         variant: 'destructive',
       });
       setSchools([]);
-    } else {
-      console.log("MunicipalDashboard: Schools fetched:", data);
-      setSchools(data || []);
+    } finally {
+      setLoadingSchools(false);
+      console.log("MunicipalDashboard: [fetchSchools] Finalizado, loadingSchools definido como false.");
     }
-    setLoadingSchools(false);
   };
 
   const fetchSelectedSchoolDetails = async (schoolId: string) => {
@@ -369,6 +384,11 @@ export default function MunicipalDashboard() {
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Info className="h-4 w-4" />
                 Nenhuma escola encontrada para esta rede municipal.
+                <Link to="/escolas">
+                  <Button variant="link" className="p-0 h-auto ml-1">
+                    Cadastrar uma nova escola
+                  </Button>
+                </Link>
               </div>
             ) : (
               <div className="space-y-2">
