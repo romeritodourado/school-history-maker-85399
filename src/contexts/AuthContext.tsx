@@ -124,18 +124,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setActiveMunicipalityIdForSuperAdmin(null);
           }
         }
-
-        // initial session check finished
-        if (mountedRef.current) {
-          setInitialSessionChecked(true);
-        }
       } catch (err) {
         console.error('AuthContext: Erro no init()', err);
       } finally {
         if (mountedRef.current) {
           setSessionLoading(false);
           sessionLoadingRef.current = false;
-          console.log('AuthContext: Sessão inicial recuperada. initialSessionChecked:', initialSessionChecked);
+          setInitialSessionChecked(true); // Movido para o finally
+          console.log('AuthContext: Sessão inicial recuperada. initialSessionChecked (final):', true);
         }
       }
     };
