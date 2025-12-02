@@ -13,6 +13,7 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
+  initializing: boolean; // Adicionado o estado de inicialização
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
@@ -27,7 +28,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(true); // O estado inicial é true para carregar a sessão
+  const [loading, setLoading] = useState(false); // 'loading' agora é para operações ativas (login, logout, etc.)
+  const [initializing, setInitializing] = useState(true); // Novo estado para a carga inicial da sessão
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
   // Usamos useRef para o user para que o useEffect não precise depender do estado 'user'
@@ -54,9 +56,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setRole(profileData.role);
       return profileData;
     }
-  }, []); // fetchProfileForUser não tem dependências externas que mudam
+  }, []);
 
-  // Efeito para lidar com a sessão inicial e configurar o listener de onAuthStateChange
+  // Efeito para lidar com a sessão inicial (apenas uma vez na montagem)
+  useEffect(() => {
+    const getInitialSession = async () => {
+      console.log("AuthContext: Recuperando sessão inicial...");
+      setInitializing(true); // Garante que está true no início da inicialização
+      
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        setUser(data.session.user);
+        setSession(data.session);
+        userRef.current = data.session.user;
+        await fetchProfileForUser(data.session.user.id);
+      } else {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+        userRef.current = null;
+      }
+
+      setInitializing(false); // Libera o ProtectedRoute após a checagem inicial
+      console.log("AuthContext: Sessão inicial recuperada. Initializing: false.");
+    };
+
+    getInitialSession();
+  }, [fetchProfileForUser]); // Depende de fetchProfileForUser para garantir que a função esteja atualizada
+
+  // Efeito para configurar o listener de onAuthStateChange (apenas uma vez na montagem)
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
 
@@ -70,26 +101,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
 
-        setLoading(true);
-
+        // Apenas mostramos o loading para eventos que realmente mudam o estado de autenticação
+        // e não para refreshes passivos de token.
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') { // INITIAL_SESSION é tratado pelo getInitialSession
+          setLoading(true);
+        }
+        
         if (!session) {
           setUser(null);
           setSession(null);
           setProfile(null);
           setRole(null);
           setActiveMunicipalityIdForSuperAdmin(null);
-          userRef.current = null; // Atualiza a ref
-          setLoading(false);
-          return;
+          userRef.current = null;
+        } else {
+          setUser(session.user);
+          setSession(session);
+          userRef.current = session.user;
+          await fetchProfileForUser(session.user.id);
         }
-
-        setUser(session.user);
-        setSession(session);
-        userRef.current = session.user; // Atualiza a ref
-
-        await fetchProfileForUser(session.user.id);
-
-        setLoading(false);
+        
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          setLoading(false);
+        }
       }
     );
 
@@ -98,10 +132,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
       listener.subscription.unsubscribe();
     };
-  }, []); // O array de dependências vazio é crucial aqui!
+  }, [fetchProfileForUser]); // Depende de fetchProfileForUser
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
+    setLoading(true); // Ativa loading para a operação de login
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -118,11 +153,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o login:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o login") };
+    } finally {
+      setLoading(false); // Desativa loading após a operação
     }
   };
 
   const signUp = async (email: string, password: string, name: string, role: AppRole, municipality_id?: string, school_id?: string) => {
     console.log(`AuthContext: Tentando cadastro para ${email}`);
+    setLoading(true); // Ativa loading para a operação de cadastro
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -147,11 +185,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o cadastro:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o cadastro") };
+    } finally {
+      setLoading(false); // Desativa loading após a operação
     }
   };
 
   const signOut = async () => {
     console.log("AuthContext: Tentando logout.");
+    setLoading(true); // Ativa loading para a operação de logout
     try {
       const { error } = await supabase.auth.signOut();
       
@@ -165,6 +206,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error("AuthContext: Exceção durante o logout:", error);
       return { error: error instanceof Error ? error : new Error("Erro desconhecido durante o logout") };
+    } finally {
+      setLoading(false); // Desativa loading após a operação
     }
   };
 
@@ -174,6 +217,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     role,
     loading,
+    initializing, // Expondo o estado de inicialização
     signIn,
     signUp,
     signOut,

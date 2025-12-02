@@ -15,12 +15,23 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading } = useAuth(); // Removido 'role' pois não será mais usado aqui
+  const { user, loading, initializing } = useAuth(); // Adicionado 'initializing'
   const location = useLocation();
 
-  // Se ainda estiver carregando o estado de autenticação (sessão e perfil), mostra o spinner
+  // Se ainda estiver inicializando a sessão (primeira carga da página), mostra o spinner
+  if (initializing) {
+    console.log(`ProtectedRoute (${location.pathname}): Aguardando sessão inicial...`);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Carregando...</span>
+      </div>
+    );
+  }
+
+  // Se não estiver inicializando, mas alguma operação ativa (login/logout) estiver ocorrendo, mostra o spinner
   if (loading) {
-    console.log(`ProtectedRoute (${location.pathname}): Carregando estado de autenticação...`);
+    console.log(`ProtectedRoute (${location.pathname}): Carregando...`);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -39,7 +50,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   // Se a verificação de roles for necessária, ela deve ser implementada
   // dentro dos componentes das páginas ou em um nível superior.
 
-  // Se todas as verificações passarem (carregamento e usuário autenticado), renderiza os filhos
+  // Se todas as verificações passarem (inicialização completa e usuário autenticado), renderiza os filhos
   console.log(`ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}`);
   return <>{children}</>;
 }
