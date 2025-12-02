@@ -15,23 +15,12 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, loading, initializing } = useAuth(); // Adicionado 'initializing'
+  const { user, initializing } = useAuth(); // Removido 'loading'
   const location = useLocation();
 
   // Se ainda estiver inicializando a sessão (primeira carga da página), mostra o spinner
   if (initializing) {
     console.log(`ProtectedRoute (${location.pathname}): Aguardando sessão inicial...`);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Carregando...</span>
-      </div>
-    );
-  }
-
-  // Se não estiver inicializando, mas alguma operação ativa (login/logout) estiver ocorrendo, mostra o spinner
-  if (loading) {
-    console.log(`ProtectedRoute (${location.pathname}): Carregando...`);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
