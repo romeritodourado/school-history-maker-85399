@@ -52,69 +52,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // Função centralizada para atualizar a sessão e o perfil
+  const refreshSession = useCallback(async (sessionFromEvent?: Session | null) => {
+    try {
+      const currentSession = sessionFromEvent ?? (await supabase.auth.getSession()).data.session;
+
+      if (!currentSession) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+        return;
+      }
+
+      setUser(currentSession.user);
+      setSession(currentSession);
+      await fetchProfileForUser(currentSession.user.id);
+    } catch (err) {
+      console.error("AuthContext: Erro em refreshSession:", err);
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+      setActiveMunicipalityIdForSuperAdmin(null);
+    }
+  }, [fetchProfileForUser]);
+
   // Efeito para lidar com a sessão inicial e configurar o listener de onAuthStateChange
   useEffect(() => {
-    let isMounted = true;
+    let subscribed = true;
 
-    // 1. Carregamento inicial da sessão
-    supabase.auth.getSession().then(async ({ data: { session: initialSession }, error }) => {
-      if (!isMounted) return;
-      console.log("AuthContext: Initial getSession result.");
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!subscribed) return;
+        console.log("Auth state changed - Event:", event);
 
-      if (error) {
-        console.error("AuthContext: Erro ao obter sessão inicial:", error);
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
-      } else if (initialSession?.user) {
-        setUser(initialSession.user);
-        setSession(initialSession);
-        await fetchProfileForUser(initialSession.user.id);
-      } else {
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
+        // Apenas mostramos o loading para eventos que realmente mudam o estado de autenticação
+        // e não para refreshes passivos de token.
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+          setLoading(true);
+        }
+        
+        await refreshSession(session);
+        
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+          setLoading(false);
+        }
       }
-      setLoading(false); // Define loading como false APENAS após a verificação inicial da sessão
-    });
+    );
 
-    // 2. Listener para mudanças subsequentes no estado de autenticação (eventos passivos)
-    // Este listener NÃO deve gerenciar o estado `loading` global, pois é para atualizações passivas.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (!isMounted) return;
-      console.log(`AuthContext: Passive Auth state changed - Event: ${event}, User: ${newSession?.user?.id}`);
-
-      // Apenas atualiza user/session/profile, mas não toca no estado `loading` global aqui.
-      // O `loading` para ações explícitas (signIn, signOut) é gerenciado pelas próprias funções.
-      if (newSession?.user) {
-        setUser(newSession.user);
-        setSession(newSession);
-        // Não `await` aqui, permite que a busca do perfil ocorra em segundo plano
-        fetchProfileForUser(newSession.user.id); 
-      } else {
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
+    // Realiza a verificação inicial da sessão uma vez
+    refreshSession().finally(() => {
+      if (subscribed) {
+        setLoading(false);
       }
     });
 
     return () => {
-      isMounted = false;
+      subscribed = false;
+      authListener.subscription.unsubscribe();
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
-      subscription.unsubscribe();
     };
-  }, [fetchProfileForUser]); // A dependência fetchProfileForUser está correta
+  }, [refreshSession]); // A dependência refreshSession está correta
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
-    // O `loading` aqui é para a ação de login, não para o estado global da aplicação.
-    // A página de login deve ter seu próprio estado de carregamento para o botão.
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
