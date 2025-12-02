@@ -2,23 +2,19 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import FullPageLoader from '@/components/FullPageLoader';
 
-type AppRole =
-  | 'super_admin'
-  | 'municipal_secretary'
-  | 'network_manager'
-  | 'school_admin'
-  | 'secretary';
+// Removendo a definição de AppRole e a interface ProtectedRouteProps
+// pois requiredRoles não será mais usado aqui.
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: AppRole[];
+  // requiredRoles?: AppRole[]; // Removido
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children }: ProtectedRouteProps) { // Removido requiredRoles do destructuring
   const {
     user,
     profile,
-    initialSessionChecked, // sessionLoading não é mais necessário aqui
+    initialSessionChecked,
   } = useAuth();
 
   const location = useLocation();

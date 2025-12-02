@@ -144,19 +144,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // note: fetchProfileForUser is stable via useCallback
   }, [fetchProfileForUser]);
 
-  // 2) listener: ignore events while sessionLoadingRef is true to avoid race/dup fetch
+  // 2) listener: react to auth state changes
   useEffect(() => {
     console.log('AuthContext: Configurando listener de auth state change.');
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, sessionData) => {
       try {
-        console.log('Auth state changed - Event:', event);
+        console.log('Auth state changed - Event:', event, 'Session Data:', sessionData);
 
-        // If we're still doing the initial session check, ignore SIGNED_IN/TOKEN_REFRESH events
-        if (sessionLoadingRef.current) {
-          console.log('AuthContext: Ignorando evento enquanto a sessão inicial está sendo verificada. Event:', event);
-          // still handle SIGNED_OUT to clear state if user explicitly signed out in another tab
-          if (event === 'SIGNED_OUT') {
+        // Ensure initialSessionChecked is true after any auth event,
+        // as the session state has now been definitively evaluated by this listener.
+        if (mountedRef.current && !initialSessionChecked) {
+          setInitialSessionChecked(true);
+          console.log('AuthContext: Listener set initialSessionChecked to true.');
+        }
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          if (sessionData?.user) {
+            if (mountedRef.current) setAuthLoading(true);
+            const prof = await fetchProfileForUser(sessionData.user.id);
+            if (mountedRef.current) {
+              setUser(sessionData.user);
+              setSession(sessionData);
+              setProfile(prof ?? null);
+              setRole(prof?.role ?? null);
+              setAuthLoading(false);
+            }
+          } else {
+            // Should not happen for SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED, but as a fallback
             if (mountedRef.current) {
               setUser(null);
               setSession(null);
@@ -165,23 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setActiveMunicipalityIdForSuperAdmin(null);
             }
           }
-          return;
-        }
-
-        // If we have a valid user in the session, fetch profile (authLoading slice)
-        if (sessionData?.user) {
-          if (mountedRef.current) setAuthLoading(true);
-
-          const prof = await fetchProfileForUser(sessionData.user.id);
-
-          if (mountedRef.current) {
-            setUser(sessionData.user);
-            setSession(sessionData);
-            setRole(prof?.role ?? null);
-            setAuthLoading(false);
-          }
         } else if (event === 'SIGNED_OUT') {
-          // normal sign out handling
           if (mountedRef.current) {
             setUser(null);
             setSession(null);
@@ -189,6 +188,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setRole(null);
             setActiveMunicipalityIdForSuperAdmin(null);
           }
+        } else if (event === 'INITIAL_SESSION') {
+          // This event is usually handled by the initial useEffect (init function).
+          // If it fires here, it means the listener is picking it up.
+          // We can safely ignore it if initialSessionChecked is already true,
+          // or let the init function handle the full state setup.
+          console.log('AuthContext: Listener received INITIAL_SESSION. Ignoring as init() handles it.');
         }
       } catch (err) {
         console.error('AuthContext: Erro no listener onAuthStateChange', err);
@@ -204,7 +209,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // ignore
       }
     };
-  }, [fetchProfileForUser]);
+  }, [fetchProfileForUser, initialSessionChecked]); // Add initialSessionChecked to dependencies
 
   // operations: signIn / signUp / signOut use operationLoading slice
   const signIn = async (email: string, password: string) => {
