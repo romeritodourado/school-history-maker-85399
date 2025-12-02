@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
@@ -30,6 +30,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true); // O estado inicial é true para carregar a sessão
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
+  // Usamos useRef para o user para que o useEffect não precise depender do estado 'user'
+  // e, assim, não seja recriado em cada mudança de 'user'.
+  const userRef = useRef<User | null>(null);
+
   // Função para buscar o perfil do usuário
   const fetchProfileForUser = useCallback(async (userId: string) => {
     console.log("AuthContext: Buscando perfil para o usuário:", userId);
@@ -50,79 +54,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setRole(profileData.role);
       return profileData;
     }
-  }, []);
-
-  // Função centralizada para atualizar a sessão e o perfil
-  const refreshSession = useCallback(async (sessionFromEvent?: Session | null) => {
-    try {
-      const currentSession = sessionFromEvent ?? (await supabase.auth.getSession()).data.session;
-
-      if (!currentSession) {
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setRole(null);
-        setActiveMunicipalityIdForSuperAdmin(null);
-        return;
-      }
-
-      setUser(currentSession.user);
-      setSession(currentSession);
-      await fetchProfileForUser(currentSession.user.id);
-    } catch (err) {
-      console.error("AuthContext: Erro em refreshSession:", err);
-      setUser(null);
-      setSession(null);
-      setProfile(null);
-      setRole(null);
-      setActiveMunicipalityIdForSuperAdmin(null);
-    }
-  }, [fetchProfileForUser]);
+  }, []); // fetchProfileForUser não tem dependências externas que mudam
 
   // Efeito para lidar com a sessão inicial e configurar o listener de onAuthStateChange
   useEffect(() => {
-    let subscribed = true;
+    console.log("AuthContext: Configurando listener de auth state change.");
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!subscribed) return;
         console.log("Auth state changed - Event:", event);
 
-        // 🔥 EVITA DUPLICATE SIGNED_IN
-        // Se já existe um usuário autenticado e o evento é SIGNED_IN, ignoramos para evitar re-renderizações desnecessárias
-        // e o `loading` ser ativado novamente.
-        if (event === "SIGNED_IN" && user) {
+        // Ignorar SIGNED_IN duplicado se o usuário já estiver definido
+        if (event === "SIGNED_IN" && userRef.current) {
           console.log("AuthContext: Ignorando SIGNED_IN duplicado.");
           return;
         }
 
-        // Apenas mostramos o loading para eventos que realmente mudam o estado de autenticação
-        // e não para refreshes passivos de token.
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-          setLoading(true);
-        }
-        
-        await refreshSession(session);
-        
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        setLoading(true);
+
+        if (!session) {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
+          userRef.current = null; // Atualiza a ref
           setLoading(false);
+          return;
         }
+
+        setUser(session.user);
+        setSession(session);
+        userRef.current = session.user; // Atualiza a ref
+
+        await fetchProfileForUser(session.user.id);
+
+        setLoading(false);
       }
     );
 
-    // Realiza a verificação inicial da sessão uma vez
-    refreshSession().finally(() => {
-      if (subscribed) {
-        setLoading(false);
-      }
-    });
-
+    // Cleanup function para desinscrever o listener quando o componente desmontar
     return () => {
-      subscribed = false;
-      authListener.subscription.unsubscribe();
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
+      listener.subscription.unsubscribe();
     };
-  }, [refreshSession, user]); // Adicionado `user` como dependência para a verificação de SIGNED_IN duplicado
+  }, []); // O array de dependências vazio é crucial aqui!
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
