@@ -56,27 +56,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Efeito para lidar com a sessão inicial (apenas uma vez na montagem)
   useEffect(() => {
-    const getInitialSession = async () => {
+    const init = async () => {
       console.log("AuthContext: Recuperando sessão inicial...");
       setLoading(true); // Ativa loading para a operação de login
-      
-      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      const { data } = await supabase.auth.getSession();
       const sessionData = data.session;
 
-      if (sessionError) {
-        console.error("AuthContext: Erro ao obter sessão inicial:", sessionError);
-      }
-
-      console.log("AuthContext: Resultado de getSession() -> sessionData:", sessionData);
-
       if (sessionData?.user) {
-        console.log("AuthContext: Usuário encontrado na sessão inicial. Carregando perfil...");
+        console.log("AuthContext: Usuário encontrado. Carregando perfil...");
         setUser(sessionData.user);
         setSession(sessionData);
-        const fetchedProfile = await fetchProfileForUser(sessionData.user.id);
-        console.log("AuthContext: Perfil carregado na sessão inicial:", fetchedProfile);
+        await fetchProfileForUser(sessionData.user.id);
       } else {
-        console.log("AuthContext: Nenhum usuário encontrado na sessão inicial.");
         setUser(null);
         setSession(null);
         setProfile(null);
@@ -84,12 +76,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setActiveMunicipalityIdForSuperAdmin(null);
       }
 
-      setInitialSessionChecked(true); // Libera o ProtectedRoute após a checagem inicial
-      setLoading(false); // Desativa loading após a operação
+      setInitialSessionChecked(true);   // 🔥 SÓ AQUI LIBERA ProtectedRoute
+      setLoading(false);
       console.log("AuthContext: Sessão inicial recuperada. initialSessionChecked: true. Loading: false.");
     };
 
-    getInitialSession();
+    init();
   }, [fetchProfileForUser]);
 
   // Efeito para configurar o listener de onAuthStateChange (apenas uma vez na montagem)
@@ -100,9 +92,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         console.log("Auth state changed - Event:", event);
 
-        if (event === "SIGNED_IN" && session?.user) {
+        if (session?.user) { // Se houver um usuário na sessão (SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED)
           console.log("AuthContext: Buscando perfil para o usuário:", session.user.id);
-          setLoading(true); // Ativa loading para esta operação específica
+          setLoading(true); // 🔥 trava ProtectedRoute enquanto carrega perfil
           
           const profileData = await fetchProfileForUser(session.user.id);
           
@@ -111,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(profileData);
           setRole(profileData?.role || null);
           
-          setLoading(false); // Desativa loading após o perfil ser carregado
+          setLoading(false); // 🔥 só libera quando tudo terminou
         } else if (event === "SIGNED_OUT") {
           setLoading(true); // Ativa loading para esta operação específica
           setUser(null);
@@ -121,8 +113,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setActiveMunicipalityIdForSuperAdmin(null);
           setLoading(false); // Desativa loading após o estado ser limpo
         }
-        // Para outros eventos como TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY,
-        // não precisamos de um estado de loading global, pois são geralmente passivos ou tratados localmente.
       }
     );
 
