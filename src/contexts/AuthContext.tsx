@@ -88,6 +88,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!subscribed) return;
         console.log("Auth state changed - Event:", event);
 
+        // 🔥 EVITA DUPLICATE SIGNED_IN
+        // Se já existe um usuário autenticado e o evento é SIGNED_IN, ignoramos para evitar re-renderizações desnecessárias
+        // e o `loading` ser ativado novamente.
+        if (event === "SIGNED_IN" && user) {
+          console.log("AuthContext: Ignorando SIGNED_IN duplicado.");
+          return;
+        }
+
         // Apenas mostramos o loading para eventos que realmente mudam o estado de autenticação
         // e não para refreshes passivos de token.
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
@@ -114,7 +122,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       authListener.subscription.unsubscribe();
       console.log("AuthContext: Desinscrevendo listener de auth state change.");
     };
-  }, [refreshSession]); // A dependência refreshSession está correta
+  }, [refreshSession, user]); // Adicionado `user` como dependência para a verificação de SIGNED_IN duplicado
 
   const signIn = async (email: string, password: string) => {
     console.log(`AuthContext: Tentando login para ${email}`);
