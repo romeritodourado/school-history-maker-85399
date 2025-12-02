@@ -45,7 +45,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] = useState<string | null>(null);
 
   // refs to avoid re-render-based closures
-  const sessionLoadingRef = useRef(true);
   const mountedRef = useRef(false);
 
   useEffect(() => {
@@ -99,7 +98,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         console.log('AuthContext: Recuperando sessão inicial...');
         setSessionLoading(true);
-        sessionLoadingRef.current = true;
 
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
@@ -107,13 +105,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (cancelled) return;
 
         if (sessionData?.user) {
-          // set minimal state right away
           if (mountedRef.current) {
             setUser(sessionData.user);
             setSession(sessionData);
           }
-
-          // load profile
           await fetchProfileForUser(sessionData.user.id);
         } else {
           if (mountedRef.current) {
@@ -129,8 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } finally {
         if (mountedRef.current) {
           setSessionLoading(false);
-          sessionLoadingRef.current = false;
-          setInitialSessionChecked(true); // Movido para o finally
+          setInitialSessionChecked(true); // Sempre define como true no final da inicialização
           console.log('AuthContext: Sessão inicial recuperada. initialSessionChecked (final):', true);
         }
       }
@@ -141,7 +135,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       cancelled = true;
     };
-    // note: fetchProfileForUser is stable via useCallback
   }, [fetchProfileForUser]);
 
   // 2) listener: react to auth state changes
@@ -151,13 +144,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, sessionData) => {
       try {
         console.log('Auth state changed - Event:', event, 'Session Data:', sessionData);
-
-        // Ensure initialSessionChecked is true after any auth event,
-        // as the session state has now been definitively evaluated by this listener.
-        if (mountedRef.current && !initialSessionChecked) {
-          setInitialSessionChecked(true);
-          console.log('AuthContext: Listener set initialSessionChecked to true.');
-        }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           if (sessionData?.user) {
@@ -171,7 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setAuthLoading(false);
             }
           } else {
-            // Should not happen for SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED, but as a fallback
+            // Fallback for unexpected state where event is SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED but no user
             if (mountedRef.current) {
               setUser(null);
               setSession(null);
@@ -189,10 +175,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setActiveMunicipalityIdForSuperAdmin(null);
           }
         } else if (event === 'INITIAL_SESSION') {
-          // This event is usually handled by the initial useEffect (init function).
-          // If it fires here, it means the listener is picking it up.
-          // We can safely ignore it if initialSessionChecked is already true,
-          // or let the init function handle the full state setup.
+          // This event is handled by the initial useEffect (init function).
+          // We can safely ignore it here to avoid redundant processing.
           console.log('AuthContext: Listener received INITIAL_SESSION. Ignoring as init() handles it.');
         }
       } catch (err) {
@@ -209,7 +193,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // ignore
       }
     };
-  }, [fetchProfileForUser, initialSessionChecked]); // Add initialSessionChecked to dependencies
+  }, [fetchProfileForUser]); // Removed initialSessionChecked from dependencies
 
   // operations: signIn / signUp / signOut use operationLoading slice
   const signIn = async (email: string, password: string) => {
@@ -258,6 +242,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     console.log('AuthContext: Tentando logout.');
+    console.log('AuthContext: Estado atual antes do logout - User:', user?.id, 'Session:', session?.access_token);
     setOperationLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
