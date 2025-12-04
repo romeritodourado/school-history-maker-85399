@@ -413,11 +413,13 @@ export type Database = {
           data: Json | null
           director_signed_at: string | null
           director_signature_id: string | null
+          document_hash: string | null
           id: string
           municipality_id: string
           school_id: string
           secretary_signed_at: string | null
           secretary_signature_id: string | null
+          signed_data: Json | null
           status: string
           student_id: string | null
           updated_at: string | null
@@ -427,11 +429,13 @@ export type Database = {
           data?: Json | null
           director_signed_at?: string | null
           director_signature_id?: string | null
+          document_hash?: string | null
           id?: string
           municipality_id: string
           school_id: string
           secretary_signed_at?: string | null
           secretary_signature_id?: string | null
+          signed_data?: Json | null
           status?: string
           student_id?: string | null
           updated_at?: string | null
@@ -441,11 +445,13 @@ export type Database = {
           data?: Json | null
           director_signed_at?: string | null
           director_signature_id?: string | null
+          document_hash?: string | null
           id?: string
           municipality_id?: string
           school_id?: string
           secretary_signed_at?: string | null
           secretary_signature_id?: string | null
+          signed_data?: Json | null
           status?: string
           student_id?: string | null
           updated_at?: string | null

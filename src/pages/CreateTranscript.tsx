@@ -72,6 +72,17 @@ interface SchoolOption {
   state: string | null;
 }
 
+// Função para gerar o hash do conteúdo do histórico
+async function generateTranscriptHash(data: any): Promise<string> {
+  const dataString = JSON.stringify(data);
+  const textEncoder = new TextEncoder();
+  const dataBuffer = textEncoder.encode(dataString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
 const CreateTranscript = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -591,37 +602,72 @@ const CreateTranscript = () => {
         }
       }
 
+      // Prepare data for hashing and signing
+      const dataToHash = {
+        studentData,
+        academicYears,
+        yearGrades,
+        trimesterGrades,
+        schoolPeriod,
+        schoolId: currentSchoolId,
+        municipalityId: currentMunicipalityId,
+      };
+      const documentHash = await generateTranscriptHash(dataToHash);
+
       // Insert or update transcript entry
       const transcriptData = {
         student_id: studentId,
         school_id: currentSchoolId,
         municipality_id: currentMunicipalityId,
-        status: 'pending_signature', // Set status to pending signature
-        data: { // Store a snapshot of the transcript data if needed for audit/reversion
-          student: studentData,
-          academicYears: academicYears,
-          yearGrades: yearGrades,
-          trimesterGrades: trimesterGrades,
-          schoolPeriod: schoolPeriod,
-        }
+        status: 'pending_director_signature', // Set status to pending director signature
+        document_hash: documentHash, // Store the generated hash
+        data: dataToHash, // Store a snapshot of the transcript data for verification
       };
 
+      let transcriptRecordId: string;
+
       if (id) {
-        const { error: transcriptUpdateError } = await supabase
+        const { data: updatedTranscript, error: transcriptUpdateError } = await supabase
           .from('transcripts')
           .update(transcriptData)
-          .eq('student_id', id); // Assuming transcript ID is linked to student ID
+          .eq('student_id', id)
+          .select('id')
+          .single();
         if (transcriptUpdateError) throw transcriptUpdateError;
+        transcriptRecordId = updatedTranscript.id;
       } else {
-        const { error: transcriptInsertError } = await supabase
+        const { data: newTranscript, error: transcriptInsertError } = await supabase
           .from('transcripts')
-          .insert([transcriptData]);
+          .insert([transcriptData])
+          .select('id')
+          .single();
         if (transcriptInsertError) throw transcriptInsertError;
+        transcriptRecordId = newTranscript.id;
+      }
+
+      // Create notification for the school's director
+      const { data: directorProfiles, error: directorError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('school_id', currentSchoolId)
+        .eq('role', 'school_admin');
+
+      if (directorError) console.error('Error fetching director for notification:', directorError);
+
+      if (directorProfiles && directorProfiles.length > 0) {
+        const notificationsToInsert = directorProfiles.map(director => ({
+          user_id: director.id,
+          type: 'transcript_pending_signature',
+          target_id: transcriptRecordId,
+          message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Diretor(a).`,
+        }));
+        const { error: notificationError } = await supabase.from('notifications').insert(notificationsToInsert);
+        if (notificationError) console.error('Error creating notification for director:', notificationError);
       }
 
       toast({
         title: "Sucesso",
-        description: id ? "Histórico escolar atualizado e enviado para assinatura" : "Histórico escolar criado e enviado para assinatura",
+        description: id ? "Histórico escolar atualizado e enviado para assinatura do Diretor(a)." : "Histórico escolar criado e enviado para assinatura do Diretor(a).",
       });
 
       navigate(`/visualizar/${studentId}`);
