@@ -117,31 +117,34 @@ export const exportToPDF = async (
   ]);
 
   // Logo dimensions
-  const logoWidth = 25;
-  const logoHeight = 25;
+  const logoWidth = 20; // Smaller
+  const logoHeight = 20; // Smaller
   const logoMargin = 15; // Margin from left/right edge
+  let currentY = 15; // Initial Y for logos
 
   // Add municipality emblem (left)
   if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, yPos, logoWidth, logoHeight);
+    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, currentY, logoWidth, logoHeight);
   }
 
   // Add school logo (right)
   if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, yPos, logoWidth, logoHeight);
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, currentY, logoWidth, logoHeight);
   }
 
-  // Central text for header
-  const textStartX = logoMargin + logoWidth + 5; // Start text after left logo
-  const textEndX = pageWidth - logoMargin - logoWidth - 5; // End text before right logo
-  const textWidth = textEndX - textStartX;
+  // Text starts below the logos, with some padding
+  currentY += logoHeight + 5; // Move Y below logos + 5 units padding
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, yPos + 2, { align: "center" });
-  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 7, { align: "center" });
-  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 12, { align: "center" });
-  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 17, { align: "center" });
+  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, currentY, { align: "center" });
+  currentY += 5; // Line spacing
+  doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
+  currentY += 5; // Line spacing
+  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentY, { align: "center" });
+  currentY += 5; // Line spacing
+  doc.text(schoolName.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
+  currentY += 5; // Line spacing
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);
@@ -150,10 +153,11 @@ export const exportToPDF = async (
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, pageWidth / 2, yPos + 22, { align: "center" });
+    doc.text(authText, pageWidth / 2, currentY, { align: "center" });
+    currentY += 4; // Line spacing for smaller font
   }
 
-  yPos += 35; // Move yPos down after header content, ensuring space for logos and text
+  yPos = currentY + 5; // Update yPos for the rest of the document, with extra padding
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");

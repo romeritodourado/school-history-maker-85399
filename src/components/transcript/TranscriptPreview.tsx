@@ -98,7 +98,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* Municipality Emblem on Left */}
             <div className="w-1/5 flex justify-start">
               {municipalityEmblemUrl && (
-                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-16 w-16 object-contain" />
+                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-12 w-12 object-contain" />
               )}
             </div>
             
@@ -121,7 +121,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* School Logo on Right */}
             <div className="w-1/5 flex justify-end">
               {schoolLogoUrl && (
-                <img src={schoolLogoUrl} alt="School Logo" className="h-16 w-16 object-contain" />
+                <img src={schoolLogoUrl} alt="School Logo" className="h-12 w-12 object-contain" />
               )}
             </div>
           </div>
