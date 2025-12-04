@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, UserCog, Trash2, Mail, Building2, School, Loader2, Edit } from 'lucide-react';
-import { useNavigate } => 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
@@ -349,14 +349,14 @@ export default function Users() {
   };
 
   const resetForm = () => {
-    setFormData({
+    setFormData(prev => ({
       email: '',
       password: '',
       name: '',
       role: 'secretary',
       municipality_id: currentUserProfile?.municipality_id || '', // Set default municipality if current user has one
       school_id: currentUserProfile?.school_id || '', // Set default school if current user has one
-    });
+    }));
     setEditingUser(null);
   };
 
