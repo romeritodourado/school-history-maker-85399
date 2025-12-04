@@ -149,6 +149,18 @@ export default function AccountSettings() {
 
   const isDirectorOrSecretary = role === 'school_admin' || role === 'secretary';
 
+  const getRoleLabel = (role: AppRole | null) => {
+    if (!role) return 'N/A';
+    const labels: Record<AppRole, string> = {
+      super_admin: 'Super Administrador',
+      municipal_secretary: 'Secretário(a) Municipal',
+      network_manager: 'Gerente de Estatísticas',
+      school_admin: 'Diretor Escolar',
+      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
+    };
+    return labels[role] || role;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <header className="border-b bg-card shadow-school">

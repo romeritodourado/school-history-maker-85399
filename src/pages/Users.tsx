@@ -325,7 +325,7 @@ export default function Users() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Assistente Administrativo',
+      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
     };
     
     // Verificar se é um cargo personalizado
@@ -711,7 +711,7 @@ export default function Users() {
                           <School className="h-4 w-4" />
                           Escola: {school.name}
                         </CardTitle>
-                      </CardHeader>
+                      </CardContent>
                       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                         {school.users.map(renderUserCard)}
                       </CardContent>

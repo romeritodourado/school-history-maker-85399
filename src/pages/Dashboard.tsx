@@ -71,7 +71,7 @@ const systemRoles = [
   },
   { 
     id: 'secretary', 
-    name: 'Assistente Administrativo',
+    name: 'Secretário(a) Escolar', // Nome atualizado
     description: 'Auxiliar administrativo da escola',
     isSystemRole: true
   }
@@ -242,7 +242,7 @@ export default function Dashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Assistente Administrativo',
+      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
     };
     return labels[role] || role;
   };

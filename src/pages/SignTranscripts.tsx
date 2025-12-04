@@ -308,8 +308,8 @@ export default function SignTranscripts() {
     );
   }
 
-  const currentRoleLabel = role === 'school_admin' ? 'Diretor(a)' : 'Secretário(a)';
-  const pendingStatusLabel = role === 'school_admin' ? 'aguardando sua assinatura como Diretor(a)' : 'aguardando sua assinatura como Secretário(a)';
+  const currentRoleLabel = role === 'school_admin' ? 'Diretor(a)' : 'Secretário(a) Escolar'; // Nome atualizado aqui
+  const pendingStatusLabel = role === 'school_admin' ? 'aguardando sua assinatura como Diretor(a)' : 'aguardando sua assinatura como Secretário(a) Escolar'; // Nome atualizado aqui
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
