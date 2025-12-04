@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute from "./components/ProtectedRoute"; // Corrigido: Importando do diretório components
 import Login from "./pages/Login";
 import InitialSuperAdminSetup from "./pages/InitialSuperAdminSetup";
 import MunicipalNetworkSetup from "./pages/MunicipalNetworkSetup";
@@ -19,7 +19,7 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
-import SignTranscripts from "./pages/SignTranscripts"; // Importar a nova página
+import SignTranscripts from "./pages/SignTranscripts";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
 
