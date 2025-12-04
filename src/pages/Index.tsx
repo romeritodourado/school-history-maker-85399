@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
-import correctLogo from "/correct-logo.png"; // Importar a nova logo da pasta public
+// O logo 'correct-logo.png' foi removido para desvincular a marca 'Correct' da aplicação.
 
 const Index = () => {
   return (
@@ -9,9 +9,10 @@ const Index = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
+            {/* Substituído o logo 'Correct' por um ícone genérico para representar o sistema */}
+            <FileText className="h-16 w-16 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold text-primary">Correct - Sistema de Histórico Escolar</h1>
+              <h1 className="text-2xl font-bold text-primary">Sistema de Histórico Escolar</h1>
               <p className="text-muted-foreground">Gestão simplificada de históricos escolares</p>
             </div>
           </div>
