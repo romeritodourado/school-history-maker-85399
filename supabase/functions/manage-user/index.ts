@@ -47,8 +47,36 @@ serve(async (req) => {
     if (currentProfile.role === 'super_admin') {
       isAllowed = true;
     } else if (currentProfile.role === 'municipal_secretary' || currentProfile.role === 'network_manager') {
-      if (role !== 'super_admin' && municipality_id === currentProfile.municipality_id) {
-        isAllowed = true;
+      if (role === 'super_admin') {
+        isAllowed = false; // Cannot create super_admin
+      } else if (municipality_id !== currentProfile.municipality_id) {
+        isAllowed = false; // Must be in their own municipality
+      } else {
+        // Now check if the role requires a school_id and if it's valid
+        if (['school_admin', 'secretary', 'administrative_assistant'].includes(role)) {
+          if (!school_id) {
+            console.error('Forbidden: Role requires a school_id but none was provided.');
+            isAllowed = false;
+          } else {
+            // Verify that the school_id belongs to the current municipality
+            const { data: schoolCheck, error: schoolCheckError } = await supabaseClient // Use supabaseClient for RLS
+              .from('schools')
+              .select('id')
+              .eq('id', school_id)
+              .eq('municipality_id', currentProfile.municipality_id)
+              .single();
+            
+            if (!schoolCheckError && schoolCheck) {
+              isAllowed = true;
+            } else {
+              console.error('Forbidden: School does not belong to the municipality or not found.');
+              isAllowed = false;
+            }
+          }
+        } else {
+          // Role does not require a school_id (e.g., municipal_secretary, network_manager for their own municipality)
+          isAllowed = true;
+        }
       }
     } else if (currentProfile.role === 'school_admin') {
       if ((role === 'secretary' || role === 'administrative_assistant') && school_id === currentProfile.school_id) {
@@ -89,9 +117,6 @@ serve(async (req) => {
         });
       }
       
-      // Profile creation is now handled by the 'on_auth_user_created' trigger.
-      // The trigger will use the user_metadata to populate the profile table.
-
       return new Response(JSON.stringify({ message: 'User created successfully', userId: newUser.user?.id }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -157,9 +182,6 @@ serve(async (req) => {
         });
       }
 
-      // Before deleting the auth user, check if the current user is allowed to delete this specific user
-      // For example, a municipal_secretary cannot delete a super_admin, or a user outside their municipality.
-      // This check is crucial for security.
       const { data: userToDeleteProfile, error: userToDeleteProfileError } = await supabaseAdmin
         .from('profiles')
         .select('role, municipality_id, school_id')
@@ -173,17 +195,14 @@ serve(async (req) => {
         });
       }
 
-      // More granular permission checks for deletion
       let canDelete = false;
       if (currentProfile.role === 'super_admin') {
-        canDelete = true; // Super admin can delete anyone
+        canDelete = true;
       } else if ((currentProfile.role === 'municipal_secretary' || currentProfile.role === 'network_manager') && currentProfile.municipality_id) {
-        // Municipal roles can delete users within their municipality, but not super_admin
         if (userToDeleteProfile.municipality_id === currentProfile.municipality_id && userToDeleteProfile.role !== 'super_admin') {
           canDelete = true;
         }
       } else if (currentProfile.role === 'school_admin' && currentProfile.school_id) {
-        // School admin can delete secretaries or administrative assistants within their school
         if (userToDeleteProfile.school_id === currentProfile.school_id && (userToDeleteProfile.role === 'secretary' || userToDeleteProfile.role === 'administrative_assistant')) {
           canDelete = true;
         }
