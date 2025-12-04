@@ -386,7 +386,26 @@ export default function Users() {
     const municipalityMap = new Map<string, { id: string; name: string; users: UserProfile[]; schools: Map<string, { id: string; name: string; users: UserProfile[] }> }>();
 
     allUsers.forEach(user => {
-      if (user.municipality_id && user.municipality_name) {
+      // System roles that are global (super_admin) or municipal without a specific school
+      const isGlobalSystemRole = user.role === 'super_admin';
+      const isMunicipalLevelRole = ['municipal_secretary', 'network_manager'].includes(user.role);
+      const isCustomMunicipalRole = customRoles.some(cr => cr.name === user.role && cr.scope === 'municipal');
+
+      if (isGlobalSystemRole) {
+        grouped.global.push(user);
+      } else if (user.municipality_id && user.municipality_name && (isMunicipalLevelRole || isCustomMunicipalRole)) {
+        if (!municipalityMap.has(user.municipality_id)) {
+          municipalityMap.set(user.municipality_id, {
+            id: user.municipality_id,
+            name: user.municipality_name,
+            users: [],
+            schools: new Map(),
+          });
+        }
+        const muniEntry = municipalityMap.get(user.municipality_id)!;
+        muniEntry.users.push(user);
+      } else if (user.school_id && user.school_name && user.municipality_id && user.municipality_name) {
+        // Users associated with a school
         if (!municipalityMap.has(user.municipality_id)) {
           municipalityMap.set(user.municipality_id, {
             id: user.municipality_id,
@@ -397,19 +416,16 @@ export default function Users() {
         }
         const muniEntry = municipalityMap.get(user.municipality_id)!;
 
-        if (user.school_id && user.school_name) {
-          if (!muniEntry.schools.has(user.school_id)) {
-            muniEntry.schools.set(user.school_id, {
-              id: user.school_id,
-              name: user.school_name,
-              users: [],
-            });
-          }
-          muniEntry.schools.get(user.school_id)!.users.push(user);
-        } else {
-          muniEntry.users.push(user);
+        if (!muniEntry.schools.has(user.school_id)) {
+          muniEntry.schools.set(user.school_id, {
+            id: user.school_id,
+            name: user.school_name,
+            users: [],
+          });
         }
+        muniEntry.schools.get(user.school_id)!.users.push(user);
       } else {
+        // Fallback for users without clear municipality/school or custom global roles
         grouped.global.push(user);
       }
     });
@@ -417,9 +433,15 @@ export default function Users() {
     grouped.municipalities = Array.from(municipalityMap.values()).map(muniEntry => ({
       id: muniEntry.id,
       name: muniEntry.name,
-      users: muniEntry.users,
-      schools: Array.from(muniEntry.schools.values()),
+      users: muniEntry.users.sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+      schools: Array.from(muniEntry.schools.values()).map(schoolEntry => ({
+        id: schoolEntry.id,
+        name: schoolEntry.name,
+        users: schoolEntry.users.sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+      })).sort((a, b) => a.name.localeCompare(b.name)),
     })).sort((a, b) => a.name.localeCompare(b.name)); // Sort municipalities by name
+
+    grouped.global.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return grouped;
   };
@@ -635,7 +657,17 @@ export default function Users() {
           </Dialog>
         </div>
         
-        {currentUserRole === 'super_admin' ? (
+        {users.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Nenhum usuário cadastrado ainda.</p>
+              <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeiro Usuário
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
           <div className="space-y-8 mt-8">
             {groupedUsers.global.length > 0 && (
               <Card>
@@ -688,10 +720,6 @@ export default function Users() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {users.map(renderUserCard)}
           </div>
         )}
       </div>
