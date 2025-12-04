@@ -455,12 +455,26 @@ const CreateTranscript = () => {
     setLoading(true);
     try {
       let studentId = id;
+      let currentSchoolId = selectedSchoolId;
+      let currentMunicipalityId: string | null = null;
+
+      // Fetch municipality_id for the selected school
+      const { data: schoolDetails, error: schoolError } = await supabase
+        .from('schools')
+        .select('municipality_id')
+        .eq('id', currentSchoolId)
+        .single();
+
+      if (schoolError) throw schoolError;
+      currentMunicipalityId = schoolDetails?.municipality_id || null;
+      if (!currentMunicipalityId) throw new Error("Não foi possível determinar a rede municipal da escola selecionada.");
+
 
       if (id) {
         // Update existing student
         const { error: studentError } = await supabase
           .from("students")
-          .update({ ...studentData, school_id: selectedSchoolId })
+          .update({ ...studentData, school_id: currentSchoolId })
           .eq("id", id);
 
         if (studentError) throw studentError;
@@ -503,7 +517,7 @@ const CreateTranscript = () => {
         // Insert new student
         const { data: student, error: studentError } = await supabase
           .from("students")
-          .insert([{ ...studentData, school_id: selectedSchoolId }])
+          .insert([{ ...studentData, school_id: currentSchoolId }])
           .select()
           .single();
 
@@ -577,9 +591,37 @@ const CreateTranscript = () => {
         }
       }
 
+      // Insert or update transcript entry
+      const transcriptData = {
+        student_id: studentId,
+        school_id: currentSchoolId,
+        municipality_id: currentMunicipalityId,
+        status: 'pending_signature', // Set status to pending signature
+        data: { // Store a snapshot of the transcript data if needed for audit/reversion
+          student: studentData,
+          academicYears: academicYears,
+          yearGrades: yearGrades,
+          trimesterGrades: trimesterGrades,
+          schoolPeriod: schoolPeriod,
+        }
+      };
+
+      if (id) {
+        const { error: transcriptUpdateError } = await supabase
+          .from('transcripts')
+          .update(transcriptData)
+          .eq('student_id', id); // Assuming transcript ID is linked to student ID
+        if (transcriptUpdateError) throw transcriptUpdateError;
+      } else {
+        const { error: transcriptInsertError } = await supabase
+          .from('transcripts')
+          .insert([transcriptData]);
+        if (transcriptInsertError) throw transcriptInsertError;
+      }
+
       toast({
         title: "Sucesso",
-        description: id ? "Histórico escolar atualizado com sucesso" : "Histórico escolar criado com sucesso",
+        description: id ? "Histórico escolar atualizado e enviado para assinatura" : "Histórico escolar criado e enviado para assinatura",
       });
 
       navigate(`/visualizar/${studentId}`);

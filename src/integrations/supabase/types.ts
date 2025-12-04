@@ -196,6 +196,44 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          read: boolean
+          target_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          target_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          target_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -203,8 +241,10 @@ export type Database = {
           id: string
           municipality_id: string | null
           name: string | null
+          registration_number: string | null
           role: Database["public"]["Enums"]["app_role"]
           school_id: string | null
+          signature_image_url: string | null
         }
         Insert: {
           created_at?: string | null
@@ -212,8 +252,10 @@ export type Database = {
           id: string
           municipality_id?: string | null
           name?: string | null
+          registration_number?: string | null
           role: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
+          signature_image_url?: string | null
         }
         Update: {
           created_at?: string | null
@@ -221,8 +263,10 @@ export type Database = {
           id?: string
           municipality_id?: string | null
           name?: string | null
+          registration_number?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
+          signature_image_url?: string | null
         }
         Relationships: [
           {
@@ -367,31 +411,53 @@ export type Database = {
         Row: {
           created_at: string | null
           data: Json | null
+          director_signed_at: string | null
+          director_signature_id: string | null
           id: string
           municipality_id: string
           school_id: string
+          secretary_signed_at: string | null
+          secretary_signature_id: string | null
+          status: string
           student_id: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           data?: Json | null
+          director_signed_at?: string | null
+          director_signature_id?: string | null
           id?: string
           municipality_id: string
           school_id: string
+          secretary_signed_at?: string | null
+          secretary_signature_id?: string | null
+          status?: string
           student_id?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           data?: Json | null
+          director_signed_at?: string | null
+          director_signature_id?: string | null
           id?: string
           municipality_id?: string
           school_id?: string
+          secretary_signed_at?: string | null
+          secretary_signature_id?: string | null
+          status?: string
           student_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transcripts_director_signature_id_fkey"
+            columns: ["director_signature_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transcripts_municipality_id_fkey"
             columns: ["municipality_id"]
@@ -404,6 +470,13 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcripts_secretary_signature_id_fkey"
+            columns: ["secretary_signature_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {

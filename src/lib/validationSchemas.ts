@@ -189,3 +189,26 @@ export const passwordChangeSchema = z.object({
   message: "As senhas não coincidem",
   path: ["confirmPassword"],
 });
+
+// Profile update schema (for AccountSettings)
+export const profileUpdateSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(3, 'Nome deve ter pelo menos 3 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres')
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
+  email: z.string()
+    .trim()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres'),
+  registration_number: z.string()
+    .trim()
+    .max(50, 'Número de registro deve ter no máximo 50 caracteres')
+    .optional()
+    .or(z.literal('')),
+  signature_image_url: z.string()
+    .url('URL da assinatura inválida')
+    .max(500, 'URL da assinatura deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
