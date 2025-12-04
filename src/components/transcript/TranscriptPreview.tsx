@@ -93,19 +93,19 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b bg-primary/5">
-          <div className="flex items-start justify-between gap-4 p-4"> {/* Alterado para items-start */}
+          <div className="flex items-start justify-between gap-4 p-4">
             {/* Municipality Emblem on Left */}
-            <div className="w-1/5 flex justify-start pt-2"> {/* Adicionado pt-2 */}
+            <div className="w-1/5 flex justify-start pt-2">
               {municipalityEmblemUrl && (
-                <img src={municipalityEmblemUrl} alt="Brasão da Rede Municipal" className="h-16 w-16 object-contain" /> {/* Aumentado o tamanho */}
+                <img src={municipalityEmblemUrl} alt="Brasão da Rede Municipal" className="h-16 w-16 object-contain" />
               )}
             </div>
             
             {/* Central Text */}
-            <div className="flex-1 text-center space-y-1 pt-2"> {/* Adicionado pt-2 */}
+            <div className="flex-1 text-center space-y-1 pt-2">
               <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL</h2>
               <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3>
-              {/* REMOVIDO: <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3> */}
+              <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -118,9 +118,9 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             </div>
 
             {/* School Logo on Right */}
-            <div className="w-1/5 flex justify-end pt-2"> {/* Adicionado pt-2 */}
+            <div className="w-1/5 flex justify-end pt-2">
               {schoolLogoUrl && (
-                <img src={schoolLogoUrl} alt="Logo da Escola" className="h-16 w-16 object-contain" /> {/* Aumentado o tamanho */}
+                <img src={schoolLogoUrl} alt="Logo da Escola" className="h-16 w-16 object-contain" />
               )}
             </div>
           </div>
