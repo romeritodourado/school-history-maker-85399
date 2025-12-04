@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-// Removido: import correctLogo from "/correct-logo.png";
+// REMOVIDO: import correctLogo from "/correct-logo.png";
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -129,7 +129,7 @@ export const exportToPDF = async (
   // Central text for header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 5, { align: "center" });
+  doc.text(`PREFEITURA MUNICIPAL DE ${municipalityName.toUpperCase()}`, pageWidth / 2, yPos + 5, { align: "center" });
   doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 12, { align: "center" });
   doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 19, { align: "center" });
 
@@ -664,10 +664,15 @@ export const exportToExcel = (
 ) => {
   const wb = XLSX.utils.book_new();
 
+  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
+
   const studentInfo = [
-    ["Correct - Sistema de Histórico Escolar"],
+    [`PREFEITURA MUNICIPAL DE ${municipalityName.toUpperCase()}`],
+    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"],
+    [schoolName.toUpperCase()],
     [""],
-    ["Gestão simplificada de históricos escolares"],
+    ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
     [""],
     ["DADOS DO ALUNO"],
     ["Nome Completo:", student.full_name],
