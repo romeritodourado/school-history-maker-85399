@@ -93,18 +93,18 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b bg-primary/5">
-          <div className="flex items-center justify-between gap-4 py-4 px-4"> {/* Ajustado para items-center e py-4 */}
+          <div className="flex items-center justify-between gap-4 py-4 px-4">
             {/* Municipality Emblem on Left */}
-            <div className="w-1/5 flex justify-start"> {/* Removido pt-2 */}
+            <div className="w-1/5 flex justify-start">
               {municipalityEmblemUrl && (
                 <img src={municipalityEmblemUrl} alt="Brasão da Rede Municipal" className="h-16 w-16 object-contain" />
               )}
             </div>
             
             {/* Central Text */}
-            <div className="flex-1 text-center space-y-1"> {/* Removido pt-2 */}
-              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL</h2>
-              <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3>
+            <div className="flex-1 text-center space-y-1">
+              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {municipalityName}</h2>
+              {/* REMOVIDO: <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3> */}
               {/* REMOVIDO: <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3> */}
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
@@ -118,7 +118,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             </div>
 
             {/* School Logo on Right */}
-            <div className="w-1/5 flex justify-end"> {/* Removido pt-2 */}
+            <div className="w-1/5 flex justify-end">
               {schoolLogoUrl && (
                 <img src={schoolLogoUrl} alt="Logo da Escola" className="h-16 w-16 object-contain" />
               )}
@@ -318,7 +318,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
               <div className="border-t border-foreground pt-2">
                 <p className="text-sm font-semibold">Secretário(a)</p>
                 {student.schools?.official_gazette_url && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className className="text-xs text-muted-foreground mt-1">
                     {student.schools.official_gazette_url}
                   </p>
                 )}

@@ -133,12 +133,11 @@ export const exportToPDF = async (
   // Central Text Block
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, currentTextY, { align: "center" });
+  doc.text(`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`, pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
-  doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
+  // REMOVIDO: doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
+  // REMOVIDO: doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
-  // REMOVIDO DUPLICADO: doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentTextY, { align: "center" });
-  // currentTextY += 5; 
   doc.text(schoolName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
 
@@ -683,8 +682,8 @@ export const exportToExcel = (
   const officialGazette = student.schools?.official_gazette_url || "";
 
   const studentInfo = [
-    ["PREFEITURA MUNICIPAL"],
-    [municipalityName.toUpperCase()],
+    [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
+    // REMOVIDO: [municipalityName.toUpperCase()],
     // REMOVIDO: ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], 
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
