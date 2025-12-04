@@ -376,3 +376,5 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     </div>
   );
 };
+
+export default ViewTranscript;
