@@ -44,6 +44,20 @@ interface CustomRole {
   scope: 'global' | 'municipal'; // Adicionado scope para custom roles
 }
 
+interface GroupedUsers {
+  global: UserProfile[];
+  municipalities: {
+    id: string;
+    name: string;
+    users: UserProfile[]; // Users directly associated with municipality (e.g., municipal_secretary)
+    schools: {
+      id: string;
+      name: string;
+      users: UserProfile[]; // Users associated with this school
+    }[];
+  }[];
+}
+
 export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
@@ -138,10 +152,13 @@ export default function Users() {
         `)
         .order('name');
 
-      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
-        query = query.eq('municipality_id', currentUserProfile.municipality_id);
-      } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
-        query = query.eq('school_id', currentUserProfile.school_id);
+      // Super Admin sees all users, other roles see filtered users
+      if (currentUserRole !== 'super_admin') {
+        if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
+          query = query.eq('municipality_id', currentUserProfile.municipality_id);
+        } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
+          query = query.eq('school_id', currentUserProfile.school_id);
+        }
       }
 
       const { data, error } = await query;
@@ -360,6 +377,88 @@ export default function Users() {
     setEditingUser(null);
   };
 
+  const groupUsers = (allUsers: UserProfile[]): GroupedUsers => {
+    const grouped: GroupedUsers = {
+      global: [],
+      municipalities: [],
+    };
+
+    const municipalityMap = new Map<string, { id: string; name: string; users: UserProfile[]; schools: Map<string, { id: string; name: string; users: UserProfile[] }> }>();
+
+    allUsers.forEach(user => {
+      if (user.municipality_id && user.municipality_name) {
+        if (!municipalityMap.has(user.municipality_id)) {
+          municipalityMap.set(user.municipality_id, {
+            id: user.municipality_id,
+            name: user.municipality_name,
+            users: [],
+            schools: new Map(),
+          });
+        }
+        const muniEntry = municipalityMap.get(user.municipality_id)!;
+
+        if (user.school_id && user.school_name) {
+          if (!muniEntry.schools.has(user.school_id)) {
+            muniEntry.schools.set(user.school_id, {
+              id: user.school_id,
+              name: user.school_name,
+              users: [],
+            });
+          }
+          muniEntry.schools.get(user.school_id)!.users.push(user);
+        } else {
+          muniEntry.users.push(user);
+        }
+      } else {
+        grouped.global.push(user);
+      }
+    });
+
+    grouped.municipalities = Array.from(municipalityMap.values()).map(muniEntry => ({
+      id: muniEntry.id,
+      name: muniEntry.name,
+      users: muniEntry.users,
+      schools: Array.from(muniEntry.schools.values()),
+    })).sort((a, b) => a.name.localeCompare(b.name)); // Sort municipalities by name
+
+    return grouped;
+  };
+
+  const groupedUsers = groupUsers(users);
+
+  const renderUserCard = (user: UserProfile) => (
+    <Card key={user.id} className="flex items-center justify-between p-4">
+      <div className="flex-1 space-y-1">
+        <p className="font-semibold">{user.name || user.email}</p>
+        <p className="text-sm text-muted-foreground flex items-center gap-1">
+          <Mail className="h-3 w-3" /> {user.email}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Cargo: {getRoleLabel(user.role)}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="ghost" size="icon" onClick={() => {
+          setEditingUser(user);
+          setFormData({
+            email: user.email || '',
+            password: '', // Password is not editable directly
+            name: user.name || '',
+            role: user.role,
+            municipality_id: user.municipality_id || '',
+            school_id: user.school_id || '',
+          });
+          setDialogOpen(true);
+        }}>
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)} disabled={user.id === currentUserProfile?.id}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+    </Card>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -535,59 +634,66 @@ export default function Users() {
             </DialogContent>
           </Dialog>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {users.map((user) => (
-            <Card key={user.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="truncate">{user.name || user.email}</span>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => {
-                      setEditingUser(user);
-                      setFormData({
-                        email: user.email || '',
-                        password: '', // Password is not editable directly
-                        name: user.name || '',
-                        role: user.role,
-                        municipality_id: user.municipality_id || '',
-                        school_id: user.school_id || '',
-                      });
-                      setDialogOpen(true);
-                    }}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)} disabled={user.id === currentUserProfile?.id}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    {user.email}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Cargo: {getRoleLabel(user.role)}
-                  </p>
-                  {user.municipality_name && (
-                    <p className="flex items-center gap-2 text-muted-foreground">
-                      <Building2 className="h-4 w-4" />
-                      Rede: {user.municipality_name}
-                    </p>
+        
+        {currentUserRole === 'super_admin' ? (
+          <div className="space-y-8 mt-8">
+            {groupedUsers.global.length > 0 && (
+              <Card>
+                <CardHeader className="bg-muted/50">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <UserCog className="h-5 w-5" />
+                    Usuários Globais
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                  {groupedUsers.global.map(renderUserCard)}
+                </CardContent>
+              </Card>
+            )}
+
+            {groupedUsers.municipalities.map(municipality => (
+              <Card key={municipality.id}>
+                <CardHeader className="bg-primary/10">
+                  <CardTitle className="text-xl flex items-center gap-2 text-primary">
+                    <Building2 className="h-5 w-5" />
+                    Rede Municipal: {municipality.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  {municipality.users.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <UserCog className="h-4 w-4 text-muted-foreground" />
+                        Usuários da Rede
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {municipality.users.map(renderUserCard)}
+                      </div>
+                    </div>
                   )}
-                  {user.school_name && (
-                    <p className="flex items-center gap-2 text-muted-foreground">
-                      <School className="h-4 w-4" />
-                      Escola: {user.school_name}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
+                  {municipality.schools.map(school => (
+                    <Card key={school.id} className="border-l-4 border-accent">
+                      <CardHeader className="bg-accent/10">
+                        <CardTitle className="text-lg flex items-center gap-2 text-accent-foreground">
+                          <School className="h-4 w-4" />
+                          Escola: {school.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                        {school.users.map(renderUserCard)}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {users.map(renderUserCard)}
+          </div>
+        )}
       </div>
     </div>
   );
