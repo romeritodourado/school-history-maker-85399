@@ -645,7 +645,7 @@ const CreateTranscript = () => {
         transcriptRecordId = newTranscript.id;
       }
 
-      // Create notification for the school's director
+      // Create notification for the school's director using an Edge Function
       const { data: directorProfiles, error: directorError } = await supabase
         .from('profiles')
         .select('id')
@@ -655,14 +655,25 @@ const CreateTranscript = () => {
       if (directorError) console.error('Error fetching director for notification:', directorError);
 
       if (directorProfiles && directorProfiles.length > 0) {
-        const notificationsToInsert = directorProfiles.map(director => ({
-          user_id: director.id,
-          type: 'transcript_pending_signature',
-          target_id: transcriptRecordId,
-          message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Diretor(a).`,
-        }));
-        const { error: notificationError } = await supabase.from('notifications').insert(notificationsToInsert);
-        if (notificationError) console.error('Error creating notification for director:', notificationError);
+        for (const director of directorProfiles) {
+          const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
+            body: JSON.stringify({
+              user_id: director.id,
+              type: 'transcript_pending_signature',
+              target_id: transcriptRecordId,
+              message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Diretor(a).`,
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (notificationError) {
+            console.error('Error invoking create-notification edge function:', notificationError);
+          } else if (notificationResponse && notificationResponse.error) {
+            console.error('Edge function returned error:', notificationResponse.error);
+          }
+        }
       }
 
       toast({

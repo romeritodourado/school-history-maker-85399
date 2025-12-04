@@ -197,7 +197,7 @@ export default function SignTranscripts() {
 
         if (updateError) throw updateError;
 
-        // Create notifications for the next step or rejection
+        // Create notifications for the next step or rejection using Edge Function
         for (const transcriptId of selectedTranscripts) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
@@ -214,13 +214,25 @@ export default function SignTranscripts() {
               if (secretaryError) console.error('Error fetching secretary for notification:', secretaryError);
 
               if (secretaryProfiles && secretaryProfiles.length > 0) {
-                const notificationsToInsert = secretaryProfiles.map(sec => ({
-                  user_id: sec.id,
-                  type: 'transcript_pending_signature',
-                  target_id: transcriptId,
-                  message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Secretário(a).`,
-                }));
-                await supabase.from('notifications').insert(notificationsToInsert);
+                for (const secretary of secretaryProfiles) {
+                  const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
+                    body: JSON.stringify({
+                      user_id: secretary.id,
+                      type: 'transcript_pending_signature',
+                      target_id: transcriptId,
+                      message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Secretário(a).`,
+                    }),
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+
+                  if (notificationError) {
+                    console.error('Error invoking create-notification edge function for secretary:', notificationError);
+                  } else if (notificationResponse && notificationResponse.error) {
+                    console.error('Edge function returned error for secretary notification:', notificationResponse.error);
+                  }
+                }
               }
             } else if (role === 'secretary') {
               // Notify the creator that it's fully signed
