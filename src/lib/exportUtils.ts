@@ -97,7 +97,12 @@ export const exportToPDF = async (
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  let yPos = 15; // Starting Y position for the header content
+  const logoWidth = 25; // Aumentado o tamanho
+  const logoHeight = 25; // Aumentado o tamanho
+  const logoMargin = 10; // Margem da borda
+  const headerTopY = 15; // Posição Y inicial para todo o bloco do cabeçalho
+
+  let currentTextY = headerTopY; // Posição Y para as linhas de texto
 
   const municipalityName = student.schools?.municipalities?.name || "Não Informado";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
@@ -115,35 +120,27 @@ export const exportToPDF = async (
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
   ]);
 
-  // Logo dimensions
-  const logoWidth = 20; // Smaller
-  const logoHeight = 20; // Smaller
-  const logoMargin = 15; // Margin from left/right edge
-  let currentY = 15; // Initial Y for logos
-
   // Add municipality emblem (left)
   if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, currentY, logoWidth, logoHeight);
+    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, headerTopY, logoWidth, logoHeight);
   }
 
   // Add school logo (right)
   if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, currentY, logoWidth, logoHeight);
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, headerTopY, logoWidth, logoHeight);
   }
 
-  // Text starts below the logos, with some padding
-  currentY += logoHeight + 5; // Move Y below logos + 5 units padding
-
+  // Central Text Block
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, currentY, { align: "center" });
-  currentY += 5; // Line spacing
-  doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
-  currentY += 5; // Line spacing
-  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentY, { align: "center" });
-  currentY += 5; // Line spacing
-  doc.text(schoolName.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
-  currentY += 5; // Line spacing
+  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, currentTextY, { align: "center" });
+  currentTextY += 5; // Line spacing
+  doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
+  currentTextY += 5; // Line spacing
+  // REMOVIDO DUPLICADO: doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentTextY, { align: "center" });
+  // currentTextY += 5; // Line spacing
+  doc.text(schoolName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
+  currentTextY += 5; // Line spacing
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);
@@ -152,16 +149,19 @@ export const exportToPDF = async (
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, pageWidth / 2, currentY, { align: "center" });
-    currentY += 4; // Line spacing for smaller font
+    doc.text(authText, pageWidth / 2, currentTextY, { align: "center" });
+    currentTextY += 4; // Line spacing for smaller font
   }
 
-  yPos = currentY + 5; // Update yPos for the rest of the document, with extra padding
+  currentTextY += 5; // Additional space before main title
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, yPos, { align: "center" });
-  yPos += 10; // Space after main title
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, currentTextY, { align: "center" });
+  currentTextY += 10; // Space after main title
+
+  // Update yPos for the rest of the document
+  let yPos = currentTextY;
 
   // Student data section starts here
   doc.setFontSize(10);
@@ -685,7 +685,7 @@ export const exportToExcel = (
   const studentInfo = [
     ["PREFEITURA MUNICIPAL"],
     [municipalityName.toUpperCase()],
-    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"],
+    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], // Mantido aqui para o Excel, pois a estrutura é diferente
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
     [""],
