@@ -196,7 +196,6 @@ const ViewTranscript = () => {
         <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
-  );
   }
 
   if (!student) {
@@ -238,7 +237,8 @@ const ViewTranscript = () => {
               </Link>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
       <main className="container mx-auto px-4 py-8">
         <TranscriptPreview
