@@ -172,19 +172,30 @@ export default function Users() {
         name: formData.name
       });
 
-      const { error: signUpError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true,
-        user_metadata: {
+      // Call the Edge Function to create the user
+      const { data, error: edgeFunctionError } = await supabase.functions.invoke('create-user', {
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
           name: formData.name,
           role: formData.role,
-          municipality_id: formData.municipality_id || undefined,
-          school_id: formData.school_id || undefined
-        }
+          municipality_id: formData.municipality_id || null,
+          school_id: formData.school_id || null,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (signUpError) throw signUpError;
+      if (edgeFunctionError) {
+        console.error('Error invoking create-user edge function:', edgeFunctionError);
+        throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de criação de usuário.');
+      }
+
+      // The Edge Function returns a JSON object with 'error' if something went wrong
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
 
       toast({
         title: 'Usuário criado com sucesso!'
