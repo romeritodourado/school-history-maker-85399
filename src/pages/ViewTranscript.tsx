@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import correctLogo from "/correct-logo.png";
+// Removido: import correctLogo from "/correct-logo.png";
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
@@ -217,9 +217,7 @@ const ViewTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <Link to="/"> {/* Adicionado Link aqui */}
-              <img src={correctLogo} alt="Correct Logo" className="h-16 w-16" />
-            </Link>
+            {/* Removido o logo 'Correct' e o link para a home */}
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Histórico Escolar</h1>
               <p className="text-muted-foreground">{student.full_name}</p>
