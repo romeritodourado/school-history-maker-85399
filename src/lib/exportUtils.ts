@@ -100,7 +100,7 @@ export const exportToPDF = async (
   const logoWidth = 25; 
   const logoHeight = 25; 
   const logoMargin = 10; 
-  const headerTopY = 20; // Ajustado para empurrar o conteúdo para baixo
+  const headerTopY = 25; // Ajustado para empurrar o conteúdo para baixo
 
   let currentTextY = headerTopY; 
 

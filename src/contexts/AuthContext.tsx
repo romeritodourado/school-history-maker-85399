@@ -155,6 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setProfile(prof ?? null);
               setRole(prof?.role ?? null);
               setAuthLoading(false);
+              console.log('AuthContext: SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED. User:', sessionData.user.id, 'Profile:', prof?.id);
             }
           } else {
             // Fallback for unexpected state where event is SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED but no user
@@ -164,21 +165,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setProfile(null);
               setRole(null);
               setActiveMunicipalityIdForSuperAdmin(null);
+              setAuthLoading(false); // Ensure loading is reset even in fallback
+              console.log('AuthContext: SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED with no user. State cleared.');
             }
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log('AuthContext: SIGNED_OUT event received. Clearing user state.');
           if (mountedRef.current) {
             setUser(null);
             setSession(null);
             setProfile(null);
             setRole(null);
             setActiveMunicipalityIdForSuperAdmin(null);
+            setAuthLoading(false); // Ensure authLoading is false after sign out
+            console.log('AuthContext: User state cleared. Current user is now null.');
           }
-        } else if (event === 'INITIAL_SESSION') {
-          // This event is handled by the initial useEffect (init function).
-          // We can safely ignore it here to avoid redundant processing.
-          console.log('AuthContext: Listener received INITIAL_SESSION. Ignoring as init() handles it.');
+        } else if (event === 'PASSWORD_RECOVERY' || event === 'USER_DELETED') {
+          // Handle other events if necessary, ensure loading states are reset
+          if (mountedRef.current) {
+            setAuthLoading(false);
+          }
         }
+        // For INITIAL_SESSION, it's handled by init() and doesn't need authLoading reset here.
       } catch (err) {
         console.error('AuthContext: Erro no listener onAuthStateChange', err);
         if (mountedRef.current) setAuthLoading(false);
@@ -250,6 +258,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('AuthContext: Erro de logout:', error);
         return { error };
       }
+      // Explicitamente limpar o local storage para a sessão do Supabase, por segurança
+      // O formato da chave é geralmente 'sb-<project-ref>-auth-token'
+      localStorage.removeItem('sb-krypnmbthyjyyzyetakb-auth-token');
+      
+      // Limpar imediatamente o estado local também, para garantir consistência
+      if (mountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setActiveMunicipalityIdForSuperAdmin(null);
+      }
+
       console.log('AuthContext: Logout bem-sucedido. O listener onAuthStateChange irá atualizar o estado.');
       return { error: null };
     } catch (err: any) {
