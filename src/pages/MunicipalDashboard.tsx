@@ -267,13 +267,7 @@ export default function MunicipalDashboard() {
       path: '/escolas',
       requiresSchool: false,
     },
-    {
-      title: 'Gerenciar Usuários',
-      description: 'Criar e editar contas de usuários',
-      icon: UserCog,
-      path: '/usuarios',
-      requiresSchool: false,
-    },
+    // Removido o card 'Gerenciar Usuários' daqui
     {
       title: 'Validar Histórico',
       description: 'Validar autenticidade de um histórico',

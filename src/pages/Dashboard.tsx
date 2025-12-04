@@ -503,11 +503,11 @@ export default function Dashboard() {
       roles: ['municipal_secretary', 'network_manager'],
     },
     {
-      title: 'Gerenciar Usuários',
+      title: 'Gerenciar Usuários', // Adicionado para o Dashboard principal
       description: 'Criar e editar contas de usuários',
       icon: UserCog,
       path: '/usuarios',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin'],
+      roles: ['super_admin'], // Apenas Super Admin no dashboard principal
     },
     {
       title: 'Validar Histórico',
