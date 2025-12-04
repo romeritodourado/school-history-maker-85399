@@ -711,7 +711,7 @@ export default function Users() {
                           <School className="h-4 w-4" />
                           Escola: {school.name}
                         </CardTitle>
-                      </CardContent>
+                      </CardHeader> {/* Corrigido: Fechamento de CardHeader */}
                       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                         {school.users.map(renderUserCard)}
                       </CardContent>
