@@ -211,10 +211,11 @@ export default function SignTranscripts() {
                 .eq('school_id', schoolIdFromUrl)
                 .eq('role', 'secretary');
 
-              if (secretaryError) console.error('Error fetching secretary for notification:', secretaryError);
+              if (secretaryError) console.error('Client: Error fetching secretary for notification:', secretaryError);
 
               if (secretaryProfiles && secretaryProfiles.length > 0) {
                 for (const secretary of secretaryProfiles) {
+                  console.log(`Client: Invoking create-notification for secretary ${secretary.id} for student ${transcript.students?.full_name}`);
                   const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
                     body: JSON.stringify({
                       user_id: secretary.id,
@@ -228,20 +229,34 @@ export default function SignTranscripts() {
                   });
 
                   if (notificationError) {
-                    console.error('Error invoking create-notification edge function for secretary:', notificationError);
+                    console.error('Client: Error invoking create-notification edge function for secretary:', notificationError);
+                    toast({
+                      title: "Erro na notificação",
+                      description: notificationError.message || "Não foi possível enviar a notificação para o secretário.",
+                      variant: "destructive",
+                    });
                   } else if (notificationResponse && notificationResponse.error) {
-                    console.error('Edge function returned error for secretary notification:', notificationResponse.error);
+                    console.error('Client: Edge function returned error for secretary notification:', notificationResponse.error);
+                    toast({
+                      title: "Erro na notificação",
+                      description: notificationResponse.error || "Não foi possível enviar a notificação para o secretário.",
+                      variant: "destructive",
+                    });
+                  } else {
+                    console.log('Client: Notification edge function invoked successfully for secretary:', notificationResponse);
                   }
                 }
               }
             } else if (role === 'secretary') {
               // Notify the creator that it's fully signed
               // For now, we'll just toast success. A more robust system might notify the original creator.
+              console.log(`Client: Transcript ${transcriptId} fully signed by secretary. No further notification logic implemented for creator.`);
             }
           } else if (currentAction === 'reject') {
             // Notify the creator that it was rejected
             // This would require knowing who created the transcript, which isn't directly in the transcript table yet.
             // For now, we'll just toast success.
+            console.log(`Client: Transcript ${transcriptId} rejected. No notification logic implemented for creator.`);
           }
         }
 

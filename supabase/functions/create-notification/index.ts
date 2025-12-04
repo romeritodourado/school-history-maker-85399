@@ -12,15 +12,16 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client with the service role key to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { user_id, type, target_id, message } = await req.json();
+    console.log('create-notification: Received payload:', { user_id, type, target_id, message });
 
     if (!user_id || !type) {
+      console.error('create-notification: Missing required fields:', { user_id, type });
       return new Response(JSON.stringify({ error: 'Missing required fields: user_id, type.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
@@ -40,20 +41,21 @@ serve(async (req) => {
       .select();
 
     if (error) {
-      console.error('Error inserting notification:', error);
+      console.error('create-notification: Error inserting notification:', error);
       return new Response(JSON.stringify({ error: error.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
+    console.log('create-notification: Notification inserted successfully:', data);
     return new Response(JSON.stringify({ message: 'Notification created successfully', data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (error: any) {
-    console.error('Edge Function error:', error);
+    console.error('create-notification: Edge Function error in catch block:', error);
     return new Response(JSON.stringify({ error: error.message || 'An unexpected error occurred.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

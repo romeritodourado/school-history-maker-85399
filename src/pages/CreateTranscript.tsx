@@ -652,10 +652,11 @@ const CreateTranscript = () => {
         .eq('school_id', currentSchoolId)
         .eq('role', 'school_admin');
 
-      if (directorError) console.error('Error fetching director for notification:', directorError);
+      if (directorError) console.error('Client: Error fetching director for notification:', directorError);
 
       if (directorProfiles && directorProfiles.length > 0) {
         for (const director of directorProfiles) {
+          console.log(`Client: Invoking create-notification for director ${director.id} for student ${studentData.full_name}`);
           const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
             body: JSON.stringify({
               user_id: director.id,
@@ -669,9 +670,21 @@ const CreateTranscript = () => {
           });
 
           if (notificationError) {
-            console.error('Error invoking create-notification edge function:', notificationError);
+            console.error('Client: Error invoking create-notification edge function:', notificationError);
+            toast({
+              title: "Erro na notificação",
+              description: notificationError.message || "Não foi possível enviar a notificação para o diretor.",
+              variant: "destructive",
+            });
           } else if (notificationResponse && notificationResponse.error) {
-            console.error('Edge function returned error:', notificationResponse.error);
+            console.error('Client: Edge function returned error for director notification:', notificationResponse.error);
+            toast({
+              title: "Erro na notificação",
+              description: notificationResponse.error || "Não foi possível enviar a notificação para o diretor.",
+              variant: "destructive",
+            });
+          } else {
+            console.log('Client: Notification edge function invoked successfully for director:', notificationResponse);
           }
         }
       }
