@@ -1,5 +1,8 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import correctLogo from "/correct-logo.png"; // Importar o logo
+import QRCode from "qrcode"; // Importar a biblioteca qrcode
+import { useEffect, useState } from "react"; // Importar useEffect e useState
 
 interface StudentData {
   id: string;
@@ -61,9 +64,21 @@ interface TranscriptPreviewProps {
   grades: { [yearId: string]: GradeData[] };
   trimesterGrades: TrimesterGradeData[];
   schoolPeriod?: { startDate: string; endDate: string; gradeClass: string; shift: string };
+  transcriptId: string | null; // Adicionar transcriptId
 }
 
-export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod }: TranscriptPreviewProps) => {
+export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId }: TranscriptPreviewProps) => {
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (transcriptId) {
+      const validationUrl = `${window.location.origin}/validar?id=${transcriptId}`;
+      QRCode.toDataURL(validationUrl, { width: 128, margin: 2 })
+        .then(url => setQrCodeDataUrl(url))
+        .catch(err => console.error("Error generating QR code:", err));
+    }
+  }, [transcriptId]);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString("pt-BR");
@@ -104,8 +119,6 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* Central Text */}
             <div className="flex-1 text-center space-y-1">
               <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {municipalityName}</h2>
-              {/* REMOVIDO: <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3> */}
-              {/* REMOVIDO: <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3> */}
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -303,22 +316,29 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
           </p>
           
-          <div className="mt-8 grid grid-cols-2 gap-8">
+          <div className="mt-8 grid grid-cols-3 items-end">
             <div className="text-center">
+              {qrCodeDataUrl && (
+                <img src={qrCodeDataUrl} alt="QR Code de Validação" className="mx-auto h-24 w-24 object-contain" />
+              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                Escaneie para validar a autenticidade
+              </p>
+            </div>
+            <div className="text-center">
+              <img src={correctLogo} alt="Correct Logo" className="mx-auto h-12 w-auto object-contain mb-2" />
               <div className="border-t border-foreground pt-2">
-                <p className="text-sm font-semibold">Diretor(a)</p>
-                {student.schools?.authorization_decree_url && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {student.schools.authorization_decree_url}
-                  </p>
-                )}
+                <p className="text-sm font-semibold">Este documento foi assinado digitalmente</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pelo sistema Correct
+                </p>
               </div>
             </div>
             <div className="text-center">
               <div className="border-t border-foreground pt-2">
                 <p className="text-sm font-semibold">Secretário(a)</p>
                 {student.schools?.official_gazette_url && (
-                  <p className className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {student.schools.official_gazette_url}
                   </p>
                 )}

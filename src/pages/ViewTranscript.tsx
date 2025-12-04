@@ -68,9 +68,10 @@ interface TrimesterGradeData {
 }
 
 const ViewTranscript = () => {
-  const { id } = useParams();
+  const { id: studentId } = useParams(); // Renomeado para studentId
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [transcriptId, setTranscriptId] = useState<string | null>(null); // Novo estado para o ID do transcript
   const [student, setStudent] = useState<StudentData | null>(null);
   const [academicYears, setAcademicYears] = useState<AcademicYearData[]>([]);
   const [grades, setGrades] = useState<{ [yearId: string]: GradeData[] }>({});
@@ -78,10 +79,10 @@ const ViewTranscript = () => {
   const [schoolPeriod, setSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
 
   useEffect(() => {
-    if (id) {
+    if (studentId) {
       fetchTranscript();
     }
-  }, [id]);
+  }, [studentId]);
 
   const fetchTranscript = async () => {
     try {
@@ -102,17 +103,27 @@ const ViewTranscript = () => {
             municipalities (name, emblem_url)
           )
         `)
-        .eq("id", id)
+        .eq("id", studentId)
         .single();
 
       if (studentError) throw studentError;
       setStudent(studentData);
 
+      // Fetch the transcript record to get its ID
+      const { data: transcriptRecord, error: transcriptRecordError } = await supabase
+        .from('transcripts')
+        .select('id')
+        .eq('student_id', studentId)
+        .single();
+
+      if (transcriptRecordError) throw transcriptRecordError;
+      setTranscriptId(transcriptRecord.id); // Set the transcript ID
+
       // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
         .select("*")
-        .eq("student_id", id)
+        .eq("student_id", studentId)
         .order("calendar_year");
 
       if (yearsError) throw yearsError;
@@ -163,9 +174,9 @@ const ViewTranscript = () => {
   };
 
   const handleExportPDF = async () => {
-    if (student && academicYears.length > 0) {
+    if (student && academicYears.length > 0 && transcriptId) { // Pass transcriptId
       try {
-        await exportToPDF(student, academicYears, grades, trimesterGrades, schoolPeriod);
+        await exportToPDF(student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId);
         toast({
           title: "Sucesso",
           description: "PDF gerado com sucesso",
@@ -247,6 +258,7 @@ const ViewTranscript = () => {
           grades={grades}
           trimesterGrades={trimesterGrades}
           schoolPeriod={schoolPeriod}
+          transcriptId={transcriptId} // Pass the transcriptId
         />
       </main>
     </div>

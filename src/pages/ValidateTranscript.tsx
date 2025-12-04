@@ -7,6 +7,7 @@ import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, School } fr
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
+import QRCode from "qrcode"; // Importar a biblioteca qrcode
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
@@ -14,9 +15,28 @@ interface TranscriptValidation {
   student_name: string;
   school_name: string;
   municipality_name: string;
-  completion_year: number | null; // Added
-  grade_series: string | null; // Added
+  completion_year: number | null;
+  grade_series: string | null;
   is_valid: boolean;
+  document_hash: string | null;
+  signed_data: any | null;
+  director_name: string | null;
+  director_registration: string | null;
+  director_signed_at: string | null;
+  secretary_name: string | null;
+  secretary_registration: string | null;
+  secretary_signed_at: string | null;
+}
+
+// Função para gerar o hash do conteúdo do histórico (duplicada para validação independente)
+async function generateTranscriptHash(data: any): Promise<string> {
+  const dataString = JSON.stringify(data);
+  const textEncoder = new TextEncoder();
+  const dataBuffer = textEncoder.encode(dataString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
 }
 
 export default function ValidateTranscript() {
@@ -24,12 +44,17 @@ export default function ValidateTranscript() {
   const [validation, setValidation] = useState<TranscriptValidation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   const transcriptId = searchParams.get('id');
 
   useEffect(() => {
     if (transcriptId) {
       validateTranscript();
+      const validationUrl = `${window.location.origin}/validar?id=${transcriptId}`;
+      QRCode.toDataURL(validationUrl, { width: 128, margin: 2 })
+        .then(url => setQrCodeDataUrl(url))
+        .catch(err => console.error("Error generating QR code:", err));
     } else {
       setError('ID do histórico não fornecido');
       setLoading(false);
@@ -38,7 +63,7 @@ export default function ValidateTranscript() {
 
   const validateTranscript = async () => {
     try {
-      // Fetch transcript data
+      // Fetch transcript data including signed_data and document_hash
       const { data: transcriptData, error: transcriptError } = await supabase
         .from('transcripts')
         .select(`
@@ -46,14 +71,34 @@ export default function ValidateTranscript() {
           student_id,
           school_id,
           municipality_id,
+          document_hash,
+          signed_data,
+          director_signed_at,
+          secretary_signed_at,
           students (full_name, completion_year, grade_series),
           schools (name),
-          municipalities (name)
+          municipalities (name),
+          director_signature_id (name, registration_number),
+          secretary_signature_id (name, registration_number)
         `)
         .eq('id', transcriptId)
         .single();
 
       if (transcriptError) throw transcriptError;
+      if (!transcriptData) throw new Error('Histórico não encontrado.');
+
+      let isValid = false;
+      let regeneratedHash: string | null = null;
+
+      if (transcriptData.signed_data && transcriptData.document_hash) {
+        regeneratedHash = await generateTranscriptHash(transcriptData.signed_data);
+        isValid = regeneratedHash === transcriptData.document_hash;
+      } else {
+        isValid = false; // Cannot validate if data or hash is missing
+      }
+
+      const directorProfile = transcriptData.director_signature_id as { name: string | null, registration_number: string | null } | null;
+      const secretaryProfile = transcriptData.secretary_signature_id as { name: string | null, registration_number: string | null } | null;
 
       const validationData: TranscriptValidation = {
         student_name: (transcriptData.students as { full_name: string } | null)?.full_name || 'Não informado',
@@ -61,7 +106,15 @@ export default function ValidateTranscript() {
         municipality_name: (transcriptData.municipalities as { name: string } | null)?.name || 'Não informado',
         completion_year: (transcriptData.students as { completion_year: number | null } | null)?.completion_year || null,
         grade_series: (transcriptData.students as { grade_series: string | null } | null)?.grade_series || null,
-        is_valid: true, // Placeholder: always true for now as there's no signature to verify
+        is_valid: isValid,
+        document_hash: transcriptData.document_hash,
+        signed_data: transcriptData.signed_data,
+        director_name: directorProfile?.name || null,
+        director_registration: directorProfile?.registration_number || null,
+        director_signed_at: transcriptData.director_signed_at,
+        secretary_name: secretaryProfile?.name || null,
+        secretary_registration: secretaryProfile?.registration_number || null,
+        secretary_signed_at: transcriptData.secretary_signed_at,
       };
 
       setValidation(validationData);
@@ -109,7 +162,7 @@ export default function ValidateTranscript() {
         <Card className="border-2 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
             <div className="flex items-center justify-between">
-              <Link to="/" className="flex items-center gap-2"> {/* Adicionado Link aqui */}
+              <Link to="/" className="flex items-center gap-2">
                 <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
                 <CardTitle className="text-2xl">
                   Validação de Histórico Escolar
@@ -196,14 +249,69 @@ export default function ValidateTranscript() {
               <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
-                  Este histórico é autêntico.
+                  Este histórico é autêntico e não foi adulterado.
                 </p>
+                {validation.document_hash && (
+                  <p className="text-xs text-muted-foreground mt-2 break-all">
+                    Hash do Documento: {validation.document_hash}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200 font-medium flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
-                  ATENÇÃO: Este documento pode ter sido adulterado!
+                  ATENÇÃO: Este documento pode ter sido adulterado ou não foi assinado digitalmente!
+                </p>
+                {validation.document_hash && (
+                  <p className="text-xs text-muted-foreground mt-2 break-all">
+                    Hash do Documento (registrado): {validation.document_hash}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {(validation.director_name || validation.secretary_name) && (
+              <div className="mt-6 space-y-4">
+                <h3 className="text-lg font-semibold">Assinaturas Digitais</h3>
+                {validation.director_name && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Diretor(a)</p>
+                      <p className="font-semibold">{validation.director_name}</p>
+                      {validation.director_registration && (
+                        <p className="text-xs text-muted-foreground">Registro: {validation.director_registration}</p>
+                      )}
+                      {validation.director_signed_at && (
+                        <p className="text-xs text-muted-foreground">Assinado em: {new Date(validation.director_signed_at).toLocaleString('pt-BR')}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {validation.secretary_name && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Secretário(a)</p>
+                      <p className="font-semibold">{validation.secretary_name}</p>
+                      {validation.secretary_registration && (
+                        <p className="text-xs text-muted-foreground">Registro: {validation.secretary_registration}</p>
+                      )}
+                      {validation.secretary_signed_at && (
+                        <p className="text-xs text-muted-foreground">Assinado em: {new Date(validation.secretary_signed_at).toLocaleString('pt-BR')}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {qrCodeDataUrl && (
+              <div className="text-center mt-8">
+                <img src={qrCodeDataUrl} alt="QR Code de Validação" className="mx-auto h-32 w-32 object-contain border p-1 rounded-md" />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Este QR Code leva à página de validação oficial deste documento.
                 </p>
               </div>
             )}

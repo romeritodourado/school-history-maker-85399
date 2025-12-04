@@ -206,9 +206,5 @@ export const profileUpdateSchema = z.object({
     .max(50, 'Número de registro deve ter no máximo 50 caracteres')
     .optional()
     .or(z.literal('')),
-  signature_image_url: z.string()
-    .url('URL da assinatura inválida')
-    .max(500, 'URL da assinatura deve ter no máximo 500 caracteres')
-    .optional()
-    .or(z.literal('')),
+  // Removido signature_image_url
 });

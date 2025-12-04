@@ -1,6 +1,8 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import QRCode from "qrcode"; // Importar a biblioteca qrcode
+import correctLogo from "/correct-logo.png"; // Importar o logo
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -93,7 +95,8 @@ export const exportToPDF = async (
   academicYears: AcademicYearData[],
   grades: { [yearId: string]: GradeData[] },
   trimesterGrades: TrimesterGradeData[],
-  schoolPeriod?: { startDate: string; endDate: string; gradeClass: string; shift: string }
+  schoolPeriod: { startDate: string; endDate: string; gradeClass: string; shift: string } | undefined,
+  transcriptId: string // Adicionar transcriptId
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -113,11 +116,15 @@ export const exportToPDF = async (
 
   let schoolLogoBase64: string | null = null;
   let municipalityEmblemBase64: string | null = null;
+  let qrCodeDataUrl: string | null = null;
 
   // Load images concurrently
   await Promise.all([
     schoolLogoUrl ? getImageAsBase64(schoolLogoUrl).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
+    QRCode.toDataURL(`${window.location.origin}/validar?id=${transcriptId}`, { width: 128, margin: 2 })
+      .then(url => qrCodeDataUrl = url)
+      .catch(err => console.error("Error generating QR code for PDF:", err))
   ]);
 
   // Add municipality emblem (left)
@@ -135,8 +142,6 @@ export const exportToPDF = async (
   doc.setFont("helvetica", "bold");
   doc.text(`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`, pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
-  // REMOVIDO: doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
-  // REMOVIDO: doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
   doc.text(schoolName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
   currentTextY += 5; 
@@ -595,26 +600,44 @@ export const exportToPDF = async (
     yPos += wrappedText.length * 7 + 20;
   }
 
-  const signatureY = yPos + 10;
-  doc.line(30, signatureY, 90, signatureY);
-  doc.line(120, signatureY, 180, signatureY);
-  
-  doc.setFontSize(9);
-  doc.text("Diretor(a)", 60, signatureY + 5, { align: "center" });
-  if (student.schools?.authorization_decree_url) {
+  // Signature block with Correct logo and QR code
+  const signatureBlockY = yPos + 10;
+  const blockWidth = (pageWidth - 30) / 3; // Divide em 3 colunas
+  const blockMargin = 15;
+
+  // QR Code (Left)
+  if (qrCodeDataUrl) {
+    doc.addImage(qrCodeDataUrl, "PNG", blockMargin + (blockWidth / 2) - (logoWidth / 2), signatureBlockY, logoWidth, logoHeight);
     doc.setFontSize(7);
-    doc.text(student.schools.authorization_decree_url, 60, signatureY + 10, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.text("Escaneie para validar a autenticidade", blockMargin + (blockWidth / 2), signatureBlockY + logoHeight + 5, { align: "center" });
   }
-  
+
+  // Correct Logo and Digital Signature Text (Center)
+  const correctLogoX = blockMargin + blockWidth + (blockWidth / 2) - (logoWidth / 2);
+  doc.addImage(correctLogo, "PNG", correctLogoX, signatureBlockY + 5, logoWidth, logoWidth * (12/48)); // Adjust height for correctLogo aspect ratio
+  doc.line(blockMargin + blockWidth + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 2) - 10, signatureBlockY + logoHeight + 10);
   doc.setFontSize(9);
-  doc.text("Secretário(a)", 150, signatureY + 5, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.text("Este documento foi assinado digitalmente", blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Pelo sistema Correct", blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 20, { align: "center" });
+
+  // Secretary Signature (Right)
+  doc.line(blockMargin + (blockWidth * 2) + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 3) - 10, signatureBlockY + logoHeight + 10);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("Secretário(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
   if (student.schools?.official_gazette_url) {
     doc.setFontSize(7);
-    doc.text(student.schools.official_gazette_url, 150, signatureY + 10, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.text(student.schools.official_gazette_url, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureBlockY + logoHeight + 20, { align: "center" });
   }
   
-  yPos = signatureY + 15;
+  yPos = signatureBlockY + logoHeight + 30; // Adjust yPos after signature block
   doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
   const now = new Date();
   const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const dateStr = `${now.getDate().toString().padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
@@ -683,8 +706,6 @@ export const exportToExcel = (
 
   const studentInfo = [
     [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
-    // REMOVIDO: [municipalityName.toUpperCase()],
-    // REMOVIDO: ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], 
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
     [""],
