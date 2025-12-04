@@ -41,6 +41,7 @@ interface CustomRole {
   id: string;
   name: string;
   description: string | null;
+  scope: 'global' | 'municipal'; // Adicionado scope para custom roles
 }
 
 export default function Users() {
@@ -172,9 +173,10 @@ export default function Users() {
         name: formData.name
       });
 
-      // Call the Edge Function to create the user
-      const { data, error: edgeFunctionError } = await supabase.functions.invoke('create-user', {
+      console.log('Users.tsx: Invoking manage-user edge function for creation...');
+      const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
         body: JSON.stringify({
+          action: 'create',
           email: formData.email,
           password: formData.password,
           name: formData.name,
@@ -188,12 +190,12 @@ export default function Users() {
       });
 
       if (edgeFunctionError) {
-        console.error('Error invoking create-user edge function:', edgeFunctionError);
+        console.error('Users.tsx: Error invoking manage-user edge function:', edgeFunctionError);
         throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de criação de usuário.');
       }
 
-      // The Edge Function returns a JSON object with 'error' if something went wrong
       if (data && data.error) {
+        console.error('Users.tsx: Edge function returned error:', data.error);
         throw new Error(data.error);
       }
 
@@ -220,25 +222,35 @@ export default function Users() {
     if (!editingUser) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: formData.name,
+      // No password validation here, assuming password is not updated via this form.
+      // If password update is desired, a separate input and validation would be needed.
+
+      console.log('Users.tsx: Invoking manage-user edge function for update...');
+      const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
+        body: JSON.stringify({
+          action: 'update',
+          userId: editingUser.id,
           email: formData.email,
+          name: formData.name,
           role: formData.role,
           municipality_id: formData.municipality_id || null,
           school_id: formData.school_id || null,
-        })
-        .eq('id', editingUser.id);
+          // Do NOT send password unless it's explicitly changed by the user in the form
+          // password: formData.password, 
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (error) throw error;
+      if (edgeFunctionError) {
+        console.error('Users.tsx: Error invoking manage-user edge function:', edgeFunctionError);
+        throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de atualização de usuário.');
+      }
 
-      // Update auth.users email if changed
-      if (editingUser.email !== formData.email) {
-        const { error: authUpdateError } = await supabase.auth.admin.updateUserById(editingUser.id, {
-          email: formData.email
-        });
-        if (authUpdateError) throw authUpdateError;
+      if (data && data.error) {
+        console.error('Users.tsx: Edge function returned error:', data.error);
+        throw new Error(data.error);
       }
 
       toast({
@@ -403,7 +415,14 @@ export default function Users() {
                   <Label htmlFor="role">Cargo *</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value: string) => setFormData({ ...formData, role: value })}
+                    onValueChange={(value: string) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        role: value,
+                        municipality_id: '', // Reset on role change
+                        school_id: '',       // Reset on role change
+                      }));
+                    }}
                     disabled={
                       editingUser?.id === currentUserProfile?.id || 
                       !getAvailableRoles().includes(formData.role)
@@ -413,16 +432,18 @@ export default function Users() {
                       <SelectValue placeholder="Selecione o cargo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getAvailableRoles().map((roleOption) => (
-                        <SelectItem key={roleOption} value={roleOption}>
-                          {getRoleLabel(roleOption)}
-                        </SelectItem>
-                      ))}
+                        {getAvailableRoles().map((roleOption) => (
+                          <SelectItem key={roleOption} value={roleOption}>
+                            {getRoleLabel(roleOption)}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
-                {(formData.role === 'municipal_secretary' || formData.role === 'network_manager' || formData.role === 'school_admin' || formData.role === 'secretary' || 
-                  ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(formData.role)) && (
+
+                {/* Conditional rendering for Municipality Select */}
+                { (['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(formData.role) || 
+                   customRoles.some(cr => cr.name === formData.role && cr.scope === 'municipal')) && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
@@ -446,8 +467,9 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
-                {(formData.role === 'school_admin' || formData.role === 'secretary' || 
-                  ['school_admin', 'secretary'].includes(formData.role)) && (
+
+                {/* Conditional rendering for School Select */}
+                { (['school_admin', 'secretary'].includes(formData.role)) && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select
