@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { FileText, Users, Clock, School, UserCog, ArrowLeft, Building2, ShieldCheck, Info, Loader2, LogOut, Settings, User as UserIcon } => 'lucide-react';
+import { FileText, Users, Clock, School, UserCog, ArrowLeft, Building2, ShieldCheck, Info, Loader2, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
