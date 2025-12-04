@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, UserCog, Trash2, Mail, Building2, School, Loader2, Edit } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } => 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
@@ -173,7 +173,7 @@ export default function Users() {
         name: formData.name
       });
 
-      console.log('Users.tsx: Invoking manage-user edge function for creation...');
+      // Call the Edge Function to create the user
       const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
         body: JSON.stringify({
           action: 'create',
@@ -190,12 +190,12 @@ export default function Users() {
       });
 
       if (edgeFunctionError) {
-        console.error('Users.tsx: Error invoking manage-user edge function:', edgeFunctionError);
+        console.error('Error invoking manage-user edge function:', edgeFunctionError);
         throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de criação de usuário.');
       }
 
+      // The Edge Function returns a JSON object with 'error' if something went wrong
       if (data && data.error) {
-        console.error('Users.tsx: Edge function returned error:', data.error);
         throw new Error(data.error);
       }
 
@@ -222,10 +222,7 @@ export default function Users() {
     if (!editingUser) return;
 
     try {
-      // No password validation here, assuming password is not updated via this form.
-      // If password update is desired, a separate input and validation would be needed.
-
-      console.log('Users.tsx: Invoking manage-user edge function for update...');
+      // Call the Edge Function to update the user
       const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
         body: JSON.stringify({
           action: 'update',
@@ -235,8 +232,7 @@ export default function Users() {
           role: formData.role,
           municipality_id: formData.municipality_id || null,
           school_id: formData.school_id || null,
-          // Do NOT send password unless it's explicitly changed by the user in the form
-          // password: formData.password, 
+          // Password is not updated via this form, so it's not sent.
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -244,12 +240,11 @@ export default function Users() {
       });
 
       if (edgeFunctionError) {
-        console.error('Users.tsx: Error invoking manage-user edge function:', edgeFunctionError);
+        console.error('Error invoking manage-user edge function:', edgeFunctionError);
         throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de atualização de usuário.');
       }
 
       if (data && data.error) {
-        console.error('Users.tsx: Edge function returned error:', data.error);
         throw new Error(data.error);
       }
 
@@ -273,8 +268,27 @@ export default function Users() {
   const handleDelete = async (userId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação é irreversível.')) return;
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
+      console.log('Users.tsx: Invoking manage-user edge function for deletion...');
+      const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
+        body: JSON.stringify({
+          action: 'delete',
+          userId: userId,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (edgeFunctionError) {
+        console.error('Users.tsx: Error invoking manage-user edge function:', edgeFunctionError);
+        throw new Error(edgeFunctionError.message || 'Erro desconhecido ao invocar função de exclusão de usuário.');
+      }
+
+      if (data && data.error) {
+        console.error('Users.tsx: Edge function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
       toast({
         title: 'Usuário excluído com sucesso!'
       });
@@ -324,14 +338,24 @@ export default function Users() {
     return [];
   };
 
+  const roleRequiresMunicipality = (selectedRole: string) => {
+    const roleObj = customRoles.find(cr => cr.name === selectedRole);
+    if (roleObj) return roleObj.scope === 'municipal';
+    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(selectedRole);
+  };
+
+  const roleRequiresSchool = (selectedRole: string) => {
+    return ['school_admin', 'secretary'].includes(selectedRole);
+  };
+
   const resetForm = () => {
     setFormData({
       email: '',
       password: '',
       name: '',
       role: 'secretary',
-      municipality_id: '',
-      school_id: '',
+      municipality_id: currentUserProfile?.municipality_id || '', // Set default municipality if current user has one
+      school_id: currentUserProfile?.school_id || '', // Set default school if current user has one
     });
     setEditingUser(null);
   };
@@ -419,8 +443,8 @@ export default function Users() {
                       setFormData(prev => ({
                         ...prev,
                         role: value,
-                        municipality_id: '', // Reset on role change
-                        school_id: '',       // Reset on role change
+                        municipality_id: roleRequiresMunicipality(value) && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '', // Set default municipality if current user has one and role requires it
+                        school_id: roleRequiresSchool(value) && currentUserProfile?.school_id ? currentUserProfile.school_id : '', // Set default school if current user has one and role requires it
                       }));
                     }}
                     disabled={
@@ -442,8 +466,7 @@ export default function Users() {
                 </div>
 
                 {/* Conditional rendering for Municipality Select */}
-                { (['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(formData.role) || 
-                   customRoles.some(cr => cr.name === formData.role && cr.scope === 'municipal')) && (
+                { roleRequiresMunicipality(formData.role) && (
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal</Label>
                     <Select
@@ -469,7 +492,7 @@ export default function Users() {
                 )}
 
                 {/* Conditional rendering for School Select */}
-                { (['school_admin', 'secretary'].includes(formData.role)) && (
+                { roleRequiresSchool(formData.role) && (
                   <div>
                     <Label htmlFor="school_id">Escola</Label>
                     <Select

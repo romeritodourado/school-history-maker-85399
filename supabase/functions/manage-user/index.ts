@@ -149,6 +149,67 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
+    } else if (action === 'delete') {
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'User ID is required for delete action.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+
+      // Before deleting the auth user, check if the current user is allowed to delete this specific user
+      // For example, a municipal_secretary cannot delete a super_admin, or a user outside their municipality.
+      // This check is crucial for security.
+      const { data: userToDeleteProfile, error: userToDeleteProfileError } = await supabaseAdmin
+        .from('profiles')
+        .select('role, municipality_id, school_id')
+        .eq('id', userId)
+        .single();
+
+      if (userToDeleteProfileError || !userToDeleteProfile) {
+        return new Response(JSON.stringify({ error: 'User to delete profile not found.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404,
+        });
+      }
+
+      // More granular permission checks for deletion
+      let canDelete = false;
+      if (currentProfile.role === 'super_admin') {
+        canDelete = true; // Super admin can delete anyone
+      } else if ((currentProfile.role === 'municipal_secretary' || currentProfile.role === 'network_manager') && currentProfile.municipality_id) {
+        // Municipal roles can delete users within their municipality, but not super_admin
+        if (userToDeleteProfile.municipality_id === currentProfile.municipality_id && userToDeleteProfile.role !== 'super_admin') {
+          canDelete = true;
+        }
+      } else if (currentProfile.role === 'school_admin' && currentProfile.school_id) {
+        // School admin can delete secretaries within their school
+        if (userToDeleteProfile.school_id === currentProfile.school_id && userToDeleteProfile.role === 'secretary') {
+          canDelete = true;
+        }
+      }
+
+      if (!canDelete) {
+        return new Response(JSON.stringify({ error: 'Forbidden: Not allowed to delete this user.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        });
+      }
+
+      const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+      if (deleteUserError) {
+        console.error('Error deleting user:', deleteUserError);
+        return new Response(JSON.stringify({ error: deleteUserError.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+
+      return new Response(JSON.stringify({ message: 'User deleted successfully' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     } else {
       return new Response(JSON.stringify({ error: 'Invalid action specified.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
