@@ -503,13 +503,6 @@ export default function Dashboard() {
       roles: ['municipal_secretary', 'network_manager'],
     },
     {
-      title: 'Gerenciar Usuários', // Adicionado para o Dashboard principal
-      description: 'Criar e editar contas de usuários',
-      icon: UserCog,
-      path: '/usuarios',
-      roles: ['super_admin'], // Apenas Super Admin no dashboard principal
-    },
-    {
       title: 'Validar Histórico',
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
@@ -612,6 +605,24 @@ export default function Dashboard() {
                     Ir para o Dashboard Municipal
                   </Button>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Card Gerenciar Usuários para Super Admin */}
+            <Card className="mb-6 border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCog className="h-5 w-5" />
+                  Gerenciar Usuários
+                </CardTitle>
+                <CardDescription>
+                  Crie e edite contas de usuários em todo o sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => navigate('/usuarios')}>
+                  Acessar Gerenciamento de Usuários
+                </Button>
               </CardContent>
             </Card>
 
