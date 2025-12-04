@@ -175,8 +175,8 @@ const CreateTranscript = () => {
     let initialSchoolId: string | null = null;
 
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
-      initialSchoolId = schoolIdFromUrl;
       console.log("Initial school from URL:", initialSchoolId);
+      initialSchoolId = schoolIdFromUrl;
     } else if (profile?.school_id && schools.some(s => s.id === profile.school_id)) {
       initialSchoolId = profile.school_id;
       console.log("Initial school from user profile:", initialSchoolId);
@@ -441,6 +441,7 @@ const CreateTranscript = () => {
       let studentId = id;
 
       if (id) {
+        // Update existing student
         const { error: studentError } = await supabase
           .from("students")
           .update({ ...studentData, school_id: selectedSchoolId })
@@ -448,14 +449,42 @@ const CreateTranscript = () => {
 
         if (studentError) throw studentError;
 
-        await supabase.from("academic_years").delete().eq("student_id", id);
-        await supabase.from("annual_grades").delete().eq("student_id", id);
+        // --- CORREÇÃO: Excluir dados relacionados na ordem correta ---
+        // 1. Obter todos os IDs dos anos letivos associados a este aluno
+        const { data: existingAcademicYears, error: fetchYearsError } = await supabase
+          .from("academic_years")
+          .select("id")
+          .eq("student_id", id);
 
-        const existingTrimesterYears = (await supabase.from("academic_years").select("id").eq("student_id", id)).data?.map(y => y.id) || [];
-        if (existingTrimesterYears.length > 0) {
-          await supabase.from("trimester_grades").delete().in("academic_year_id", existingTrimesterYears);
+        if (fetchYearsError) throw fetchYearsError;
+        const existingAcademicYearIds = existingAcademicYears?.map(y => y.id) || [];
+
+        if (existingAcademicYearIds.length > 0) {
+          // 2. Excluir notas trimestrais associadas a esses anos letivos
+          const { error: deleteTrimesterError } = await supabase
+            .from("trimester_grades")
+            .delete()
+            .in("academic_year_id", existingAcademicYearIds);
+          if (deleteTrimesterError) throw deleteTrimesterError;
+
+          // 3. Excluir notas anuais associadas a esses anos letivos
+          const { error: deleteAnnualError } = await supabase
+            .from("annual_grades")
+            .delete()
+            .in("academic_year_id", existingAcademicYearIds);
+          if (deleteAnnualError) throw deleteAnnualError;
         }
+
+        // 4. Finalmente, excluir os próprios anos letivos
+        const { error: deleteYearsError } = await supabase
+          .from("academic_years")
+          .delete()
+          .eq("student_id", id);
+        if (deleteYearsError) throw deleteYearsError;
+        // --- FIM DA CORREÇÃO ---
+
       } else {
+        // Insert new student
         const { data: student, error: studentError } = await supabase
           .from("students")
           .insert([{ ...studentData, school_id: selectedSchoolId }])
@@ -466,6 +495,7 @@ const CreateTranscript = () => {
         studentId = student.id;
       }
 
+      // Insert academic years and grades
       for (let i = 0; i < academicYears.length; i++) {
         const year = academicYears[i];
         const isLatestYear = i === academicYears.length - 1;
