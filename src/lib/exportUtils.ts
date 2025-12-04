@@ -100,7 +100,7 @@ export const exportToPDF = async (
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 15; // Starting Y position for the header content
 
-  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const municipalityName = student.schools?.municipalities?.name || "Não Informado";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
   const authorizationDecree = student.schools?.authorization_decree_url || "";
   const officialGazette = student.schools?.official_gazette_url || "";
@@ -116,35 +116,44 @@ export const exportToPDF = async (
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
   ]);
 
+  // Logo dimensions
+  const logoWidth = 25;
+  const logoHeight = 25;
+  const logoMargin = 15; // Margin from left/right edge
+
   // Add municipality emblem (left)
   if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", 15, yPos, 30, 30); // x, y, width, height
+    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, yPos, logoWidth, logoHeight);
   }
 
   // Add school logo (right)
   if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", pageWidth - 45, yPos, 30, 30); // x, y, width, height
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, yPos, logoWidth, logoHeight);
   }
 
   // Central text for header
-  doc.setFontSize(12);
+  const textStartX = logoMargin + logoWidth + 5; // Start text after left logo
+  const textEndX = pageWidth - logoMargin - logoWidth - 5; // End text before right logo
+  const textWidth = textEndX - textStartX;
+
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, yPos + 5, { align: "center" });
-  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 12, { align: "center" });
-  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 19, { align: "center" });
-  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 26, { align: "center" });
+  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, yPos + 2, { align: "center" });
+  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 7, { align: "center" });
+  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 12, { align: "center" });
+  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 17, { align: "center" });
 
   if (authorizationDecree || officialGazette) {
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     let authText = "";
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, pageWidth / 2, yPos + 33, { align: "center" });
+    doc.text(authText, pageWidth / 2, yPos + 22, { align: "center" });
   }
 
-  yPos += 40; // Move yPos down after header content
+  yPos += 35; // Move yPos down after header content, ensuring space for logos and text
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");

@@ -83,7 +83,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     return field === "grade" ? formatGrade(grade.grade) : grade.absences;
   };
 
-  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const municipalityName = student.schools?.municipalities?.name || "Não Informado";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
   const authorizationDecree = student.schools?.authorization_decree_url || "";
   const officialGazette = student.schools?.official_gazette_url || "";
@@ -98,14 +98,15 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* Municipality Emblem on Left */}
             <div className="w-1/5 flex justify-start">
               {municipalityEmblemUrl && (
-                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-20 w-20 object-contain" />
+                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-16 w-16 object-contain" />
               )}
             </div>
             
             {/* Central Text */}
-            <div className="flex-1 text-center">
+            <div className="flex-1 text-center space-y-1">
               <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL</h2>
               <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3>
+              <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -120,7 +121,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* School Logo on Right */}
             <div className="w-1/5 flex justify-end">
               {schoolLogoUrl && (
-                <img src={schoolLogoUrl} alt="School Logo" className="h-20 w-20 object-contain" />
+                <img src={schoolLogoUrl} alt="School Logo" className="h-16 w-16 object-contain" />
               )}
             </div>
           </div>
