@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// REMOVIDO: import correctLogo from "/correct-logo.png";
 
 interface StudentData {
   id: string;
@@ -98,7 +97,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* Municipality Emblem on Left */}
             <div className="w-1/5 flex justify-start">
               {municipalityEmblemUrl && (
-                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-12 w-12 object-contain" />
+                <img src={municipalityEmblemUrl} alt="Brasão da Rede Municipal" className="h-12 w-12 object-contain" />
               )}
             </div>
             
@@ -121,7 +120,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {/* School Logo on Right */}
             <div className="w-1/5 flex justify-end">
               {schoolLogoUrl && (
-                <img src={schoolLogoUrl} alt="School Logo" className="h-12 w-12 object-contain" />
+                <img src={schoolLogoUrl} alt="Logo da Escola" className="h-12 w-12 object-contain" />
               )}
             </div>
           </div>

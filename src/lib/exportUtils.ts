@@ -1,7 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-// REMOVIDO: import correctLogo from "/correct-logo.png";
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {

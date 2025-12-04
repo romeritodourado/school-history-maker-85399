@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// REMOVIDO: import correctLogo from "/correct-logo.png";
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
@@ -197,6 +196,7 @@ const ViewTranscript = () => {
         <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
+  );
   }
 
   if (!student) {
@@ -217,7 +217,6 @@ const ViewTranscript = () => {
       <header className="border-b bg-card shadow-school">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            {/* O logo 'Correct' e o link para a home foram removidos daqui */}
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-primary">Histórico Escolar</h1>
               <p className="text-muted-foreground">{student.full_name}</p>
@@ -239,8 +238,7 @@ const ViewTranscript = () => {
               </Link>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       <main className="container mx-auto px-4 py-8">
         <TranscriptPreview
