@@ -97,12 +97,12 @@ export const exportToPDF = async (
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  const logoWidth = 25; // Aumentado o tamanho
-  const logoHeight = 25; // Aumentado o tamanho
-  const logoMargin = 10; // Margem da borda
-  const headerTopY = 15; // Posição Y inicial para todo o bloco do cabeçalho
+  const logoWidth = 25; 
+  const logoHeight = 25; 
+  const logoMargin = 10; 
+  const headerTopY = 20; // Ajustado para empurrar o conteúdo para baixo
 
-  let currentTextY = headerTopY; // Posição Y para as linhas de texto
+  let currentTextY = headerTopY; 
 
   const municipalityName = student.schools?.municipalities?.name || "Não Informado";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
@@ -134,13 +134,13 @@ export const exportToPDF = async (
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 5; // Line spacing
+  currentTextY += 5; 
   doc.text(municipalityName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 5; // Line spacing
+  currentTextY += 5; 
   // REMOVIDO DUPLICADO: doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, currentTextY, { align: "center" });
-  // currentTextY += 5; // Line spacing
+  // currentTextY += 5; 
   doc.text(schoolName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 5; // Line spacing
+  currentTextY += 5; 
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);
@@ -685,7 +685,7 @@ export const exportToExcel = (
   const studentInfo = [
     ["PREFEITURA MUNICIPAL"],
     [municipalityName.toUpperCase()],
-    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], // Mantido aqui para o Excel, pois a estrutura é diferente
+    // REMOVIDO: ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], 
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
     [""],
