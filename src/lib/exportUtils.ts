@@ -666,11 +666,14 @@ export const exportToExcel = (
 
   const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
+  const authorizationDecree = student.schools?.authorization_decree_url || "";
+  const officialGazette = student.schools?.official_gazette_url || "";
 
   const studentInfo = [
     [`PREFEITURA MUNICIPAL DE ${municipalityName.toUpperCase()}`],
     ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"],
     [schoolName.toUpperCase()],
+    [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
     [""],
     ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
     [""],

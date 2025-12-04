@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// Removido: import correctLogo from "/correct-logo.png";
+// REMOVIDO: import correctLogo from "/correct-logo.png";
 
 interface StudentData {
   id: string;
@@ -298,7 +298,6 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {student.student_status === "concluído" && ` concluiu no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
             {student.student_status === "cursando" && ` está cursando no ano de ${new Date().getFullYear()} o `}
             {student.student_status === "transferido" && ` foi transferido no ano de ${academicYears.length > 0 ? academicYears[academicYears.length - 1].calendar_year : new Date().getFullYear()} o `}
-            {student.student_status === "conservado" && ` está conservado no ano de ${new Date().getFullYear()} o `}
             {!student.student_status && ` está cursando no ano de ${new Date().getFullYear()} o `} {/* Default if null */}
             <span className="font-bold">{student.grade_series || "Ensino Fundamental"}</span>
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
