@@ -19,6 +19,7 @@ import Schools from "./pages/Schools";
 import Users from "./pages/Users";
 import ValidateTranscript from "./pages/ValidateTranscript";
 import AccountSettings from "./pages/AccountSettings";
+import SignTranscripts from "./pages/SignTranscripts"; // Importar a nova página
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
 
@@ -101,6 +102,11 @@ const App = () => (
               <Route path="/account-settings" element={
                 <ProtectedRoute>
                   <AccountSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/assinar-historicos" element={
+                <ProtectedRoute>
+                  <SignTranscripts />
                 </ProtectedRoute>
               } />
               <Route path="/404" element={<NotFound />} />

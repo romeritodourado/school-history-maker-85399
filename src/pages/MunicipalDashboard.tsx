@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
@@ -312,6 +313,7 @@ export default function MunicipalDashboard() {
                   <UserIcon className="h-4 w-4" />
                   Olá, <span className="font-medium">{profile?.name || user.email}</span> (<span className="font-medium">{getRoleLabel(role)}</span>)
                 </div>
+                <NotificationsBell /> {/* Adicionado o sino de notificações aqui */}
                 <Button variant="outline" onClick={() => navigate('/account-settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta

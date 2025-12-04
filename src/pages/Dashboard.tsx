@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
 
@@ -545,6 +546,7 @@ export default function Dashboard() {
                   <UserIcon className="h-4 w-4" />
                   Olá, <span className="font-medium">{profile?.name || user.email}</span> (<span className="font-medium">{getRoleLabel(role)}</span>)
                 </div>
+                <NotificationsBell /> {/* Adicionado o sino de notificações aqui */}
                 <Button variant="outline" onClick={() => navigate('/account-settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações da Conta
