@@ -116,22 +116,23 @@ export const exportToPDF = async (
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
   ]);
 
-  // Add school logo (left)
-  if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", 15, yPos, 30, 30); // x, y, width, height
+  // Add municipality emblem (left)
+  if (municipalityEmblemBase64) {
+    doc.addImage(municipalityEmblemBase64, "PNG", 15, yPos, 30, 30); // x, y, width, height
   }
 
-  // Add municipality emblem (right)
-  if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", pageWidth - 45, yPos, 30, 30); // x, y, width, height
+  // Add school logo (right)
+  if (schoolLogoBase64) {
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - 45, yPos, 30, 30); // x, y, width, height
   }
 
   // Central text for header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(`PREFEITURA MUNICIPAL DE ${municipalityName.toUpperCase()}`, pageWidth / 2, yPos + 5, { align: "center" });
-  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 12, { align: "center" });
-  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 19, { align: "center" });
+  doc.text("PREFEITURA MUNICIPAL", pageWidth / 2, yPos + 5, { align: "center" });
+  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 12, { align: "center" });
+  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 19, { align: "center" });
+  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 26, { align: "center" });
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(8);
@@ -140,10 +141,10 @@ export const exportToPDF = async (
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, pageWidth / 2, yPos + 26, { align: "center" });
+    doc.text(authText, pageWidth / 2, yPos + 33, { align: "center" });
   }
 
-  yPos += 35; // Move yPos down after header content
+  yPos += 40; // Move yPos down after header content
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
@@ -670,7 +671,8 @@ export const exportToExcel = (
   const officialGazette = student.schools?.official_gazette_url || "";
 
   const studentInfo = [
-    [`PREFEITURA MUNICIPAL DE ${municipalityName.toUpperCase()}`],
+    ["PREFEITURA MUNICIPAL"],
+    [municipalityName.toUpperCase()],
     ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"],
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],

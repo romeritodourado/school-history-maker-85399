@@ -95,17 +95,17 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
       <Card>
         <CardHeader className="border-b bg-primary/5">
           <div className="flex items-center justify-between gap-4 p-4">
-            {/* School Logo on Left */}
+            {/* Municipality Emblem on Left */}
             <div className="w-1/5 flex justify-start">
-              {schoolLogoUrl && (
-                <img src={schoolLogoUrl} alt="School Logo" className="h-20 w-20 object-contain" />
+              {municipalityEmblemUrl && (
+                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-20 w-20 object-contain" />
               )}
             </div>
             
             {/* Central Text */}
             <div className="flex-1 text-center">
-              <h2 className="text-sm font-bold text-primary uppercase">{municipalityName}</h2>
-              <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
+              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL</h2>
+              <h3 className="text-sm font-bold text-primary uppercase">{municipalityName}</h3>
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -117,10 +117,10 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
               <h2 className="mt-2 text-lg font-bold text-primary">HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL</h2>
             </div>
 
-            {/* Municipality Emblem on Right */}
+            {/* School Logo on Right */}
             <div className="w-1/5 flex justify-end">
-              {municipalityEmblemUrl && (
-                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-20 w-20 object-contain" />
+              {schoolLogoUrl && (
+                <img src={schoolLogoUrl} alt="School Logo" className="h-20 w-20 object-contain" />
               )}
             </div>
           </div>
