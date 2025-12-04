@@ -1,13 +1,13 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import correctLogo from "/correct-logo.png";
+// Removido: import correctLogo from "/correct-logo.png";
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    img.crossOrigin = "anonymous"; // Needed for cross-origin images
     img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
@@ -20,7 +20,10 @@ const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
         reject(new Error("Failed to get canvas context"));
       }
     };
-    img.onerror = reject;
+    img.onerror = (e) => {
+      console.error("Image loading error:", e);
+      reject(new Error(`Failed to load image: ${imageUrl}`));
+    };
     img.src = imageUrl;
   });
 };
@@ -37,7 +40,20 @@ interface StudentData {
   grade_series: string | null;
   observations: string | null;
   school_id: string | null;
-  schools: { name: string, municipality_id: string, address: string | null, city: string | null, state: string | null, logo_url: string | null, authorization_decree_url: string | null, official_gazette_url: string | null } | null;
+  schools: { 
+    name: string, 
+    municipality_id: string, 
+    address: string | null, 
+    city: string | null, 
+    state: string | null, 
+    logo_url: string | null, 
+    authorization_decree_url: string | null, 
+    official_gazette_url: string | null,
+    municipalities: { // Add this nested object
+      name: string;
+      emblem_url: string | null;
+    } | null;
+  } | null;
 }
 
 interface AcademicYearData {
@@ -82,28 +98,60 @@ export const exportToPDF = async (
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = 15; // Starting Y position for the header content
 
-  try {
-    const correctLogoBase64 = await getImageAsBase64(correctLogo);
-    doc.addImage(correctLogoBase64, "PNG", pageWidth / 2 - 15, 10, 30, 30);
-  } catch (error) {
-    console.error("Error loading logo:", error);
+  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
+  const authorizationDecree = student.schools?.authorization_decree_url || "";
+  const officialGazette = student.schools?.official_gazette_url || "";
+  const schoolLogoUrl = student.schools?.logo_url;
+  const municipalityEmblemUrl = student.schools?.municipalities?.emblem_url;
+
+  let schoolLogoBase64: string | null = null;
+  let municipalityEmblemBase64: string | null = null;
+
+  // Load images concurrently
+  await Promise.all([
+    schoolLogoUrl ? getImageAsBase64(schoolLogoUrl).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
+    municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
+  ]);
+
+  // Add school logo (left)
+  if (schoolLogoBase64) {
+    doc.addImage(schoolLogoBase64, "PNG", 15, yPos, 30, 30); // x, y, width, height
   }
 
+  // Add municipality emblem (right)
+  if (municipalityEmblemBase64) {
+    doc.addImage(municipalityEmblemBase64, "PNG", pageWidth - 45, yPos, 30, 30); // x, y, width, height
+  }
+
+  // Central text for header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Correct - Sistema de Histórico Escolar", pageWidth / 2, 45, { align: "center" });
-  
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text("Gestão simplificada de históricos escolares", pageWidth / 2, 52, { align: "center" });
-  
+  doc.text(municipalityName.toUpperCase(), pageWidth / 2, yPos + 5, { align: "center" });
+  doc.text("SECRETARIA MUNICIPAL DA EDUCAÇÃO", pageWidth / 2, yPos + 12, { align: "center" });
+  doc.text(schoolName.toUpperCase(), pageWidth / 2, yPos + 19, { align: "center" });
+
+  if (authorizationDecree || officialGazette) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    let authText = "";
+    if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
+    if (authorizationDecree && officialGazette) authText += ` - `;
+    if (officialGazette) authText += `D.O.: ${officialGazette}`;
+    doc.text(authText, pageWidth / 2, yPos + 26, { align: "center" });
+  }
+
+  yPos += 35; // Move yPos down after header content
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, 65, { align: "center" });
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, yPos, { align: "center" });
+  yPos += 10; // Space after main title
 
+  // Student data section starts here
   doc.setFontSize(10);
-  let yPos = 75;
   doc.setFont("helvetica", "normal");
   doc.text(`ALUNO (A): `, 15, yPos);
   doc.setFont("helvetica", "bold");
@@ -745,6 +793,6 @@ export const exportToExcel = (
     { origin: { r: currentRow, c: 0 } }
   );
 
-  XLSX.utils.book_append_sheet(wb, ws, `Histórico Escolar - ${student.full_name}`);
+  XLSX.utils.book_append_sheet(wb, ws, `Histórico Escolar - ${student.full_name.replace(/ /g, "_")}`);
   XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
 };

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import correctLogo from "/correct-logo.png";
+// Removido: import correctLogo from "/correct-logo.png";
 
 interface StudentData {
   id: string;
@@ -14,7 +14,20 @@ interface StudentData {
   grade_series: string | null;
   observations: string | null;
   school_id: string | null;
-  schools: { name: string, municipality_id: string, address: string | null, city: string | null, state: string | null, logo_url: string | null, authorization_decree_url: string | null, official_gazette_url: string | null } | null;
+  schools: { 
+    name: string, 
+    municipality_id: string, 
+    address: string | null, 
+    city: string | null, 
+    state: string | null, 
+    logo_url: string | null, 
+    authorization_decree_url: string | null, 
+    official_gazette_url: string | null,
+    municipalities: { // Add this nested object
+      name: string;
+      emblem_url: string | null;
+    } | null;
+  } | null;
 }
 
 interface AcademicYearData {
@@ -70,17 +83,45 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
     return field === "grade" ? formatGrade(grade.grade) : grade.absences;
   };
 
+  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
+  const authorizationDecree = student.schools?.authorization_decree_url || "";
+  const officialGazette = student.schools?.official_gazette_url || "";
+  const schoolLogoUrl = student.schools?.logo_url;
+  const municipalityEmblemUrl = student.schools?.municipalities?.emblem_url;
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b bg-primary/5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 p-4">
+            {/* School Logo on Left */}
+            <div className="w-1/5 flex justify-start">
+              {schoolLogoUrl && (
+                <img src={schoolLogoUrl} alt="School Logo" className="h-20 w-20 object-contain" />
+              )}
+            </div>
+            
+            {/* Central Text */}
             <div className="flex-1 text-center">
-              <img src={correctLogo} alt="Correct Logo" className="h-20 w-20 object-contain mx-auto mb-2" />
-              <h2 className="text-sm font-bold text-primary">Correct - Sistema de Histórico Escolar</h2>
-              <h3 className="text-sm font-bold text-primary">Gestão simplificada de históricos escolares</h3>
-              <p className="text-xs text-muted-foreground">Versão 1.0</p>
+              <h2 className="text-sm font-bold text-primary uppercase">{municipalityName}</h2>
+              <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
+              <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
+              {(authorizationDecree || officialGazette) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {authorizationDecree && `Autorização: ${authorizationDecree}`}
+                  {authorizationDecree && officialGazette && ` - `}
+                  {officialGazette && `D.O.: ${officialGazette}`}
+                </p>
+              )}
               <h2 className="mt-2 text-lg font-bold text-primary">HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL</h2>
+            </div>
+
+            {/* Municipality Emblem on Right */}
+            <div className="w-1/5 flex justify-end">
+              {municipalityEmblemUrl && (
+                <img src={municipalityEmblemUrl} alt="Municipality Emblem" className="h-20 w-20 object-contain" />
+              )}
             </div>
           </div>
         </CardHeader>

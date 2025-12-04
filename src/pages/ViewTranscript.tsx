@@ -22,7 +22,20 @@ interface StudentData {
   grade_series: string | null;
   observations: string | null;
   school_id: string | null;
-  schools: { name: string, municipality_id: string } | null;
+  schools: { 
+    name: string, 
+    municipality_id: string,
+    address: string | null, 
+    city: string | null, 
+    state: string | null, 
+    logo_url: string | null, 
+    authorization_decree_url: string | null, 
+    official_gazette_url: string | null,
+    municipalities: { // Add this nested object
+      name: string;
+      emblem_url: string | null;
+    } | null;
+  } | null;
 }
 
 interface AcademicYearData {
@@ -78,7 +91,17 @@ const ViewTranscript = () => {
         .from("students")
         .select(`
           *,
-          schools (name, municipality_id)
+          schools (
+            name, 
+            municipality_id,
+            address,
+            city,
+            state,
+            logo_url,
+            authorization_decree_url,
+            official_gazette_url,
+            municipalities (name, emblem_url)
+          )
         `)
         .eq("id", id)
         .single();

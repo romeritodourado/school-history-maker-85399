@@ -171,8 +171,8 @@ export type Database = {
           emblem_url: string | null
           id: string
           name: string
-          city: string | null // Adicionado
-          state: string | null // Adicionado
+          city: string | null
+          state: string | null
         }
         Insert: {
           address?: string | null
@@ -181,8 +181,8 @@ export type Database = {
           emblem_url?: string | null
           id?: string
           name: string
-          city?: string | null // Adicionado
-          state?: string | null // Adicionado
+          city?: string | null
+          state?: string | null
         }
         Update: {
           address?: string | null
@@ -191,8 +191,8 @@ export type Database = {
           emblem_url?: string | null
           id?: string
           name?: string
-          city?: string | null // Adicionado
-          state?: string | null // Adicionado
+          city?: string | null
+          state?: string | null
         }
         Relationships: []
       }
@@ -494,7 +494,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      app_role: "super_admin" | "municipal_secretary" | "school_admin" | "secretary" | "network_manager"
+      app_role: "super_admin" | "municipal_secretary" | "network_manager" | "school_admin" | "secretary"
     }
     CompositeTypes: {
       [_ in never]: never
