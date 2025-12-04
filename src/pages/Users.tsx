@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
 interface UserProfile {
   id: string;
@@ -325,7 +325,8 @@ export default function Users() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
+      secretary: 'Secretário(a) Escolar',
+      administrative_assistant: 'Assistente Administrativo', // Novo cargo
     };
     
     // Verificar se é um cargo personalizado
@@ -338,7 +339,7 @@ export default function Users() {
   };
 
   const getAllAvailableRoles = () => {
-    const systemRoles: string[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'];
+    const systemRoles: string[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'];
     const customRoleNames = customRoles.map(r => r.name);
     return [...systemRoles, ...customRoleNames];
   };
@@ -350,7 +351,7 @@ export default function Users() {
     if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') 
       return allRoles.filter(r => r !== 'super_admin');
     if (currentUserRole === 'school_admin') 
-      return allRoles.filter(r => r === 'secretary' || r === 'school_admin');
+      return allRoles.filter(r => r === 'secretary' || r === 'school_admin' || r === 'administrative_assistant');
     
     return [];
   };
@@ -358,11 +359,11 @@ export default function Users() {
   const roleRequiresMunicipality = (selectedRole: string) => {
     const roleObj = customRoles.find(cr => cr.name === selectedRole);
     if (roleObj) return roleObj.scope === 'municipal';
-    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'].includes(selectedRole);
+    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
   };
 
   const roleRequiresSchool = (selectedRole: string) => {
-    return ['school_admin', 'secretary'].includes(selectedRole);
+    return ['school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
   };
 
   const resetForm = () => {
@@ -711,7 +712,7 @@ export default function Users() {
                           <School className="h-4 w-4" />
                           Escola: {school.name}
                         </CardTitle>
-                      </CardHeader> {/* Corrigido: Fechamento de CardHeader */}
+                      </CardHeader>
                       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                         {school.users.map(renderUserCard)}
                       </CardContent>

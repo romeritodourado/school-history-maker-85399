@@ -153,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setUser(sessionData.user);
               setSession(sessionData);
               setProfile(prof ?? null);
-              setRole(prof?.role ?? null);
+              setRole(prof?.role); // Use prof?.role directly
               setAuthLoading(false);
               console.log('AuthContext: SIGNED_IN/TOKEN_REFRESHED/USER_UPDATED. User:', sessionData.user.id, 'Profile:', prof?.id);
             }

@@ -18,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
 interface Municipality {
   id: string;
@@ -71,8 +71,14 @@ const systemRoles = [
   },
   { 
     id: 'secretary', 
-    name: 'Secretário(a) Escolar', // Nome atualizado
+    name: 'Secretário(a) Escolar',
     description: 'Auxiliar administrativo da escola',
+    isSystemRole: true
+  },
+  {
+    id: 'administrative_assistant',
+    name: 'Assistente Administrativo',
+    description: 'Assistente administrativo da escola',
     isSystemRole: true
   }
 ];
@@ -242,7 +248,8 @@ export default function Dashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
+      secretary: 'Secretário(a) Escolar',
+      administrative_assistant: 'Assistente Administrativo', // Novo cargo
     };
     return labels[role] || role;
   };
@@ -479,21 +486,21 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
     },
     {
       title: 'Lista de Alunos',
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
     },
     {
       title: 'Carga Horária',
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
     },
     {
       title: 'Gerenciar Escolas',
@@ -507,7 +514,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary'],
+      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
     },
   ];
 

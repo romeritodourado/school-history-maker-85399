@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { passwordChangeSchema, profileUpdateSchema } from '@/lib/validationSchemas';
 // Removido Progress
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
 export default function AccountSettings() {
   const { user, profile, role, loading: authLoading } = useAuth();
@@ -147,7 +147,7 @@ export default function AccountSettings() {
     return <p className="text-center mt-8">Você precisa estar logado para acessar esta página.</p>;
   }
 
-  const isDirectorOrSecretary = role === 'school_admin' || role === 'secretary';
+  const isDirectorOrSecretary = role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant';
 
   const getRoleLabel = (role: AppRole | null) => {
     if (!role) return 'N/A';
@@ -156,7 +156,8 @@ export default function AccountSettings() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
-      secretary: 'Secretário(a) Escolar', // Nome atualizado aqui
+      secretary: 'Secretário(a) Escolar',
+      administrative_assistant: 'Assistente Administrativo', // Novo cargo
     };
     return labels[role] || role;
   };

@@ -51,7 +51,7 @@ serve(async (req) => {
         isAllowed = true;
       }
     } else if (currentProfile.role === 'school_admin') {
-      if (role === 'secretary' && school_id === currentProfile.school_id) {
+      if ((role === 'secretary' || role === 'administrative_assistant') && school_id === currentProfile.school_id) {
         isAllowed = true;
       }
     }
@@ -183,8 +183,8 @@ serve(async (req) => {
           canDelete = true;
         }
       } else if (currentProfile.role === 'school_admin' && currentProfile.school_id) {
-        // School admin can delete secretaries within their school
-        if (userToDeleteProfile.school_id === currentProfile.school_id && userToDeleteProfile.role === 'secretary') {
+        // School admin can delete secretaries or administrative assistants within their school
+        if (userToDeleteProfile.school_id === currentProfile.school_id && (userToDeleteProfile.role === 'secretary' || userToDeleteProfile.role === 'administrative_assistant')) {
           canDelete = true;
         }
       }
