@@ -78,7 +78,7 @@ const CreateTranscript = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(!!id);
+  const [loadingData, setLoadingData] = useState(!!id); // True if editing, false if creating
   const { user, profile, role } = useAuth();
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
@@ -159,6 +159,7 @@ const CreateTranscript = () => {
         const { data, error } = await query;
         if (error) throw error;
         setSchools(data || []);
+        console.log("Fetched schools:", data);
       } catch (error) {
         console.error('Error fetching schools:', error);
       }
@@ -167,34 +168,53 @@ const CreateTranscript = () => {
     fetchSchools();
   }, [profile, role]);
 
-  // 2. Determine initial selectedSchoolId (for new transcripts)
+  // 2. Load existing transcript data (student, academic years, grades)
   useEffect(() => {
-    if (loadingData || schools.length === 0) return; // If editing or no schools, skip
+    if (id) {
+      loadTranscriptData();
+    }
+  }, [id]);
 
-    const schoolIdFromUrl = searchParams.get('schoolId');
-    let initialSchoolId: string | null = null;
+  // 3. Determine and set selectedSchoolId once schools and studentData are available
+  useEffect(() => {
+    // Only proceed if schools are loaded and we are not actively loading transcript data
+    if (schools.length === 0 || loadingData) {
+      console.log("Skipping school selection logic:", { schoolsLoaded: schools.length > 0, loadingData });
+      return;
+    }
 
-    if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
-      console.log("Initial school from URL:", initialSchoolId);
-      initialSchoolId = schoolIdFromUrl;
-    } else if (profile?.school_id && schools.some(s => s.id === profile.school_id)) {
-      initialSchoolId = profile.school_id;
-      console.log("Initial school from user profile:", initialSchoolId);
-    } else if (schools.length === 1) {
-      initialSchoolId = schools[0].id;
-      console.log("Initial school (only one available):", initialSchoolId);
+    let newSelectedSchoolId: string | null = null;
+
+    // If editing an existing transcript and studentData has a school_id
+    if (id && studentData.school_id) {
+      newSelectedSchoolId = studentData.school_id;
+      console.log("Setting school from loaded student data (editing):", newSelectedSchoolId);
+    } 
+    // If creating a new transcript
+    else if (!id) {
+      const schoolIdFromUrl = searchParams.get('schoolId');
+      if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
+        newSelectedSchoolId = schoolIdFromUrl;
+        console.log("Setting school from URL param (new transcript):", newSelectedSchoolId);
+      } else if (profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+        newSelectedSchoolId = profile.school_id;
+        console.log("Setting school from user profile (new transcript):", newSelectedSchoolId);
+      } else if (schools.length === 1) {
+        newSelectedSchoolId = schools[0].id;
+        console.log("Setting school from single available school (new transcript):", newSelectedSchoolId);
+      }
+    }
+
+    // Update selectedSchoolId state only if it's different
+    if (newSelectedSchoolId !== selectedSchoolId) {
+      console.log("Updating selectedSchoolId from", selectedSchoolId, "to", newSelectedSchoolId);
+      setSelectedSchoolId(newSelectedSchoolId);
     } else {
-      console.log("No initial school determined.");
+      console.log("selectedSchoolId is already set or no new selection:", selectedSchoolId);
     }
+  }, [schools, id, studentData.school_id, profile?.school_id, searchParams, loadingData, selectedSchoolId]);
 
-    if (initialSchoolId && initialSchoolId !== selectedSchoolId) {
-      setSelectedSchoolId(initialSchoolId);
-    } else if (!initialSchoolId && selectedSchoolId) {
-      setSelectedSchoolId(null);
-    }
-  }, [schools, profile, searchParams, loadingData]); // Removed selectedSchoolId from dependencies to prevent loop
-
-  // 3. Update academicYears school info when selectedSchoolId changes
+  // 4. Update academicYears school info when selectedSchoolId changes
   useEffect(() => {
     const school = schools.find(s => s.id === selectedSchoolId);
     if (school) {
@@ -213,7 +233,7 @@ const CreateTranscript = () => {
         state: "",
       })));
     }
-  }, [selectedSchoolId, schools]); // Depend on selectedSchoolId and schools
+  }, [selectedSchoolId, schools]);
 
   const updateWorkloadsFromDatabase = async () => {
     try {
@@ -282,13 +302,6 @@ const CreateTranscript = () => {
     };
   }, [academicYears]);
 
-  // Load existing data when editing
-  useEffect(() => {
-    if (id) {
-      loadTranscriptData();
-    }
-  }, [id]);
-
   const loadTranscriptData = async () => {
     try {
       setLoadingData(true);
@@ -312,7 +325,10 @@ const CreateTranscript = () => {
         observations: student.observations || "",
       });
 
-      setSelectedSchoolId(student.school_id); // Set selected school from loaded student data
+      // Set selectedSchoolId from loaded student data.
+      // This will trigger the combined useEffect (step 3) to re-evaluate.
+      setSelectedSchoolId(student.school_id); 
+      console.log("loadTranscriptData: student.school_id set to", student.school_id);
 
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
@@ -581,7 +597,7 @@ const CreateTranscript = () => {
   if (loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando dados...</p>
+        <p className="text-muted-foreground">Carregando dados...</p>
       </div>
     );
   }
