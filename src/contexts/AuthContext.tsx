@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const mountedRef = useRef(true);
   const initDone = useRef(false);
   const sessionInitialized = useRef(false);
+  const didFetchInitialProfile = useRef(false); // Nova flag para evitar busca duplicada de perfil
 
   useEffect(() => {
     return () => {
@@ -116,12 +117,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
 
-        if (sessionData?.user && !sessionInitialized.current) {
-          sessionInitialized.current = true;
-          console.log("AuthContext: Inicializando sessão com usuário:", sessionData.user.id);
+        if (sessionData?.user && !didFetchInitialProfile.current) { // Usar a nova flag aqui
+          didFetchInitialProfile.current = true;
+          console.log("AuthContext: Processando sessão inicial do usuário:", sessionData.user.id);
           setUser(sessionData.user);
           setSession(sessionData);
-          await fetchProfileForUser(sessionData.user.id);
+          const prof = await fetchProfileForUser(sessionData.user.id);
+          
+          if (!prof) {
+            console.warn("AuthContext: Perfil não encontrado para o usuário:", sessionData.user.id);
+          }
         } else if (!sessionData?.user) {
           console.log("AuthContext: Nenhuma sessão ativa encontrada");
           setUser(null);
@@ -132,11 +137,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
       } finally {
-        console.log("AuthContext: Sessão inicial carregada → Liberando initialSessionChecked");
-        if (mountedRef.current) {
-          setInitialSessionChecked(true);
-          setSessionLoading(false);
-        }
+        // Timer de segurança para liberar initialSessionChecked
+        setTimeout(() => {
+          console.log("AuthContext: Timer de segurança ativado (1000ms) → Liberando initialSessionChecked");
+          if (mountedRef.current) {
+            setInitialSessionChecked(true);
+            setSessionLoading(false);
+          }
+        }, 1000); // Aumentado para 1000ms
       }
     };
 
@@ -209,7 +217,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         listener.subscription.unsubscribe();
       } catch (err) {
-        console.error("AuthContext: Erro ao remover listener:", err);
+        console.warn("AuthContext: Erro ao desinscrever listener:", err);
       }
     };
   }, [fetchProfileForUser, user?.id]);
