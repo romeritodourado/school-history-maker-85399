@@ -1,3 +1,5 @@
+console.log("⚡ ProtectedRoute usando useAuth de:", import.meta.url);
+
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import FullPageLoader from '@/components/FullPageLoader';

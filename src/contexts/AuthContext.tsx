@@ -1,3 +1,5 @@
+console.log("⚡ AuthContext ATIVADO:", import.meta.url);
+
 import React, {
   createContext,
   useContext,
@@ -6,7 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { supabase } from "@/integrations/supabase/client"; // Corrigido de '=>' para 'from'
+import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
