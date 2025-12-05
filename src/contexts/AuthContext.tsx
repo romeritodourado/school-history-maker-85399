@@ -142,7 +142,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         // Sempre define initialSessionChecked como true após o primeiro evento, independentemente da presença do usuário
-        if (!initialSessionChecked) {
+        // Isso garante que ProtectedRoute possa prosseguir após a verificação inicial.
+        if (!initialSessionChecked && mountedRef.current) { // Só define se ainda não foi checado e o componente está montado
           setInitialSessionChecked(true);
         }
         setSessionLoading(false); // A verificação inicial da sessão é feita após o primeiro evento
@@ -152,11 +153,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => {
+      console.log("AuthContext: Desinscrevendo listener de auth state change.");
       try {
         listener.subscription.unsubscribe();
-      } catch {}
+      } catch (e) {
+        console.error("AuthContext: Erro ao desinscrever listener:", e);
+      }
     };
-  }, [fetchProfileForUser, initialSessionChecked]); // Adicionado initialSessionChecked às dependências para garantir que esteja atualizado
+  }, [fetchProfileForUser]); // REMOVIDO initialSessionChecked das dependências
+  // Isso evita que o useEffect seja re-executado quando initialSessionChecked muda.
 
   // =============== Auth Operations ===================
   const signIn = async (email: string, password: string) => {
