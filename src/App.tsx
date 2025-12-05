@@ -35,12 +35,12 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <BrowserRouter> {/* BrowserRouter agora é o componente mais externo para rotas */}
-        <AuthProvider> {/* AuthProvider agora está dentro do BrowserRouter */}
+      <BrowserRouter> {/* BrowserRouter é o componente mais externo para rotas */}
+        <AuthProvider> {/* AuthProvider está dentro do BrowserRouter */}
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Routes>
+            <Routes> {/* As rotas estão diretamente dentro do AuthProvider */}
               <Route path="/login" element={<Login />} />
               <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
               <Route path="/municipal-network-setup" element={
@@ -112,7 +112,7 @@ const App = () => (
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
