@@ -2,39 +2,33 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import FullPageLoader from '@/components/FullPageLoader';
 
-// Removendo a definição de AppRole e a interface ProtectedRouteProps
-// pois requiredRoles não será mais usado aqui.
-
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  // requiredRoles?: AppRole[]; // Removido
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) { // Removido requiredRoles do destructuring
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const {
     user,
     profile,
     initialSessionChecked,
+    authLoading, // Adicionado authLoading
   } = useAuth();
 
   const location = useLocation();
 
-  // 1 — Esperar apenas pela sessão inicial
-  // Se initialSessionChecked for false, significa que a verificação ainda não terminou.
-  if (!initialSessionChecked) {
-    console.log(`ProtectedRoute (${location.pathname}): Aguardando sessão inicial...`);
-    return <FullPageLoader message="Verificando acesso..." />;
+  // 1 — Se a sessão inicial não terminou OU ainda está carregando perfil/token
+  if (!initialSessionChecked || authLoading) {
+    console.log(`ProtectedRoute (${location.pathname}): Esperando carregamento completo...`);
+    return <FullPageLoader message="Carregando..." />;
   }
 
-  // 2 — Se não há usuário ou perfil → login
-  // initialSessionChecked agora é true, então a verificação inicial terminou.
-  // Se user ou profile ainda são null, significa que não há sessão ativa.
+  // 2 — Sem usuário ou perfil → login
   if (!user || !profile) {
     console.log(`ProtectedRoute (${location.pathname}): Sem usuário ou perfil → login`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3 — Acesso liberado
+  // 3 — Tudo OK
   console.log(
     `ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${profile.role}`
   );
