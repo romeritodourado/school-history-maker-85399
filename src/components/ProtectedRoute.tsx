@@ -1,6 +1,8 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import FullPageLoader from '@/components/FullPageLoader';
+console.log("⚡ ProtectedRoute ativo:", import.meta.url);
+
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import FullPageLoader from "@/components/FullPageLoader";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,29 +13,30 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     user,
     profile,
     initialSessionChecked,
+    authLoading,
   } = useAuth();
 
   const location = useLocation();
 
-  // 1 — Esperar sessão inicial OU carregamento do Supabase (TOKEN_REFRESHED, SIGNED_IN)
-  if (!initialSessionChecked) { // Condição atualizada
+  // 1 — ESPERAR sessão inicial **e** o Supabase estabilizar os eventos de auth
+  if (!initialSessionChecked || authLoading) {
     console.log(
-      `ProtectedRoute (${location.pathname}): Esperando carregamento completo... initialSessionChecked=${initialSessionChecked}`
+      `ProtectedRoute (${location.pathname}): Aguardando sessão estabilizar... initialSessionChecked=${initialSessionChecked}, authLoading=${authLoading}`
     );
-    return <FullPageLoader message="Verificando acesso..." />;
+    return <FullPageLoader message="Verificando sessão..." />;
   }
 
-  // 2 — Quando tudo já carregou, verificar usuário/perfil
+  // 2 — Depois de estabilizado, agora sim verificar usuário e perfil
   if (!user || !profile) {
     console.log(
-      `ProtectedRoute (${location.pathname}): Sem usuário ou perfil → login`
+      `ProtectedRoute (${location.pathname}): Sem usuário/perfil após estabilizar → redirecionando para login`
     );
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3 — Acesso liberado
+  // 3 — Tudo carregado e sessão válida
   console.log(
-    `ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${profile.role}`
+    `ProtectedRoute (${location.pathname}): Acesso concedido → user=${user.id}, role=${profile.role}`
   );
 
   return <>{children}</>;
