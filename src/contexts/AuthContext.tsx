@@ -20,9 +20,9 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
 
-  sessionLoading: boolean; // initial getSession
-  authLoading: boolean; // TOKEN_REFRESHED / SIGNED_IN / profile loading
-  operationLoading: boolean; // signIn / signOut
+  sessionLoading: boolean;
+  authLoading: boolean;
+  operationLoading: boolean;
 
   initialSessionChecked: boolean;
 
@@ -67,12 +67,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Fetch profile
+  // Fetch profile (ONLY listener uses this)
   const fetchProfileForUser = useCallback(async (userId: string) => {
     try {
       console.log("AuthContext: Buscando perfil para o usuário:", userId);
 
-      const { data: profileData, error } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
@@ -88,11 +88,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (mountedRef.current) {
-        setProfile(profileData as Profile);
-        setRole((profileData as Profile).role);
+        setProfile(data as Profile);
+        setRole((data as Profile).role);
       }
 
-      return profileData as Profile;
+      return data as Profile;
     } catch (err) {
       console.error("AuthContext: Exceção ao buscar perfil:", err);
       if (mountedRef.current) {
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // 1) INIT — executed only once (even in StrictMode)
+  // 1) INIT — ONLY SET USER + SESSION (DO NOT LOAD PROFILE HERE)
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (sessionData?.user) {
           setUser(sessionData.user);
           setSession(sessionData);
-          await fetchProfileForUser(sessionData.user.id);
+          // NÃO buscar perfil aqui — listener faz isso
         } else {
           setUser(null);
           setSession(null);
@@ -140,9 +140,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     init();
-  }, [fetchProfileForUser]);
+  }, []);
 
-  // 2) AUTH LISTENER — handles SIGNED_IN, TOKEN_REFRESHED, etc.
+  // 2) LISTENER — ONLY HERE PROFILE IS LOADED
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
 
