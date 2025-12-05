@@ -109,12 +109,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     didInit.current = true;
 
     const init = async () => {
+      console.log("INIT: começou");
       try {
         console.log("AuthContext: Recuperando sessão inicial...");
         setSessionLoading(true);
 
+        console.log("INIT: antes do getSession");
         const { data } = await supabase.auth.getSession();
+        console.log("INIT: depois do getSession");
         const sessionData = data?.session ?? null;
+        console.log("INIT: sessionData =", sessionData);
 
         if (sessionData?.user) {
           setUser(sessionData.user);
@@ -129,6 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
       } finally {
+        console.log("INIT: chegou no finally");
         if (mountedRef.current) {
           setSessionLoading(false);
           setInitialSessionChecked(true);
