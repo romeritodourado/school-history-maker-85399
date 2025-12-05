@@ -22,11 +22,11 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
 
-  sessionLoading: boolean;
-  authLoading: boolean;
-  operationLoading: boolean;
+  sessionLoading: boolean; // Indica se a sessão inicial está sendo carregada
+  authLoading: boolean;    // Indica se uma operação de autenticação (login/cadastro/logout) ou busca de perfil está em andamento
+  operationLoading: boolean; // Indica se uma operação explícita de login/cadastro/logout está em andamento
 
-  initialSessionChecked: boolean;
+  initialSessionChecked: boolean; // Verdadeiro após a primeira verificação de sessão ser concluída
 
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
@@ -51,16 +51,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
 
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [operationLoading, setOperationLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true); // Para a verificação inicial da sessão
+  const [authLoading, setAuthLoading] = useState(false);    // Para qualquer mudança de estado de autenticação que envolva buscar o perfil
+  const [operationLoading, setOperationLoading] = useState(false); // Para chamadas explícitas de signIn/signUp/signOut
   const [initialSessionChecked, setInitialSessionChecked] = useState(false);
 
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] =
     useState<string | null>(null);
 
   const mountedRef = useRef(true);
-  const didInit = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -104,60 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // =============== INIT SESSION ===================
-  useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-
-    const init = async () => {
-      try {
-        console.log("AuthContext: Recuperando sessão inicial...");
-        setSessionLoading(true);
-
-        const { data } = await supabase.auth.getSession();
-        const sessionData = data?.session ?? null;
-
-        if (sessionData?.user) {
-          setUser(sessionData.user);
-          setSession(sessionData);
-          await fetchProfileForUser(sessionData.user.id);
-        } else {
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-        }
-      } catch (err) {
-        console.error("AuthContext: Erro no init()", err);
-      } finally {
-        if (mountedRef.current) {
-          console.log(
-            "AuthContext: init() FINALIZADO → Liberando initialSessionChecked"
-          );
-          setSessionLoading(false);
-          setInitialSessionChecked(true);
-        }
-      }
-    };
-
-    init();
-  }, [fetchProfileForUser]);
-
-  // ========== TIMER DE SEGURANÇA (ANTI-TRAVA) ===========
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mountedRef.current && !initialSessionChecked) {
-        console.log(
-          "AuthContext: Timer de segurança ativado → Liberando initialSessionChecked"
-        );
-        setInitialSessionChecked(true);
-        setSessionLoading(false);
-      }
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [initialSessionChecked]);
-
   // =============== AUTH LISTENER ===================
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
@@ -171,36 +116,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           sessionData
         );
 
-        if (
-          event === "SIGNED_IN" ||
-          event === "TOKEN_REFRESHED" ||
-          event === "USER_UPDATED"
-        ) {
-          if (sessionData?.user) {
-            setAuthLoading(true);
-
-            const prof = await fetchProfileForUser(sessionData.user.id);
-
-            if (mountedRef.current) {
-              setUser(sessionData.user);
-              setSession(sessionData);
-              setProfile(prof ?? null);
-              setRole(prof?.role ?? null);
-              setAuthLoading(false);
-            }
-          }
+        // Define authLoading como true para eventos que buscarão o perfil
+        if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          setAuthLoading(true);
         }
 
-        if (event === "SIGNED_OUT") {
-          if (mountedRef.current) {
+        if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          if (sessionData?.user) {
+            setUser(sessionData.user);
+            setSession(sessionData);
+            await fetchProfileForUser(sessionData.user.id);
+          } else {
+            // Se sessionData.user for null para esses eventos, significa que nenhum usuário está logado
             setUser(null);
             setSession(null);
             setProfile(null);
             setRole(null);
-            setActiveMunicipalityIdForSuperAdmin(null);
-            setAuthLoading(false);
           }
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+          setActiveMunicipalityIdForSuperAdmin(null);
         }
+
+        // Sempre define initialSessionChecked como true após o primeiro evento, independentemente da presença do usuário
+        if (!initialSessionChecked) {
+          setInitialSessionChecked(true);
+        }
+        setSessionLoading(false); // A verificação inicial da sessão é feita após o primeiro evento
+
+        setAuthLoading(false); // Redefine authLoading após processar o evento
       }
     );
 
@@ -209,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         listener.subscription.unsubscribe();
       } catch {}
     };
-  }, [fetchProfileForUser]);
+  }, [fetchProfileForUser, initialSessionChecked]); // Adicionado initialSessionChecked às dependências para garantir que esteja atualizado
 
   // =============== Auth Operations ===================
   const signIn = async (email: string, password: string) => {
