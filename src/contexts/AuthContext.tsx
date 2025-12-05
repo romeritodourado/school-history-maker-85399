@@ -109,21 +109,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     didInit.current = true;
 
     const init = async () => {
-      console.log("INIT: começou");
       try {
         console.log("AuthContext: Recuperando sessão inicial...");
         setSessionLoading(true);
 
-        console.log("INIT: antes do getSession");
         const { data } = await supabase.auth.getSession();
-        console.log("INIT: depois do getSession");
         const sessionData = data?.session ?? null;
-        console.log("INIT: sessionData =", sessionData);
 
         if (sessionData?.user) {
           setUser(sessionData.user);
           setSession(sessionData);
-          // NÃO buscar perfil aqui — listener faz isso
+          await fetchProfileForUser(sessionData.user.id); // Chamar fetchProfileForUser aqui
         } else {
           setUser(null);
           setSession(null);
@@ -133,13 +129,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
       } finally {
-        console.log("INIT: chegou no finally");
         if (mountedRef.current) {
+          console.log("AuthContext: init() FINALIZADO — liberando ProtectedRoute");
           setSessionLoading(false);
-          setInitialSessionChecked(true);
-          console.log(
-            "AuthContext: Sessão inicial recuperada. initialSessionChecked = true"
-          );
+          setInitialSessionChecked(true);   // <-- ESSENCIAL
         }
       }
     };
