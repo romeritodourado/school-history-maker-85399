@@ -11,24 +11,28 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     user,
     profile,
     initialSessionChecked,
-    authLoading, // Adicionado authLoading
+    authLoading,
   } = useAuth();
 
   const location = useLocation();
 
-  // 1 — Se a sessão inicial não terminou OU ainda está carregando perfil/token
+  // 1 — Esperar sessão inicial OU carregamento do Supabase (TOKEN_REFRESHED, SIGNED_IN)
   if (!initialSessionChecked || authLoading) {
-    console.log(`ProtectedRoute (${location.pathname}): Esperando carregamento completo...`);
-    return <FullPageLoader message="Carregando..." />;
+    console.log(
+      `ProtectedRoute (${location.pathname}): Esperando carregamento completo... initialSessionChecked=${initialSessionChecked}, authLoading=${authLoading}`
+    );
+    return <FullPageLoader message="Verificando acesso..." />;
   }
 
-  // 2 — Sem usuário ou perfil → login
+  // 2 — Quando tudo já carregou, verificar usuário/perfil
   if (!user || !profile) {
-    console.log(`ProtectedRoute (${location.pathname}): Sem usuário ou perfil → login`);
+    console.log(
+      `ProtectedRoute (${location.pathname}): Sem usuário ou perfil → login`
+    );
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3 — Tudo OK
+  // 3 — Acesso liberado
   console.log(
     `ProtectedRoute (${location.pathname}): Acesso concedido. User: ${user.id}, Role: ${profile.role}`
   );
