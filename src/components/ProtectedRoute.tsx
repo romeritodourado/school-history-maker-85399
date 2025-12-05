@@ -1,5 +1,3 @@
-console.log("⚡ ProtectedRoute usando useAuth de:", import.meta.url);
-
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import FullPageLoader from '@/components/FullPageLoader';
@@ -13,7 +11,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     user,
     profile,
     initialSessionChecked,
-    // authLoading, // Removido
   } = useAuth();
 
   const location = useLocation();
