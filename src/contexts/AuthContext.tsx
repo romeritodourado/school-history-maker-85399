@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const mountedRef = useRef(true);
   const initDone = useRef(false);
+  const sessionInitialized = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -115,11 +116,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
 
-        if (sessionData?.user) {
+        if (sessionData?.user && !sessionInitialized.current) {
+          sessionInitialized.current = true;
           setUser(sessionData.user);
           setSession(sessionData);
           await fetchProfileForUser(sessionData.user.id);
-        } else {
+        } else if (!sessionData?.user) {
           setUser(null);
           setSession(null);
           setProfile(null);
@@ -145,17 +147,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, sessionData) => {
-
         console.log("Auth state changed - Event:", event, "Session:", sessionData);
 
-        if (
-          event === "SIGNED_IN" ||
-          event === "TOKEN_REFRESHED" ||
-          event === "USER_UPDATED"
-        ) {
+        // Evitar processamento duplicado do SIGNED_IN
+        if (event === "SIGNED_IN" && sessionData?.user && !sessionInitialized.current) {
+          sessionInitialized.current = true;
+          setAuthLoading(true);
+          
+          const prof = await fetchProfileForUser(sessionData.user.id);
+
+          if (mountedRef.current) {
+            setUser(sessionData.user);
+            setSession(sessionData);
+            setProfile(prof ?? null);
+            setRole(prof?.role ?? null);
+            setAuthLoading(false);
+          }
+        } 
+        else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           if (sessionData?.user) {
             setAuthLoading(true);
-
+            
             const prof = await fetchProfileForUser(sessionData.user.id);
 
             if (mountedRef.current) {
@@ -166,9 +178,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setAuthLoading(false);
             }
           }
-        }
-
-        if (event === "SIGNED_OUT") {
+        } 
+        else if (event === "SIGNED_OUT") {
+          sessionInitialized.current = false;
           if (mountedRef.current) {
             setUser(null);
             setSession(null);
