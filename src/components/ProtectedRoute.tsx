@@ -13,15 +13,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     user,
     profile,
     initialSessionChecked,
-    authLoading,
+    // authLoading, // Removido
   } = useAuth();
 
   const location = useLocation();
 
   // 1 — Esperar sessão inicial OU carregamento do Supabase (TOKEN_REFRESHED, SIGNED_IN)
-  if (!initialSessionChecked || authLoading) {
+  if (!initialSessionChecked) { // Condição atualizada
     console.log(
-      `ProtectedRoute (${location.pathname}): Esperando carregamento completo... initialSessionChecked=${initialSessionChecked}, authLoading=${authLoading}`
+      `ProtectedRoute (${location.pathname}): Esperando carregamento completo... initialSessionChecked=${initialSessionChecked}`
     );
     return <FullPageLoader message="Verificando acesso..." />;
   }
