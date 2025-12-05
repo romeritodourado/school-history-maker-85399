@@ -118,10 +118,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (sessionData?.user && !sessionInitialized.current) {
           sessionInitialized.current = true;
+          console.log("AuthContext: Inicializando sessão com usuário:", sessionData.user.id);
           setUser(sessionData.user);
           setSession(sessionData);
           await fetchProfileForUser(sessionData.user.id);
         } else if (!sessionData?.user) {
+          console.log("AuthContext: Nenhuma sessão ativa encontrada");
           setUser(null);
           setSession(null);
           setProfile(null);
@@ -147,10 +149,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, sessionData) => {
-        console.log("Auth state changed - Event:", event, "Session:", sessionData);
+        console.log("Auth state changed - Event:", event, "Session:", sessionData?.user?.id);
 
         // Evitar processamento duplicado do SIGNED_IN
-        if (event === "SIGNED_IN" && sessionData?.user && !sessionInitialized.current) {
+        if (event === "SIGNED_IN" && sessionData?.user) {
+          // Se a sessão já foi inicializada com este mesmo usuário, ignorar
+          if (sessionInitialized.current && user?.id === sessionData.user.id) {
+            console.log("AuthContext: SIGNED_IN recebido para usuário já autenticado, ignorando.");
+            return;
+          }
+          
+          console.log("AuthContext: Processando SIGNED_IN para usuário:", sessionData.user.id);
           sessionInitialized.current = true;
           setAuthLoading(true);
           
@@ -166,6 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } 
         else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           if (sessionData?.user) {
+            console.log("AuthContext: Atualizando dados do usuário:", sessionData.user.id);
             setAuthLoading(true);
             
             const prof = await fetchProfileForUser(sessionData.user.id);
@@ -180,6 +190,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } 
         else if (event === "SIGNED_OUT") {
+          console.log("AuthContext: Processando SIGNED_OUT");
           sessionInitialized.current = false;
           if (mountedRef.current) {
             setUser(null);
@@ -194,11 +205,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => {
+      console.log("AuthContext: Removendo listener de auth state change.");
       try {
         listener.subscription.unsubscribe();
-      } catch {}
+      } catch (err) {
+        console.error("AuthContext: Erro ao remover listener:", err);
+      }
     };
-  }, [fetchProfileForUser]);
+  }, [fetchProfileForUser, user?.id]);
 
   // ================== AUTH OPERATIONS =====================
   const signIn = async (email: string, password: string) => {
