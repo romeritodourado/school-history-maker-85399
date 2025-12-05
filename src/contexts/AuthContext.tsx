@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { supabase } => "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"; // Corrigido de '=>' para 'from'
 import { User, Session } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
