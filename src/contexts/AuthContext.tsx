@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } => "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
@@ -52,14 +52,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [operationLoading, setOperationLoading] = useState(false);
-
   const [initialSessionChecked, setInitialSessionChecked] = useState(false);
 
   const [activeMunicipalityIdForSuperAdmin, setActiveMunicipalityIdForSuperAdmin] =
     useState<string | null>(null);
 
-  const didInit = useRef(false);
   const mountedRef = useRef(true);
+  const didInit = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -67,12 +66,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Fetch profile (ONLY listener uses this)
+  // =============== FETCH PROFILE ===================
   const fetchProfileForUser = useCallback(async (userId: string) => {
     try {
       console.log("AuthContext: Buscando perfil para o usuário:", userId);
 
-      const { data, error } = await supabase
+      const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
@@ -88,11 +87,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (mountedRef.current) {
-        setProfile(data as Profile);
-        setRole((data as Profile).role);
+        setProfile(profileData as Profile);
+        setRole((profileData as Profile).role);
       }
 
-      return data as Profile;
+      return profileData as Profile;
     } catch (err) {
       console.error("AuthContext: Exceção ao buscar perfil:", err);
       if (mountedRef.current) {
@@ -103,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // 1) INIT — ONLY SET USER + SESSION (DO NOT LOAD PROFILE HERE)
+  // =============== INIT SESSION ===================
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
@@ -119,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (sessionData?.user) {
           setUser(sessionData.user);
           setSession(sessionData);
-          await fetchProfileForUser(sessionData.user.id); // Chamar fetchProfileForUser aqui
+          await fetchProfileForUser(sessionData.user.id);
         } else {
           setUser(null);
           setSession(null);
@@ -130,23 +129,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("AuthContext: Erro no init()", err);
       } finally {
         if (mountedRef.current) {
-          console.log("AuthContext: init() FINALIZADO — liberando ProtectedRoute");
+          console.log(
+            "AuthContext: init() FINALIZADO → Liberando initialSessionChecked"
+          );
           setSessionLoading(false);
-          setInitialSessionChecked(true);   // <-- ESSENCIAL
+          setInitialSessionChecked(true);
         }
       }
     };
 
     init();
-  }, []);
+  }, [fetchProfileForUser]);
 
-  // 2) LISTENER — ONLY HERE PROFILE IS LOADED
+  // ========== TIMER DE SEGURANÇA (ANTI-TRAVA) ===========
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mountedRef.current && !initialSessionChecked) {
+        console.log(
+          "AuthContext: Timer de segurança ativado → Liberando initialSessionChecked"
+        );
+        setInitialSessionChecked(true);
+        setSessionLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [initialSessionChecked]);
+
+  // =============== AUTH LISTENER ===================
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, sessionData) => {
-        console.log("Auth state changed - Event:", event, "Session:", sessionData);
+        console.log(
+          "Auth state changed - Event:",
+          event,
+          "Session:",
+          sessionData
+        );
 
         if (
           event === "SIGNED_IN" ||
@@ -188,7 +209,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [fetchProfileForUser]);
 
-  // Operations
+  // =============== Auth Operations ===================
   const signIn = async (email: string, password: string) => {
     setOperationLoading(true);
     try {
