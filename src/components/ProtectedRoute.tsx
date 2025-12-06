@@ -28,9 +28,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Acesso liberado
-  return <>{children}</>;
-}
-on.pathname}): Acesso concedido → user=${user.id}, role=${profile.role}`
+  console.log(
+    `ProtectedRoute (${location.pathname}): Acesso concedido → user=${user.id}, role=${profile.role}`
   );
 
   return <>{children}</>;
