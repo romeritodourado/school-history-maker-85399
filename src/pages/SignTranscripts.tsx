@@ -85,6 +85,8 @@ interface TranscriptToSign {
   created_at: string;
   director_signature_id: string | null;
   secretary_signature_id: string | null;
+  school_id: string; // ADICIONADO
+  municipality_id: string; // ADICIONADO
   students: {
     full_name: string;
   } | null;
@@ -152,6 +154,8 @@ export default function SignTranscripts() {
           created_at,
           director_signature_id,
           secretary_signature_id,
+          school_id,             // ADICIONADO
+          municipality_id,       // ADICIONADO
           students (full_name),
           schools (name)
         `)
@@ -387,6 +391,15 @@ export default function SignTranscripts() {
       const updates = await Promise.all(selectedTranscripts.map(async transcriptId => {
         const transcript = pendingTranscripts.find(t => t.id === transcriptId);
         if (!transcript) return null;
+
+        // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
+        if (profile.school_id !== transcript.school_id) {
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). Não é possível assinar.`);
+        }
+        if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. Não é possível assinar.`);
+        }
+        // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
         // Fetch current signed_data to merge
         const { data: currentTranscriptData, error: fetchError } = await supabase
