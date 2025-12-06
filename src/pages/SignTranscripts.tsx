@@ -85,8 +85,8 @@ interface TranscriptToSign {
   created_at: string;
   director_signature_id: string | null;
   secretary_signature_id: string | null;
-  school_id: string;
-  municipality_id: string;
+  school_id: string; // ADICIONADO
+  municipality_id: string; // ADICIONADO
   students: {
     full_name: string;
   } | null;
@@ -154,8 +154,8 @@ export default function SignTranscripts() {
           created_at,
           director_signature_id,
           secretary_signature_id,
-          school_id,
-          municipality_id,
+          school_id,             // ADICIONADO
+          municipality_id,       // ADICIONADO
           students (full_name),
           schools (name)
         `)
@@ -392,12 +392,18 @@ export default function SignTranscripts() {
         const transcript = pendingTranscripts.find(t => t.id === transcriptId);
         if (!transcript) return null;
 
+        console.log(`[SignTranscripts] Tentando assinar histórico ${transcript.id}:`);
+        console.log(`  ID da escola do perfil do usuário: ${profile.school_id}`);
+        console.log(`  ID da escola do histórico: ${transcript.school_id}`);
+        console.log(`  ID da rede municipal do perfil do usuário: ${profile.municipality_id}`);
+        console.log(`  ID da rede municipal do histórico: ${transcript.municipality_id}`);
+
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (profile.school_id !== transcript.school_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). Não é possível assinar.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${profile.school_id}, ID da escola do histórico: ${transcript.school_id}. Não é possível assinar.`);
         }
         if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. Não é possível assinar.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${profile.municipality_id}, ID da rede do histórico: ${transcript.municipality_id}. Não é possível assinar.`);
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
@@ -720,7 +726,7 @@ export default function SignTranscripts() {
             <DialogTitle>Pré-visualização do Histórico</DialogTitle>
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
-            </DialogDescription>
+            </CardDescription>
           </DialogHeader>
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
