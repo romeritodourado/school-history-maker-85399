@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -58,21 +59,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useState<string | null>(null);
 
   const mountedRef = useRef(true);
-  const initDone = useRef(false);
-  const sessionInitialized = useRef(false);
-  const didFetchInitialProfile = useRef(false); // Nova flag para evitar busca duplicada de perfil
-
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  // ================== FETCH PROFILE =====================
+  // Fetch profile for a given userId (safe w/ mountedRef)
   const fetchProfileForUser = useCallback(async (userId: string) => {
     try {
       console.log("AuthContext: Buscando perfil para o usuário:", userId);
-
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
@@ -80,7 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (error) {
-        console.error("AuthContext: Erro ao buscar perfil:", error);
+        console.warn("AuthContext: Erro ao buscar perfil:", error);
         if (mountedRef.current) {
           setProfile(null);
           setRole(null);
@@ -104,10 +100,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // ================== INIT SESSION =====================
+  // Centraliza processamento de uma session (usado por init e listener)
+  const processSession = useCallback(
+    async (sessionData: Session | null) => {
+      try {
+        if (!mountedRef.current) return;
+        if (sessionData?.user) {
+          console.log("AuthContext: processSession -> session com usuário:", sessionData.user.id);
+          // sinaliza que estamos processando (pode mostrar loader no UI se quiser)
+          setAuthLoading(true);
+
+          setUser(sessionData.user);
+          setSession(sessionData);
+
+          const prof = await fetchProfileForUser(sessionData.user.id);
+
+          if (!mountedRef.current) return;
+
+          setProfile(prof ?? null);
+          setRole(prof?.role ?? null);
+          setAuthLoading(false);
+        } else {
+          // Sem sessão ativa
+          console.log("AuthContext: processSession -> sem sessão ativa");
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setRole(null);
+        }
+      } catch (err) {
+        console.error("AuthContext: Erro em processSession:", err);
+        if (mountedRef.current) {
+          setAuthLoading(false);
+        }
+      }
+    },
+    [fetchProfileForUser]
+  );
+
+  // INIT: getSession() -> processSession -> marcar initialSessionChecked
   useEffect(() => {
-    if (initDone.current) return;
-    initDone.current = true;
+    let cancelled = false;
 
     const init = async () => {
       try {
@@ -117,112 +150,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
 
-        if (sessionData?.user && !didFetchInitialProfile.current) { // Usar a nova flag aqui
-          didFetchInitialProfile.current = true;
-          console.log("AuthContext: Processando sessão inicial do usuário:", sessionData.user.id);
-          setUser(sessionData.user);
-          setSession(sessionData);
-          const prof = await fetchProfileForUser(sessionData.user.id);
-          
-          if (!prof) {
-            console.warn("AuthContext: Perfil não encontrado para o usuário:", sessionData.user.id);
-          }
-        } else if (!sessionData?.user) {
-          console.log("AuthContext: Nenhuma sessão ativa encontrada");
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setRole(null);
-        }
+        await processSession(sessionData);
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
       } finally {
-        // Timer de segurança para liberar initialSessionChecked
-        setTimeout(() => {
-          console.log("AuthContext: Timer de segurança ativado (1000ms) → Liberando initialSessionChecked");
-          if (mountedRef.current) {
-            setInitialSessionChecked(true);
-            setSessionLoading(false);
-          }
-        }, 1000); // Aumentado para 1000ms
+        if (cancelled || !mountedRef.current) return;
+        setSessionLoading(false);
+        setInitialSessionChecked(true);
+        console.log("AuthContext: initialSessionChecked=true (init completo)");
       }
     };
 
     init();
-  }, [fetchProfileForUser]);
 
-  // ================== AUTH LISTENER =====================
+    return () => {
+      cancelled = true;
+    };
+  }, [processSession]);
+
+  // AUTH LISTENER: registrado apenas uma vez
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, sessionData) => {
-        console.log("Auth state changed - Event:", event, "Session:", sessionData?.user?.id);
-
-        // Evitar processamento duplicado do SIGNED_IN
-        if (event === "SIGNED_IN" && sessionData?.user) {
-          // Se a sessão já foi inicializada com este mesmo usuário, ignorar
-          if (sessionInitialized.current && user?.id === sessionData.user.id) {
-            console.log("AuthContext: SIGNED_IN recebido para usuário já autenticado, ignorando.");
-            return;
-          }
-          
-          console.log("AuthContext: Processando SIGNED_IN para usuário:", sessionData.user.id);
-          sessionInitialized.current = true;
-          setAuthLoading(true);
-          
-          const prof = await fetchProfileForUser(sessionData.user.id);
-
-          if (mountedRef.current) {
-            setUser(sessionData.user);
-            setSession(sessionData);
-            setProfile(prof ?? null);
-            setRole(prof?.role ?? null);
-            setAuthLoading(false);
-          }
-        } 
-        else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          if (sessionData?.user) {
-            console.log("AuthContext: Atualizando dados do usuário:", sessionData.user.id);
-            setAuthLoading(true);
-            
-            const prof = await fetchProfileForUser(sessionData.user.id);
-
-            if (mountedRef.current) {
-              setUser(sessionData.user);
-              setSession(sessionData);
-              setProfile(prof ?? null);
-              setRole(prof?.role ?? null);
-              setAuthLoading(false);
-            }
-          }
-        } 
-        else if (event === "SIGNED_OUT") {
-          console.log("AuthContext: Processando SIGNED_OUT");
-          sessionInitialized.current = false;
-          if (mountedRef.current) {
-            setUser(null);
-            setSession(null);
-            setProfile(null);
-            setRole(null);
-            setActiveMunicipalityIdForSuperAdmin(null);
-            setAuthLoading(false);
-          }
-        }
+    const { data } = supabase.auth.onAuthStateChange(async (_event, sessionData) => {
+      try {
+        // sessionData pode ser null
+        await processSession(sessionData ?? null);
+      } catch (err) {
+        console.error("AuthContext: Erro no listener:", err);
       }
-    );
+    });
+
+    // data.subscription é a forma compatível com supabase v2
+    const subscription = (data as any)?.subscription ?? null;
 
     return () => {
       console.log("AuthContext: Removendo listener de auth state change.");
       try {
-        listener.subscription.unsubscribe();
+        subscription?.unsubscribe?.();
       } catch (err) {
         console.warn("AuthContext: Erro ao desinscrever listener:", err);
       }
     };
-  }, [fetchProfileForUser, user?.id]);
+  }, [processSession]);
 
-  // ================== AUTH OPERATIONS =====================
+  // =============== AUTH OPERATIONS ===============
   const signIn = async (email: string, password: string) => {
     setOperationLoading(true);
     try {

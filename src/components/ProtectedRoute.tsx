@@ -1,5 +1,5 @@
-console.log("⚡ ProtectedRoute ativo:", import.meta.url);
-
+// src/components/ProtectedRoute.tsx
+import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import FullPageLoader from "@/components/FullPageLoader";
@@ -9,34 +9,28 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const {
-    user,
-    profile,
-    initialSessionChecked,
-    authLoading,
-  } = useAuth();
-
+  const { user, profile, initialSessionChecked, sessionLoading, authLoading } = useAuth();
   const location = useLocation();
 
-  // 1 — ESPERAR sessão inicial **e** o Supabase estabilizar os eventos de auth
-  if (!initialSessionChecked || authLoading) {
-    console.log(
-      `ProtectedRoute (${location.pathname}): Aguardando sessão estabilizar... initialSessionChecked=${initialSessionChecked}, authLoading=${authLoading}`
-    );
+  console.log(
+    `ProtectedRoute (${location.pathname}): initialSessionChecked=${initialSessionChecked}, sessionLoading=${sessionLoading}, authLoading=${authLoading}, user=${user?.id ?? "null"}`
+  );
+
+  // Enquanto não sabemos o estado inicial da sessão, mostrar loader
+  if (!initialSessionChecked || sessionLoading || authLoading) {
     return <FullPageLoader message="Verificando sessão..." />;
   }
 
-  // 2 — Depois de estabilizado, agora sim verificar usuário e perfil
+  // Depois que o estado inicial foi verificado, redirecionar se necessário
   if (!user || !profile) {
-    console.log(
-      `ProtectedRoute (${location.pathname}): Sem usuário/perfil após estabilizar → redirecionando para login`
-    );
+    console.log(`ProtectedRoute (${location.pathname}): Sem usuário/perfil → redirecionando para /login`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3 — Tudo carregado e sessão válida
-  console.log(
-    `ProtectedRoute (${location.pathname}): Acesso concedido → user=${user.id}, role=${profile.role}`
+  // Acesso liberado
+  return <>{children}</>;
+}
+on.pathname}): Acesso concedido → user=${user.id}, role=${profile.role}`
   );
 
   return <>{children}</>;
