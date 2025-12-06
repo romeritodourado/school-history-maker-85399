@@ -180,6 +180,16 @@ export default function Users() {
     }
   };
 
+  const roleRequiresMunicipality = (selectedRole: string) => {
+    const roleObj = customRoles.find(cr => cr.name === selectedRole);
+    if (roleObj) return roleObj.scope === 'municipal';
+    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
+  };
+
+  const roleRequiresSchool = (selectedRole: string) => {
+    return ['school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -189,6 +199,26 @@ export default function Users() {
         password: formData.password,
         name: formData.name
       });
+
+      // Client-side validation for municipality_id and school_id
+      if (roleRequiresMunicipality(formData.role) && !formData.municipality_id) {
+        toast({
+          title: 'Erro de validação',
+          description: 'O campo "Rede Municipal" é obrigatório para este cargo.',
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      if (roleRequiresSchool(formData.role) && !formData.school_id) {
+        toast({
+          title: 'Erro de validação',
+          description: 'O campo "Escola" é obrigatório para este cargo.',
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       // Call the Edge Function to create the user
       const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
@@ -237,6 +267,26 @@ export default function Users() {
     e.preventDefault();
     setIsSubmitting(true);
     if (!editingUser) return;
+
+    // Client-side validation for municipality_id and school_id
+    if (roleRequiresMunicipality(formData.role) && !formData.municipality_id) {
+      toast({
+        title: 'Erro de validação',
+        description: 'O campo "Rede Municipal" é obrigatório para este cargo.',
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    if (roleRequiresSchool(formData.role) && !formData.school_id) {
+      toast({
+        title: 'Erro de validação',
+        description: 'O campo "Escola" é obrigatório para este cargo.',
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       // Call the Edge Function to update the user
@@ -354,16 +404,6 @@ export default function Users() {
       return allRoles.filter(r => r === 'secretary' || r === 'school_admin' || r === 'administrative_assistant');
     
     return [];
-  };
-
-  const roleRequiresMunicipality = (selectedRole: string) => {
-    const roleObj = customRoles.find(cr => cr.name === selectedRole);
-    if (roleObj) return roleObj.scope === 'municipal';
-    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
-  };
-
-  const roleRequiresSchool = (selectedRole: string) => {
-    return ['school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
   };
 
   const resetForm = () => {
@@ -590,7 +630,7 @@ export default function Users() {
                 {/* Conditional rendering for Municipality Select */}
                 { roleRequiresMunicipality(formData.role) && (
                   <div>
-                    <Label htmlFor="municipality_id">Rede Municipal</Label>
+                    <Label htmlFor="municipality_id">Rede Municipal {roleRequiresMunicipality(formData.role) && '*'}</Label>
                     <Select
                       value={formData.municipality_id}
                       onValueChange={(value) => setFormData({ ...formData, municipality_id: value })}
@@ -598,9 +638,10 @@ export default function Users() {
                         (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && 
                         currentUserProfile?.municipality_id !== formData.municipality_id
                       }
+                      required={roleRequiresMunicipality(formData.role)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a rede municipal (opcional)" />
+                        <SelectValue placeholder="Selecione a rede municipal" />
                       </SelectTrigger>
                       <SelectContent>
                         {municipalities.map((municipality) => (
@@ -616,7 +657,7 @@ export default function Users() {
                 {/* Conditional rendering for School Select */}
                 { roleRequiresSchool(formData.role) && (
                   <div>
-                    <Label htmlFor="school_id">Escola</Label>
+                    <Label htmlFor="school_id">Escola {roleRequiresSchool(formData.role) && '*'}</Label>
                     <Select
                       value={formData.school_id}
                       onValueChange={(value) => setFormData({ ...formData, school_id: value })}
@@ -624,9 +665,10 @@ export default function Users() {
                         currentUserRole === 'school_admin' && 
                         currentUserProfile?.school_id !== formData.school_id
                       }
+                      required={roleRequiresSchool(formData.role)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a escola (opcional)" />
+                        <SelectValue placeholder="Selecione a escola" />
                       </SelectTrigger>
                       <SelectContent>
                         {filteredSchools.map((school) => (
