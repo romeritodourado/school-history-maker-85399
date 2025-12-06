@@ -58,6 +58,13 @@ interface TrimesterGradeData {
   absences: number;
 }
 
+interface ProfileData {
+  id: string;
+  name: string | null;
+  registration_number: string | null;
+  role: string;
+}
+
 interface TranscriptPreviewProps {
   student: StudentData;
   academicYears: AcademicYearData[];
@@ -65,9 +72,11 @@ interface TranscriptPreviewProps {
   trimesterGrades: TrimesterGradeData[];
   schoolPeriod?: { startDate: string; endDate: string; gradeClass: string; shift: string };
   transcriptId: string | null; // Adicionar transcriptId
+  directorProfile?: ProfileData | null; // Novo: Perfil do Diretor
+  secretaryProfile?: ProfileData | null; // Novo: Perfil do Secretário
 }
 
-export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId }: TranscriptPreviewProps) => {
+export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId, directorProfile, secretaryProfile }: TranscriptPreviewProps) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,6 +112,24 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
   const officialGazette = student.schools?.official_gazette_url || "";
   const schoolLogoUrl = student.schools?.logo_url;
   const municipalityEmblemUrl = student.schools?.municipalities?.emblem_url;
+
+  const signedByText = () => {
+    const signers: string[] = [];
+    if (directorProfile?.name) {
+      signers.push(`Diretor(a) ${directorProfile.name}`);
+    }
+    if (secretaryProfile?.name) {
+      signers.push(`Secretário(a) ${secretaryProfile.name}`);
+    }
+
+    if (signers.length === 0) {
+      return "Este documento ainda não foi assinado digitalmente.";
+    } else if (signers.length === 1) {
+      return `Este documento foi assinado digitalmente por: ${signers[0]}.`;
+    } else {
+      return `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -252,51 +279,6 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
 
       <Card>
         <CardHeader>
-          <h3 className="font-semibold">Notas Anuais por Série</h3>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {academicYears.map((year) => {
-            const yearGrades = grades[year.id] || [];
-            if (yearGrades.length === 0) return null;
-
-            const totalWorkload = yearGrades.reduce((sum, g) => sum + (g.workload || 0), 0);
-
-            return (
-              <div key={year.id}>
-                <h4 className="mb-3 font-semibold">{year.grade_level} - {year.calendar_year}</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Componente Curricular</TableHead>
-                      <TableHead className="text-center">Nota</TableHead>
-                      <TableHead className="text-center">C.H.</TableHead>
-                      <TableHead className="text-center">Faltas</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {yearGrades.map((grade, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{grade.subject_name}</TableCell>
-                        <TableCell className="text-center">{formatGrade(grade.grade)}</TableCell>
-                        <TableCell className="text-center">{grade.workload || "-"}</TableCell>
-                        <TableCell className="text-center">{grade.absences}</TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="font-bold">
-                      <TableCell colSpan={2} className="text-right">Carga Horária Total:</TableCell>
-                      <TableCell className="text-center">{totalWorkload}h</TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <h3 className="font-semibold text-center">
             {student.student_status === "concluído" && "CERTIFICADO DE CONCLUSÃO"}
             {student.student_status === "cursando" && "CERTIFICADO DE ESCOLARIDADE"}
@@ -328,21 +310,35 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             <div className="text-center">
               <img src={correctLogo} alt="Correct Logo" className="mx-auto h-12 w-auto object-contain mb-2" />
               <div className="border-t border-foreground pt-2">
-                <p className="text-sm font-semibold">Este documento foi assinado digitalmente</p>
+                <p className="text-sm font-semibold">{signedByText()}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Pelo sistema Correct
                 </p>
               </div>
             </div>
             <div className="text-center">
-              <div className="border-t border-foreground pt-2">
-                <p className="text-sm font-semibold">Secretário(a)</p>
-                {student.schools?.official_gazette_url && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {student.schools.official_gazette_url}
-                  </p>
-                )}
-              </div>
+              {directorProfile && (
+                <div className="border-t border-foreground pt-2 mb-4">
+                  <p className="text-sm font-semibold">Diretor(a)</p>
+                  {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
+                  {directorProfile.registration_number && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {directorProfile.registration_number}
+                    </p>
+                  )}
+                </div>
+              )}
+              {secretaryProfile && (
+                <div className="border-t border-foreground pt-2">
+                  <p className="text-sm font-semibold">Secretário(a)</p>
+                  {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
+                  {secretaryProfile.registration_number && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {secretaryProfile.registration_number}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

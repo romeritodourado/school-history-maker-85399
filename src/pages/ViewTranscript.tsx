@@ -67,6 +67,13 @@ interface TrimesterGradeData {
   absences: number;
 }
 
+interface ProfileData {
+  id: string;
+  name: string | null;
+  registration_number: string | null;
+  role: string;
+}
+
 const ViewTranscript = () => {
   const { id: studentId } = useParams(); // Renomeado para studentId
   const { toast } = useToast();
@@ -77,6 +84,8 @@ const ViewTranscript = () => {
   const [grades, setGrades] = useState<{ [yearId: string]: GradeData[] }>({});
   const [trimesterGrades, setTrimesterGrades] = useState<TrimesterGradeData[]>([]);
   const [schoolPeriod, setSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
+  const [directorProfile, setDirectorProfile] = useState<ProfileData | null>(null); // Novo estado
+  const [secretaryProfile, setSecretaryProfile] = useState<ProfileData | null>(null); // Novo estado
 
   useEffect(() => {
     if (studentId) {
@@ -109,15 +118,41 @@ const ViewTranscript = () => {
       if (studentError) throw studentError;
       setStudent(studentData);
 
-      // Fetch the transcript record to get its ID
+      // Fetch the transcript record to get its ID and signature IDs
       const { data: transcriptRecord, error: transcriptRecordError } = await supabase
         .from('transcripts')
-        .select('id')
+        .select('id, director_signature_id, secretary_signature_id')
         .eq('student_id', studentId)
         .single();
 
       if (transcriptRecordError) throw transcriptRecordError;
       setTranscriptId(transcriptRecord.id); // Set the transcript ID
+
+      // Fetch director profile if ID exists
+      let fetchedDirectorProfile: ProfileData | null = null;
+      if (transcriptRecord.director_signature_id) {
+        const { data: dirProfile, error: dirError } = await supabase
+          .from('profiles')
+          .select('id, name, registration_number, role')
+          .eq('id', transcriptRecord.director_signature_id)
+          .single();
+        if (dirError) console.error('Error fetching director profile:', dirError);
+        fetchedDirectorProfile = dirProfile;
+      }
+      setDirectorProfile(fetchedDirectorProfile);
+
+      // Fetch secretary profile if ID exists
+      let fetchedSecretaryProfile: ProfileData | null = null;
+      if (transcriptRecord.secretary_signature_id) {
+        const { data: secProfile, error: secError } = await supabase
+          .from('profiles')
+          .select('id, name, registration_number, role')
+          .eq('id', transcriptRecord.secretary_signature_id)
+          .single();
+        if (secError) console.error('Error fetching secretary profile:', secError);
+        fetchedSecretaryProfile = secProfile;
+      }
+      setSecretaryProfile(fetchedSecretaryProfile);
 
       // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
@@ -176,7 +211,7 @@ const ViewTranscript = () => {
   const handleExportPDF = async () => {
     if (student && academicYears.length > 0 && transcriptId) { // Pass transcriptId
       try {
-        await exportToPDF(student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId);
+        await exportToPDF(student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId, directorProfile, secretaryProfile);
         toast({
           title: "Sucesso",
           description: "PDF gerado com sucesso",
@@ -259,6 +294,8 @@ const ViewTranscript = () => {
           trimesterGrades={trimesterGrades}
           schoolPeriod={schoolPeriod}
           transcriptId={transcriptId} // Pass the transcriptId
+          directorProfile={directorProfile}
+          secretaryProfile={secretaryProfile}
         />
       </main>
     </div>

@@ -85,6 +85,13 @@ interface TrimesterGradeData {
   absences: number;
 }
 
+interface ProfileData {
+  id: string;
+  name: string | null;
+  registration_number: string | null;
+  role: string;
+}
+
 const formatGrade = (grade: number | null) => {
   if (grade === null) return "-";
   return grade.toFixed(1);
@@ -96,7 +103,9 @@ export const exportToPDF = async (
   grades: { [yearId: string]: GradeData[] },
   trimesterGrades: TrimesterGradeData[],
   schoolPeriod: { startDate: string; endDate: string; gradeClass: string; shift: string } | undefined,
-  transcriptId: string // Adicionar transcriptId
+  transcriptId: string, // Adicionar transcriptId
+  directorProfile?: ProfileData | null, // Novo: Perfil do Diretor
+  secretaryProfile?: ProfileData | null // Novo: Perfil do Secretário
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -619,20 +628,72 @@ export const exportToPDF = async (
   doc.line(blockMargin + blockWidth + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 2) - 10, signatureBlockY + logoHeight + 10);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("Este documento foi assinado digitalmente", blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
+  
+  const signers: string[] = [];
+  if (directorProfile?.name) {
+    signers.push(`Diretor(a) ${directorProfile.name}`);
+  }
+  if (secretaryProfile?.name) {
+    signers.push(`Secretário(a) ${secretaryProfile.name}`);
+  }
+
+  let signedByText = "";
+  if (signers.length === 0) {
+    signedByText = "Este documento ainda não foi assinado digitalmente.";
+  } else if (signers.length === 1) {
+    signedByText = `Este documento foi assinado digitalmente por: ${signers[0]}.`;
+  } else {
+    signedByText = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
+  }
+
+  doc.text(signedByText, blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.text("Pelo sistema Correct", blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 20, { align: "center" });
 
-  // Secretary Signature (Right)
-  doc.line(blockMargin + (blockWidth * 2) + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 3) - 10, signatureBlockY + logoHeight + 10);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("Secretário(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
-  if (student.schools?.official_gazette_url) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(student.schools.official_gazette_url, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureBlockY + logoHeight + 20, { align: "center" });
+  // Director and Secretary Signatures (Right)
+  const signatureLineY = signatureBlockY + logoHeight + 10;
+  const signatureTextY = signatureBlockY + logoHeight + 15;
+  const signatureRegY = signatureBlockY + logoHeight + 20;
+
+  if (directorProfile) {
+    doc.line(blockMargin + (blockWidth * 2) + 10, signatureLineY, blockMargin + (blockWidth * 3) - 10, signatureLineY);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Diretor(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureTextY, { align: "center" });
+    if (directorProfile.name) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text(directorProfile.name, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureTextY + 3, { align: "center" });
+    }
+    if (directorProfile.registration_number) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text(directorProfile.registration_number, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureRegY + 3, { align: "center" });
+    }
+  }
+
+  if (secretaryProfile) {
+    // Adjust position if director is also present
+    const secretaryBlockY = directorProfile ? signatureBlockY + logoHeight + 40 : signatureBlockY;
+    const secretaryLineY = directorProfile ? signatureLineY + 40 : signatureLineY;
+    const secretaryTextY = directorProfile ? signatureTextY + 40 : signatureTextY;
+    const secretaryRegY = directorProfile ? signatureRegY + 40 : signatureRegY;
+
+    doc.line(blockMargin + (blockWidth * 2) + 10, secretaryLineY, blockMargin + (blockWidth * 3) - 10, secretaryLineY);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Secretário(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryTextY, { align: "center" });
+    if (secretaryProfile.name) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text(secretaryProfile.name, blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryTextY + 3, { align: "center" });
+    }
+    if (secretaryProfile.registration_number) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text(secretaryProfile.registration_number, blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryRegY + 3, { align: "center" });
+    }
   }
   
   yPos = signatureBlockY + logoHeight + 30; // Adjust yPos after signature block

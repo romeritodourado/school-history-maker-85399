@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/Auth/AuthContext'; // Corrigido o caminho de importação
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -64,19 +64,28 @@ export function NotificationsBell() {
   useEffect(() => {
     fetchNotifications();
 
+    // Listen for new notifications
     const channel = supabase
       .channel('notifications-channel')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT', // Only listen for new inserts
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user?.id}`
         },
         (payload) => {
           console.log('Notification change received!', payload);
-          fetchNotifications();
+          // Add the new notification to the state and update unread count
+          const newNotification = payload.new as Notification;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          toast({
+            title: "Nova Notificação",
+            description: newNotification.message,
+            duration: 5000,
+          });
         }
       )
       .subscribe();
@@ -84,7 +93,7 @@ export function NotificationsBell() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, profile?.school_id, role]);
+  }, [user?.id, profile?.school_id, role, toast]); // Adicionado toast como dependência
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read) {
@@ -92,7 +101,9 @@ export function NotificationsBell() {
         .from('notifications')
         .update({ read: true })
         .eq('id', notification.id);
-      fetchNotifications(); // Re-fetch to update read status
+      // Update local state immediately
+      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
     }
     if (notification.type === 'transcript_pending_signature') {
       navigate(`/assinar-historicos?schoolId=${profile?.school_id}`);

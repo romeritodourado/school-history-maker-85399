@@ -11,12 +11,80 @@ import { ArrowLeft, FileText, CheckCircle2, XCircle, Loader2, Signature, Eye } f
 import correctLogo from "/correct-logo.png";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { TranscriptPreview } from '@/components/transcript/TranscriptPreview'; // Importar TranscriptPreview
+
+interface StudentData {
+  id: string;
+  full_name: string;
+  mother_name: string;
+  father_name: string | null;
+  birth_date: string;
+  birth_place: string;
+  birth_state: string;
+  student_status: string | null;
+  grade_series: string | null;
+  observations: string | null;
+  school_id: string | null;
+  schools: { 
+    name: string, 
+    municipality_id: string,
+    address: string | null, 
+    city: string | null, 
+    state: string | null, 
+    logo_url: string | null, 
+    authorization_decree_url: string | null, 
+    official_gazette_url: string | null,
+    municipalities: {
+      name: string;
+      emblem_url: string | null;
+    } | null;
+  } | null;
+}
+
+interface AcademicYearData {
+  id: string;
+  calendar_year: number;
+  grade_level: string;
+  school_name: string;
+  city: string;
+  state: string;
+  shift: string;
+  class_name: string;
+  reclassified?: boolean;
+  school_period_start?: string | null;
+  school_period_end?: string | null;
+  trimester_year?: string | null;
+  trimester_shift?: string | null;
+}
+
+interface GradeData {
+  subject_name: string;
+  grade: number | null;
+  workload: number | null;
+  absences: number;
+}
+
+interface TrimesterGradeData {
+  subject_name: string;
+  trimester: number;
+  grade: number | null;
+  absences: number;
+}
+
+interface ProfileData {
+  id: string;
+  name: string | null;
+  registration_number: string | null;
+  role: string;
+}
 
 interface TranscriptToSign {
   id: string;
   student_id: string;
   status: string;
   created_at: string;
+  director_signature_id: string | null;
+  secretary_signature_id: string | null;
   students: {
     full_name: string;
   } | null;
@@ -39,6 +107,18 @@ export default function SignTranscripts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [currentAction, setCurrentAction] = useState<'sign' | 'reject' | null>(null);
+
+  // State for preview dialog
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewTranscriptId, setPreviewTranscriptId] = useState<string | null>(null);
+  const [previewStudent, setPreviewStudent] = useState<StudentData | null>(null);
+  const [previewAcademicYears, setPreviewAcademicYears] = useState<AcademicYearData[]>([]);
+  const [previewGrades, setPreviewGrades] = useState<{ [yearId: string]: GradeData[] }>({});
+  const [previewTrimesterGrades, setPreviewTrimesterGrades] = useState<TrimesterGradeData[]>([]);
+  const [previewSchoolPeriod, setPreviewSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
+  const [previewDirectorProfile, setPreviewDirectorProfile] = useState<ProfileData | null>(null);
+  const [previewSecretaryProfile, setPreviewSecretaryProfile] = useState<ProfileData | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user && profile && schoolIdFromUrl) {
@@ -70,6 +150,8 @@ export default function SignTranscripts() {
           student_id,
           status,
           created_at,
+          director_signature_id,
+          secretary_signature_id,
           students (full_name),
           schools (name)
         `)
@@ -133,11 +215,123 @@ export default function SignTranscripts() {
     setPassword('');
   };
 
+  const fetchTranscriptForPreview = async (transcriptId: string) => {
+    setLoadingPreview(true);
+    try {
+      // Fetch transcript data including signed_data and document_hash
+      const { data: transcriptData, error: transcriptError } = await supabase
+        .from('transcripts')
+        .select(`
+          id,
+          student_id,
+          school_id,
+          municipality_id,
+          document_hash,
+          signed_data,
+          director_signed_at,
+          director_signature_id,
+          secretary_signed_at,
+          secretary_signature_id,
+          students (full_name, mother_name, father_name, birth_date, birth_place, birth_state, student_status, grade_series, observations),
+          schools (name, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url, municipalities (name, emblem_url))
+        `)
+        .eq('id', transcriptId)
+        .single();
+
+      if (transcriptError) throw transcriptError;
+      if (!transcriptData) throw new Error('Histórico não encontrado.');
+
+      const student = transcriptData.students as StudentData;
+      const school = transcriptData.schools as StudentData['schools'];
+
+      setPreviewTranscriptId(transcriptData.id);
+      setPreviewStudent({ ...student, schools: school });
+
+      // Fetch academic years
+      const { data: yearsData, error: yearsError } = await supabase
+        .from("academic_years")
+        .select("*")
+        .eq("student_id", student.id)
+        .order("calendar_year");
+
+      if (yearsError) throw yearsError;
+      setPreviewAcademicYears(yearsData || []);
+
+      // Fetch annual grades for each year
+      const gradesMap: { [yearId: string]: GradeData[] } = {};
+      for (const year of yearsData || []) {
+        const { data: gradesData, error: gradesError } = await supabase
+          .from("annual_grades")
+          .select("subject_name, grade, workload, absences")
+          .eq("academic_year_id", year.id);
+
+        if (gradesError) throw gradesError;
+        gradesMap[year.id] = gradesData || [];
+      }
+      setPreviewGrades(gradesMap);
+
+      // Fetch trimester grades (for the most recent year)
+      if (yearsData && yearsData.length > 0) {
+        const latestYear = yearsData[yearsData.length - 1];
+        
+        setPreviewSchoolPeriod({
+          startDate: latestYear.school_period_start || "",
+          endDate: latestYear.school_period_end || "",
+          gradeClass: latestYear.trimester_year || "",
+          shift: latestYear.trimester_shift || "",
+        });
+        
+        const { data: trimesterData, error: trimesterError } = await supabase
+          .from("trimester_grades")
+          .select("subject_name, trimester, grade, absences")
+          .eq("academic_year_id", latestYear.id);
+
+        if (trimesterError) throw trimesterError;
+        setPreviewTrimesterGrades(trimesterData || []);
+      }
+
+      // Fetch director and secretary profiles if IDs exist
+      let directorProfile: ProfileData | null = null;
+      if (transcriptData.director_signature_id) {
+        const { data: dirProfile, error: dirError } = await supabase
+          .from('profiles')
+          .select('id, name, registration_number, role')
+          .eq('id', transcriptData.director_signature_id)
+          .single();
+        if (dirError) console.error('Error fetching director profile:', dirError);
+        directorProfile = dirProfile;
+      }
+      setPreviewDirectorProfile(directorProfile);
+
+      let secretaryProfile: ProfileData | null = null;
+      if (transcriptData.secretary_signature_id) {
+        const { data: secProfile, error: secError } = await supabase
+          .from('profiles')
+          .select('id, name, registration_number, role')
+          .eq('id', transcriptData.secretary_signature_id)
+          .single();
+        if (secError) console.error('Error fetching secretary profile:', secError);
+        secretaryProfile = secProfile;
+      }
+      setPreviewSecretaryProfile(secretaryProfile);
+
+      setPreviewDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao carregar pré-visualização',
+        description: error.message || 'Não foi possível carregar os dados do histórico para pré-visualização.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleConfirmAction = async () => {
-    if (!user?.email || !password) {
+    if (!user?.email || !password || !profile) {
       toast({
         title: 'Erro',
-        description: 'Email e senha são obrigatórios para confirmar a ação.',
+        description: 'Email, senha e perfil do usuário são obrigatórios para confirmar a ação.',
         variant: 'destructive',
       });
       return;
@@ -155,45 +349,75 @@ export default function SignTranscripts() {
         throw new Error('Senha incorreta. Não foi possível confirmar a ação.');
       }
 
-      const updates = selectedTranscripts.map(transcriptId => {
-        const now = new Date().toISOString();
-        const baseUpdate = {
-          updated_at: now,
-        };
+      const now = new Date().toISOString();
+      const signerProfileData = {
+        id: user.id,
+        name: profile.name,
+        registration_number: profile.registration_number,
+        role: profile.role,
+      };
+
+      const updates = await Promise.all(selectedTranscripts.map(async transcriptId => {
+        const transcript = pendingTranscripts.find(t => t.id === transcriptId);
+        if (!transcript) return null;
+
+        // Fetch current signed_data to merge
+        const { data: currentTranscriptData, error: fetchError } = await supabase
+          .from('transcripts')
+          .select('signed_data')
+          .eq('id', transcriptId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const existingSignedData = currentTranscriptData?.signed_data || {};
+        let newSignedData = { ...existingSignedData };
+
+        const baseUpdate = { updated_at: now };
 
         if (currentAction === 'sign') {
           if (role === 'school_admin') {
+            newSignedData = { ...newSignedData, director: signerProfileData };
             return {
               ...baseUpdate,
+              id: transcriptId,
               director_signed_at: now,
               director_signature_id: user.id,
               status: 'pending_secretary_signature', // Next step for secretary
+              signed_data: newSignedData,
             };
           } else if (role === 'secretary') {
+            newSignedData = { ...newSignedData, secretary: signerProfileData };
             return {
               ...baseUpdate,
+              id: transcriptId,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
               status: 'signed', // Fully signed
+              signed_data: newSignedData,
             };
           }
         } else if (currentAction === 'reject') {
           return {
             ...baseUpdate,
+            id: transcriptId,
             status: 'rejected',
             director_signed_at: null, // Clear previous signatures if rejected
             director_signature_id: null,
             secretary_signed_at: null,
             secretary_signature_id: null,
+            signed_data: {}, // Clear signed data on rejection
           };
         }
         return null;
-      }).filter(Boolean);
+      }));
 
-      if (updates.length > 0) {
+      const validUpdates = updates.filter(Boolean);
+
+      if (validUpdates.length > 0) {
         const { error: updateError } = await supabase
           .from('transcripts')
-          .upsert(updates, { onConflict: 'id' }); // Use upsert to update multiple records by ID
+          .upsert(validUpdates, { onConflict: 'id' }); // Use upsert to update multiple records by ID
 
         if (updateError) throw updateError;
 
@@ -308,8 +532,8 @@ export default function SignTranscripts() {
     );
   }
 
-  const currentRoleLabel = role === 'school_admin' ? 'Diretor(a)' : 'Secretário(a) Escolar'; // Nome atualizado aqui
-  const pendingStatusLabel = role === 'school_admin' ? 'aguardando sua assinatura como Diretor(a)' : 'aguardando sua assinatura como Secretário(a) Escolar'; // Nome atualizado aqui
+  const currentRoleLabel = role === 'school_admin' ? 'Diretor(a)' : 'Secretário(a) Escolar';
+  const pendingStatusLabel = role === 'school_admin' ? 'aguardando sua assinatura como Diretor(a)' : 'aguardando sua assinatura como Secretário(a) Escolar';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -377,12 +601,10 @@ export default function SignTranscripts() {
                           Escola: {transcript.schools?.name} | Criado em: {new Date(transcript.created_at).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
-                      <Link to={`/visualizar/${transcript.student_id}`} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Visualizar
-                        </Button>
-                      </Link>
+                      <Button variant="outline" size="sm" onClick={() => fetchTranscriptForPreview(transcript.id)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Pré-visualizar
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -446,6 +668,44 @@ export default function SignTranscripts() {
               ) : (
                 currentAction === 'sign' ? 'Confirmar Assinatura' : 'Confirmar Rejeição'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Pré-visualização do Histórico</DialogTitle>
+            <DialogDescription>
+              Verifique os detalhes do histórico antes de assinar.
+            </DialogDescription>
+          </DialogHeader>
+          {loadingPreview ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Carregando pré-visualização...</span>
+            </div>
+          ) : previewStudent ? (
+            <TranscriptPreview
+              student={previewStudent}
+              academicYears={previewAcademicYears}
+              grades={previewGrades}
+              trimesterGrades={previewTrimesterGrades}
+              schoolPeriod={previewSchoolPeriod}
+              transcriptId={previewTranscriptId}
+              directorProfile={previewDirectorProfile}
+              secretaryProfile={previewSecretaryProfile}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Não foi possível carregar os dados do histórico.
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
