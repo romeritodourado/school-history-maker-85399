@@ -444,22 +444,55 @@ export default function SignTranscripts() {
         console.log(`[SignTranscripts] DEBUG: User ID: ${user.id}`);
         console.log(`[SignTranscripts] DEBUG: Profile ID: ${profile.id}`);
         console.log(`[SignTranscripts] DEBUG: Profile Role: ${profile.role}`);
-        console.log(`[SignTranscripts] DEBUG: Profile School ID: ${profile.school_id}`);
-        console.log(`[SignTranscripts] DEBUG: Transcript School ID: ${transcript.school_id}`);
-        console.log(`[SignTranscripts] DEBUG: Profile Municipality ID: ${profile.municipality_id}`);
-        console.log(`[SignTranscripts] DEBUG: Transcript Municipality ID: ${transcript.municipality_id}`);
+        
+        const userSchoolId = profile.school_id;
+        const transcriptSchoolId = transcript.school_id;
+        const userMunicipalityId = profile.municipality_id;
+        const transcriptMunicipalityId = transcript.municipality_id;
+
+        console.log(`[SignTranscripts] DEBUG: User profile school_id (value): ${userSchoolId}, (type): ${typeof userSchoolId}, is null: ${userSchoolId === null}`);
+        console.log(`[SignTranscripts] DEBUG: Transcript school_id (value): ${transcriptSchoolId}, (type): ${typeof transcriptSchoolId}, is null: ${transcriptSchoolId === null}`);
+        console.log(`[SignTranscripts] DEBUG: Comparison (userSchoolId === transcriptSchoolId): ${userSchoolId === transcriptSchoolId}`);
+        console.log(`[SignTranscripts] DEBUG: Comparison (userSchoolId !== transcriptSchoolId): ${userSchoolId !== transcriptSchoolId}`);
+
+        console.log(`[SignTranscripts] DEBUG: User profile municipality_id (value): ${userMunicipalityId}, (type): ${typeof userMunicipalityId}, is null: ${userMunicipalityId === null}`);
+        console.log(`[SignTranscripts] DEBUG: Transcript municipality_id (value): ${transcriptMunicipalityId}, (type): ${typeof transcriptMunicipalityId}, is null: ${transcriptMunicipalityId === null}`);
+        console.log(`[SignTranscripts] DEBUG: Comparison (userMunicipalityId === transcriptMunicipalityId): ${userMunicipalityId === transcriptMunicipalityId}`);
+        console.log(`[SignTranscripts] DEBUG: Comparison (userMunicipalityId !== transcriptMunicipalityId): ${userMunicipalityId !== transcriptMunicipalityId}`);
+
         console.log(`[SignTranscripts] DEBUG: Transcript Status: ${transcript.status}`);
         console.log(`[SignTranscripts] DEBUG: Current Action: ${currentAction}`);
 
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
-        if (profile.school_id && profile.school_id !== transcript.school_id) {
-          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id (${profile.school_id}) does not match transcript school_id (${transcript.school_id}).`);
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${profile.school_id}, ID da escola do histórico: ${transcript.school_id}. Não é possível assinar.`);
+        if (userSchoolId === null) {
+          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id is null.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma escola. Por favor, verifique as configurações da sua conta.`);
         }
-        if (profile.municipality_id && (profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
-          console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id (${profile.municipality_id}) does not match transcript municipality_id (${transcript.municipality_id}).`);
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${profile.municipality_id}, ID da rede do histórico: ${transcript.municipality_id}. Não é possível assinar.`);
+        if (transcriptSchoolId === null) {
+          console.error(`[SignTranscripts] RLS Mismatch (School): Transcript school_id is null.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma escola. Por favor, entre em contato com o suporte.`);
+        }
+
+        if (userSchoolId !== transcriptSchoolId) {
+          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id (${userSchoolId}) does not match transcript school_id (${transcriptSchoolId}).`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${userSchoolId}, ID da escola do histórico: ${transcriptSchoolId}. Não é possível assinar.`);
+        }
+        
+        // Check for municipality_id for municipal roles
+        if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager')) {
+          if (userMunicipalityId === null) {
+            console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id is null.`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma rede municipal. Por favor, verifique as configurações da sua conta.`);
+          }
+          if (transcriptMunicipalityId === null) {
+            console.error(`[SignTranscripts] RLS Mismatch (Municipality): Transcript municipality_id is null.`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma rede municipal. Por favor, entre em contato com o suporte.`);
+          }
+          if (userMunicipalityId !== transcriptMunicipalityId) {
+            console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id (${userMunicipalityId}) does not match transcript municipality_id (${transcriptMunicipalityId}).`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${userMunicipalityId}, ID da rede do histórico: ${transcriptMunicipalityId}. Não é possível assinar.`);
+          }
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
@@ -785,7 +818,7 @@ export default function SignTranscripts() {
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
             </DialogDescription>
-          </DialogHeader> {/* Correct closing tag for DialogHeader */}
+          </DialogHeader>
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
