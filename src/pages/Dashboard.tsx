@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit } from 'lucide-react';
+import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit, Signature } from 'lucide-react'; // Adicionado Signature
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
+import { NotificationsBell } } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
@@ -162,6 +162,12 @@ const availablePermissions: Permission[] = [
     name: 'Validar Históricos',
     description: 'Permite validar a autenticidade de históricos',
     category: 'Validação'
+  },
+  {
+    id: 'sign_transcripts',
+    name: 'Assinar Históricos',
+    description: 'Permite assinar digitalmente históricos escolares pendentes',
+    category: 'Assinatura'
   }
 ];
 
@@ -508,6 +514,13 @@ export default function Dashboard() {
       icon: School,
       path: '/escolas',
       roles: ['municipal_secretary', 'network_manager'],
+    },
+    {
+      title: 'Assinar Históricos', // Novo card
+      description: 'Assinar digitalmente históricos escolares pendentes',
+      icon: Signature,
+      path: `/assinar-historicos?schoolId=${profile?.school_id}`, // Link dinâmico
+      roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
     },
     {
       title: 'Validar Histórico',
@@ -998,10 +1011,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cards.map((card) => {
               const Icon = card.icon;
+              // Check if the current user's role is allowed to see this card
               if (card.roles && role && card.roles.includes(role)) {
+                // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
+                if (card.title === 'Assinar Históricos' && !profile?.school_id) {
+                  return null; // Don't render if no school_id is available for signing
+                }
+                
+                let cardPath = card.path;
+                // Adjust path for 'Assinar Históricos' if profile.school_id is available
+                if (card.title === 'Assinar Históricos' && profile?.school_id) {
+                  cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
+                }
+
                 return (
                   <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                    onClick={() => navigate(card.path)}>
+                    onClick={() => navigate(cardPath)}>
                     <CardHeader>
                       <div className="flex items-center space-x-2">
                         <div className="p-2 bg-primary/10 rounded-lg">
