@@ -123,6 +123,11 @@ export default function SignTranscripts() {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
+    console.log("SignTranscripts useEffect: Current User Role =", role);
+    console.log("SignTranscripts useEffect: Profile School ID =", profile?.school_id);
+    console.log("SignTranscripts useEffect: Profile Municipality ID =", profile?.municipality_id);
+    console.log("SignTranscripts useEffect: School ID from URL =", schoolIdFromUrl);
+
     if (!authLoading && user && profile && schoolIdFromUrl) {
       // Adiciona uma verificação inicial para perfis de nível escolar sem school_id
       if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
@@ -130,9 +135,10 @@ export default function SignTranscripts() {
           title: 'Erro de Configuração',
           description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
           variant: 'destructive',
+          duration: 8000, // Make it last longer
         });
         setLoading(false); // Impede o carregamento e ações futuras
-        return;
+        return; // IMPORTANT: return here to stop further execution
       }
       // Adiciona uma verificação inicial para perfis de nível municipal sem municipality_id
       if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
@@ -140,9 +146,10 @@ export default function SignTranscripts() {
           title: 'Erro de Configuração',
           description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
           variant: 'destructive',
+          duration: 8000, // Make it last longer
         });
         setLoading(false); // Impede o carregamento e ações futuras
-        return;
+        return; // IMPORTANT: return here to stop further execution
       }
       fetchPendingTranscripts();
     } else if (!authLoading && (!user || !profile)) {
@@ -160,7 +167,7 @@ export default function SignTranscripts() {
       });
       navigate('/');
     }
-  }, [authLoading, user, profile, schoolIdFromUrl, navigate]);
+  }, [authLoading, user, profile, schoolIdFromUrl, navigate, toast, role]);
 
   const fetchPendingTranscripts = async () => {
     setLoading(true);
@@ -394,6 +401,7 @@ export default function SignTranscripts() {
         title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
         variant: 'destructive',
+        duration: 8000,
       });
       return;
     }
@@ -402,6 +410,7 @@ export default function SignTranscripts() {
         title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
         variant: 'destructive',
+        duration: 8000,
       });
       return;
     }
@@ -431,21 +440,17 @@ export default function SignTranscripts() {
         const transcript = pendingTranscripts.find(t => t.id === transcriptId);
         if (!transcript) return null;
 
-        console.log(`[SignTranscripts] Processando histórico ${transcript.id}:`);
-        console.log(`  Perfil do Usuário: ID=${profile.id}, Nome=${profile.name}, Email=${user.email}, Cargo=${profile.role}`);
-        console.log(`  profile.school_id: ${profile.school_id}`);
-        console.log(`  transcript.school_id: ${transcript.school_id}`);
-        console.log(`  profile.municipality_id: ${profile.municipality_id}`);
-        console.log(`  transcript.municipality_id: ${transcript.municipality_id}`);
-        console.log(`  Status do histórico: ${transcript.status}`);
-        console.log(`  Ação atual: ${currentAction}`);
-
+        console.log(`[SignTranscripts] DEBUG: Processando histórico ${transcript.id}:`);
+        console.log(`[SignTranscripts] DEBUG: Perfil do Usuário - ID: ${profile.id}, Role: ${profile.role}, School_ID: ${profile.school_id}, Municipality_ID: ${profile.municipality_id}`);
+        console.log(`[SignTranscripts] DEBUG: Histórico - ID: ${transcript.id}, Aluno: ${transcript.students?.full_name}, School_ID: ${transcript.school_id}, Municipality_ID: ${transcript.municipality_id}, Status: ${transcript.status}`);
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (profile.school_id && profile.school_id !== transcript.school_id) {
+          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id (${profile.school_id}) does not match transcript school_id (${transcript.school_id}).`);
           throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${profile.school_id}, ID da escola do histórico: ${transcript.school_id}. Não é possível assinar.`);
         }
         if (profile.municipality_id && (profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
+          console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id (${profile.municipality_id}) does not match transcript municipality_id (${transcript.municipality_id}).`);
           throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${profile.municipality_id}, ID da rede do histórico: ${transcript.municipality_id}. Não é possível assinar.`);
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
