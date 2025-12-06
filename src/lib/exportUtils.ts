@@ -612,108 +612,116 @@ export const exportToPDF = async (
     yPos += wrappedText.length * 7 + 20;
   }
 
-  // Signature block with Correct logo and QR code
-  const signatureBlockY = yPos + 10;
-  const blockWidth = (pageWidth - 30) / 3; // Divide em 3 colunas
-  const blockMargin = 15;
+  // --- START OF REVISED SIGNATURE BLOCK ---
+  const signatureBlockAreaY = yPos + 10; // Starting Y for the entire signature block area
+  const columnWidth = (pageWidth - 30) / 3; // Each column width
+  const columnMargin = 15; // Left margin for the first column
 
-  // QR Code (Left)
-  if (qrCodeDataUrl) {
-    doc.addImage(qrCodeDataUrl, "PNG", blockMargin + (blockWidth / 2) - (logoWidth / 2), signatureBlockY, logoWidth, logoHeight);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text("Escaneie para validar a autenticidade", blockMargin + (blockWidth / 2), signatureBlockY + logoHeight + 5, { align: "center" });
-  }
+  // Define heights for elements
+  const qrCodeSize = 25; // Adjusted for better fit
+  const signatureLogoDisplayWidth = 40;
+  const signatureLogoDisplayHeight = (12 / 48) * signatureLogoDisplayWidth; // Maintain aspect ratio (original 48x12)
+  const textLineHeight = 4; // Estimated line height for font size 7-9
 
-  // Correct Signature Logo and Digital Signature Text (Center)
+  // Calculate vertical positions for the central signature block
+  // Aim to align the bottom of the QR code text with the bottom of the "Pelo sistema Correct" text
+  const baseTextY = signatureBlockAreaY + qrCodeSize + 5; // This will be the Y for the QR code's descriptive text
+
+  // Central Signature (Logo + Text)
+  const centralColumnX = columnMargin + columnWidth;
+  const centralColumnCenterX = centralColumnX + (columnWidth / 2);
+
+  // Text lines for the digital signature
+  const digitalSignatureText1 = signedByText(); // "Este documento..." or actual signers
+  const digitalSignatureText2 = "Pelo sistema Correct";
+
+  // Calculate the Y position for the digital signature text to align with QR code text
+  // We want the bottom of "Pelo sistema Correct" to be at `baseTextY`
+  const peloSistemaTextY = baseTextY;
+  const signedByTextY = peloSistemaTextY - textLineHeight - 1; // 1 unit padding
+  const signatureLogoY = signedByTextY - signatureLogoDisplayHeight - 3; // 3 units padding
+  const centralLineY = signatureLogoY - 5; // 5 units padding above the logo
+
+  doc.line(centralColumnX + 10, centralLineY, centralColumnX + columnWidth - 10, centralLineY); // Line
+
   if (signatureLogoBase64) {
-    const signatureLogoWidth = 48; // Largura original da imagem
-    const signatureLogoHeight = 12; // Altura original da imagem
-    const displayWidth = 40; // Largura desejada no PDF
-    const displayHeight = (signatureLogoHeight / signatureLogoWidth) * displayWidth; // Manter proporção
-    
-    const signatureLogoX = blockMargin + blockWidth + (blockWidth / 2) - (displayWidth / 2);
-    doc.addImage(signatureLogoBase64, "PNG", signatureLogoX, signatureBlockY + 5, displayWidth, displayHeight);
+    const logoX = centralColumnCenterX - (signatureLogoDisplayWidth / 2);
+    doc.addImage(signatureLogoBase64, "PNG", logoX, signatureLogoY, signatureLogoDisplayWidth, signatureLogoDisplayHeight);
   }
-  
-  doc.line(blockMargin + blockWidth + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 2) - 10, signatureBlockY + logoHeight + 10);
+
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  
-  const signers: string[] = [];
-  if (directorProfile?.name) {
-    signers.push(`Diretor(a) ${directorProfile.name}`);
-  }
-  if (secretaryProfile?.name) {
-    signers.push(`Secretário(a) ${secretaryProfile.name}`);
-  }
+  doc.text(digitalSignatureText1, centralColumnCenterX, signedByTextY, { align: "center" });
 
-  let signedByText = "";
-  if (signers.length === 0) {
-    signedByText = "Este documento ainda não foi assinado digitalmente.";
-  } else if (signers.length === 1) {
-    signedByText = `Este documento foi assinado digitalmente por: ${signers[0]}.`;
-  } else {
-    signedByText = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
-  }
-
-  doc.text(signedByText, blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 15, { align: "center" });
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text("Pelo sistema Correct", blockMargin + blockWidth + (blockWidth / 2), signatureBlockY + logoHeight + 20, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.text(digitalSignatureText2, centralColumnCenterX, peloSistemaTextY, { align: "center" });
 
-  // Director and Secretary Signatures (Right)
-  const signatureLineY = signatureBlockY + logoHeight + 10;
-  const signatureTextY = signatureBlockY + logoHeight + 15;
-  const signatureRegY = signatureBlockY + logoHeight + 20;
+  // QR Code (Left Column)
+  if (qrCodeDataUrl) {
+    const qrCodeX = columnMargin + (columnWidth / 2) - (qrCodeSize / 2);
+    const qrCodeY = signatureBlockAreaY; // Top of the block area
+    doc.addImage(qrCodeDataUrl, "PNG", qrCodeX, qrCodeY, qrCodeSize, qrCodeSize);
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("Escaneie para validar a autenticidade", columnMargin + (columnWidth / 2), peloSistemaTextY, { align: "center" });
+  }
+
+  // Director and Secretary Signatures (Right Column)
+  const rightColumnX = columnMargin + (columnWidth * 2);
+  const rightColumnCenterX = rightColumnX + (columnWidth / 2);
+
+  let currentSignatureY = centralLineY; // Start signatures from the same line as the central block's line
 
   if (directorProfile) {
-    doc.line(blockMargin + (blockWidth * 2) + 10, signatureLineY, blockMargin + (blockWidth * 3) - 10, signatureLineY);
+    doc.line(rightColumnX + 10, currentSignatureY, rightColumnX + columnWidth - 10, currentSignatureY);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text("Diretor(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureTextY, { align: "center" });
+    doc.text("Diretor(a)", rightColumnCenterX, currentSignatureY + 5, { align: "center" });
     if (directorProfile.name) {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(directorProfile.name, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureTextY + 3, { align: "center" });
+      doc.text(directorProfile.name, rightColumnCenterX, currentSignatureY + 8, { align: "center" });
     }
     if (directorProfile.registration_number) {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(directorProfile.registration_number, blockMargin + (blockWidth * 2) + (blockWidth / 2), signatureRegY + 3, { align: "center" });
+      doc.text(directorProfile.registration_number, rightColumnCenterX, currentSignatureY + 11, { align: "center" });
     }
+    currentSignatureY += 20; // Space for next signature or date
   }
 
   if (secretaryProfile) {
-    // Adjust position if director is also present
-    const secretaryBlockY = directorProfile ? signatureBlockY + logoHeight + 40 : signatureBlockY;
-    const secretaryLineY = directorProfile ? signatureLineY + 40 : signatureLineY;
-    const secretaryTextY = directorProfile ? signatureTextY + 40 : signatureTextY;
-    const secretaryRegY = directorProfile ? signatureRegY + 40 : signatureRegY;
+    // If director is present, add more space between director and secretary
+    if (directorProfile) currentSignatureY += 10;
 
-    doc.line(blockMargin + (blockWidth * 2) + 10, secretaryLineY, blockMargin + (blockWidth * 3) - 10, secretaryLineY);
+    doc.line(rightColumnX + 10, currentSignatureY, rightColumnX + columnWidth - 10, currentSignatureY);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text("Secretário(a)", blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryTextY, { align: "center" });
+    doc.text("Secretário(a)", rightColumnCenterX, currentSignatureY + 5, { align: "center" });
     if (secretaryProfile.name) {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(secretaryProfile.name, blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryTextY + 3, { align: "center" });
+      doc.text(secretaryProfile.name, rightColumnCenterX, currentSignatureY + 8, { align: "center" });
     }
     if (secretaryProfile.registration_number) {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(secretaryProfile.registration_number, blockMargin + (blockWidth * 2) + (blockWidth / 2), secretaryRegY + 3, { align: "center" });
+      doc.text(secretaryProfile.registration_number, rightColumnCenterX, currentSignatureY + 11, { align: "center" });
     }
+    currentSignatureY += 20;
   }
-  
-  yPos = signatureBlockY + logoHeight + 30; // Adjust yPos after signature block
+
+  // Update yPos for the date text, ensuring it's below all signature elements
+  yPos = Math.max(peloSistemaTextY + textLineHeight + 5, currentSignatureY) + 10; // Ensure date is below the lowest signature block
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   const now = new Date();
   const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const dateStr = `${now.getDate().toString().padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
   doc.text(`Luís Eduardo Magalhães - BA, ${dateStr}`, pageWidth / 2, yPos, { align: "center" });
+  // --- END OF REVISED SIGNATURE BLOCK ---
 
   if (student.observations) {
     if (yPos > 230) {
@@ -722,7 +730,7 @@ export const exportToPDF = async (
     } else {
       yPos += 10;
     }
-    
+
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text("OBSERVAÇÕES:", 15, yPos);
@@ -750,7 +758,7 @@ export const exportToPDF = async (
   yPos += 5;
   doc.text("R = Regular (5,0 a 6,9) | I = Insuficiente (0,0 a 4,9)", 15, yPos);
   yPos += 10;
-  
+
   doc.setFont("helvetica", "bold");
   doc.text("INFORMAÇÃO IMPORTANTE:", 15, yPos);
   yPos += 5;
@@ -761,152 +769,4 @@ export const exportToPDF = async (
   doc.text(splitInfo, 15, yPos);
 
   doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
-};
-
-export const exportToExcel = (
-  student: StudentData,
-  academicYears: AcademicYearData[],
-  grades: { [yearId: string]: GradeData[] },
-  trimesterGrades: TrimesterGradeData[]
-) => {
-  const wb = XLSX.utils.book_new();
-
-  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
-  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
-  const authorizationDecree = student.schools?.authorization_decree_url || "";
-  const officialGazette = student.schools?.official_gazette_url || "";
-
-  const studentInfo = [
-    [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
-    [schoolName.toUpperCase()],
-    [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
-    [""],
-    ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
-    [""],
-    ["DADOS DO ALUNO"],
-    ["Nome Completo:", student.full_name],
-    ["Nome da Mãe:", student.mother_name || "Não informado"],
-    ["Nome do Pai:", student.father_name || "Não informado"],
-    ["Data de Nascimento:", new Date(student.birth_date).toLocaleDateString("pt-BR")],
-    ["Naturalidade:", student.birth_place || "Não informado"],
-    ["Estado:", student.birth_state || "BA"],
-    ["Status do Aluno:", student.student_status || "N/A"],
-    ["Séries Cursadas:", student.grade_series || "N/A"],
-    ["Observações:", student.observations || "N/A"],
-    [""],
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet(studentInfo);
-
-  let currentRow = studentInfo.length;
-  XLSX.utils.sheet_add_aoa(ws, [["ESTUDOS REALIZADOS"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Ano", "Série", "Escola", "Cidade", "UF"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-
-  academicYears.forEach((year) => {
-    XLSX.utils.sheet_add_aoa(
-      ws,
-      [[year.calendar_year, year.grade_level, year.school_name, year.city, year.state]],
-      { origin: { r: currentRow, c: 0 } }
-    );
-    currentRow++;
-  });
-
-  currentRow += 2;
-
-  academicYears.forEach((year) => {
-    const yearGrades = grades[year.id] || [];
-    if (yearGrades.length > 0) {
-      const totalWorkload = yearGrades.reduce((sum, g) => sum + (g.workload || 0), 0);
-      
-      XLSX.utils.sheet_add_aoa(ws, [[`${year.grade_level} - ${year.calendar_year}`]], {
-        origin: { r: currentRow, c: 0 },
-      });
-      currentRow++;
-      XLSX.utils.sheet_add_aoa(ws, [["Disciplina", "Nota", "C.H.", "Faltas"]], {
-        origin: { r: currentRow, c: 0 },
-      });
-      currentRow++;
-
-      yearGrades.forEach((g) => {
-        XLSX.utils.sheet_add_aoa(
-          ws,
-          [[g.subject_name, formatGrade(g.grade), g.workload || "-", g.absences]],
-          { origin: { r: currentRow, c: 0 } }
-        );
-        currentRow++;
-      });
-      
-      XLSX.utils.sheet_add_aoa(
-        ws,
-        [["Carga Horária Total", "", `${totalWorkload}h`, ""]],
-        { origin: { r: currentRow, c: 0 } }
-      );
-      currentRow++;
-      currentRow += 2;
-    }
-  });
-
-  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  
-  let statusText = "";
-  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
-  
-  if (student.student_status === "concluído") {
-    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "cursando") {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "transferido") {
-    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
-  } else if (student.student_status === "conservado") {
-    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
-  } else {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`; // Default
-  }
-  
-  XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(ws, [["_____________________", "", "_____________________"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Diretor(a)", "", "Secretário(a)"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  if (student.schools?.authorization_decree_url) {
-    XLSX.utils.sheet_add_aoa(ws, [[student.schools.authorization_decree_url, "", student.schools.official_gazette_url || ""]], {
-      origin: { r: currentRow, c: 0 },
-    });
-  }
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [[`Luís Eduardo Magalhães - BA, ${new Date().toLocaleDateString("pt-BR")}`]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow += 2;
-
-  XLSX.utils.sheet_add_aoa(ws, [["LEGENDA"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["O = Ótimo (9,5 a 10,0)", "MB = Muito Bom (8,0 a 9,4)", "B = Bom (7,0 a 7,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["R = Regular (5,0 a 6,9)", "I = Insuficiente (0,0 a 4,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-
-  XLSX.utils.book_append_sheet(wb, ws, `Histórico Escolar - ${student.full_name.replace(/ /g, "_")}`);
-  XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
 };

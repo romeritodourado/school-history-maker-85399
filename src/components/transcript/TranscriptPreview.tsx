@@ -299,7 +299,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
           </p>
           
-          <div className="mt-8 grid grid-cols-3 items-end">
+          <div className="mt-8 grid grid-cols-3 items-start"> {/* Changed items-end to items-start */}
             <div className="text-center">
               {qrCodeDataUrl && (
                 <img src={qrCodeDataUrl} alt="QR Code de Validação" className="mx-auto h-24 w-24 object-contain" />
