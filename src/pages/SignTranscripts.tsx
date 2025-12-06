@@ -388,24 +388,24 @@ export default function SignTranscripts() {
       return;
     }
 
-    // Adiciona uma verificação específica para perfis de nível escolar sem school_id
+    // --- VERIFICAÇÃO INICIAL DE CONFIGURAÇÃO DO PERFIL ---
     if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
       toast({
-        title: 'Erro de Permissão',
+        title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
         variant: 'destructive',
       });
       return;
     }
-    // Adiciona uma verificação específica para perfis de nível municipal sem municipality_id
     if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
       toast({
-        title: 'Erro de Permissão',
+        title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
         variant: 'destructive',
       });
       return;
     }
+    // --- FIM DA VERIFICAÇÃO INICIAL ---
 
     setIsSigning(true);
     try {
@@ -431,9 +431,15 @@ export default function SignTranscripts() {
         const transcript = pendingTranscripts.find(t => t.id === transcriptId);
         if (!transcript) return null;
 
-        console.log(`[SignTranscripts] Tentando assinar histórico ${transcript.id}:`);
-        console.log(`  Perfil do Usuário: ID=${profile.id}, Nome=${profile.name}, Email=${user.email}, Cargo=${profile.role}, School_ID=${profile.school_id}, Municipality_ID=${profile.municipality_id}`);
-        console.log(`  Histórico: ID=${transcript.id}, Aluno=${transcript.students?.full_name}, Escola_ID=${transcript.school_id}, Rede_ID=${transcript.municipality_id}, Status=${transcript.status}`);
+        console.log(`[SignTranscripts] Processando histórico ${transcript.id}:`);
+        console.log(`  Perfil do Usuário: ID=${profile.id}, Nome=${profile.name}, Email=${user.email}, Cargo=${profile.role}`);
+        console.log(`  profile.school_id: ${profile.school_id}`);
+        console.log(`  transcript.school_id: ${transcript.school_id}`);
+        console.log(`  profile.municipality_id: ${profile.municipality_id}`);
+        console.log(`  transcript.municipality_id: ${transcript.municipality_id}`);
+        console.log(`  Status do histórico: ${transcript.status}`);
+        console.log(`  Ação atual: ${currentAction}`);
+
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (profile.school_id && profile.school_id !== transcript.school_id) {
