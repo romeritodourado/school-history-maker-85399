@@ -2,21 +2,36 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode"; // Importar a biblioteca qrcode
-import correctLogo from "/correct-logo.png"; // Importar o logo principal
 import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
 
-// Convert image to base64
-const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
+// Convert image to base64 with optional resizing
+const getImageAsBase64 = async (imageUrl: string, maxWidth = 100, maxHeight = 100): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous"; // Needed for cross-origin images
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      let width = img.width;
+      let height = img.height;
+
+      // Calculate new dimensions to fit within maxWidth/maxHeight while maintaining aspect ratio
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL("image/png"));
       } else {
         reject(new Error("Failed to get canvas context"));
@@ -32,10 +47,10 @@ const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
 
 interface StudentData {
   id: string;
-  full_name: string; // Changed from name
+  full_name: string;
   mother_name: string;
   father_name: string | null;
-  birth_date: string; // Changed from birthdate
+  birth_date: string;
   birth_place: string;
   birth_state: string;
   student_status: string | null;
@@ -51,7 +66,7 @@ interface StudentData {
     logo_url: string | null, 
     authorization_decree_url: string | null, 
     official_gazette_url: string | null,
-    municipalities: { // Add this nested object
+    municipalities: {
       name: string;
       emblem_url: string | null;
     } | null;
@@ -91,7 +106,7 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
-  signature_image_url: string | null; // Adicionado
+  signature_image_url: string | null;
 }
 
 const formatGrade = (grade: number | null) => {
@@ -105,18 +120,17 @@ export const exportToPDF = async (
   grades: { [yearId: string]: GradeData[] },
   trimesterGrades: TrimesterGradeData[],
   schoolPeriod: { startDate: string; endDate: string; gradeClass: string; shift: string } | undefined,
-  transcriptId: string, // Adicionar transcriptId
-  directorProfile?: ProfileData | null, // Novo: Perfil do Diretor
-  secretaryProfile?: ProfileData | null // Novo: Perfil do Secretário
+  transcriptId: string,
+  directorProfile?: ProfileData | null,
+  secretaryProfile?: ProfileData | null
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  const logoWidth = 25; 
-  const logoHeight = 25; 
-  const logoMargin = 10; 
-  const headerTopY = 25; // Ajustado para empurrar o conteúdo para baixo
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15; // General page margin
+  const headerLogoSize = 20; // Reduced logo size for header
 
-  let currentTextY = headerTopY; 
+  let yPos = margin; // Current Y position for drawing
 
   const municipalityName = student.schools?.municipalities?.name || "Não Informado";
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
@@ -127,41 +141,43 @@ export const exportToPDF = async (
 
   let schoolLogoBase64: string | null = null;
   let municipalityEmblemBase64: string | null = null;
-  let signatureLogoBase64: string | null = null; // Novo: para o logo de assinatura
+  let signatureLogoBase64: string | null = null;
   let qrCodeDataUrl: string | null = null;
-  let directorSignatureImageBase64: string | null = null; // Novo: para imagem de assinatura do diretor
-  let secretarySignatureImageBase64: string | null = null; // Novo: para imagem de assinatura do secretário
+  let directorSignatureImageBase64: string | null = null;
+  let secretarySignatureImageBase64: string | null = null;
 
-  // Load images concurrently
+  // Load images concurrently with resizing
   await Promise.all([
-    schoolLogoUrl ? getImageAsBase64(schoolLogoUrl).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
-    municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
-    getImageAsBase64(correctSignatureLogo).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading system signature logo:", e)), // Carregar o novo logo
-    directorProfile?.signature_image_url ? getImageAsBase64(directorProfile.signature_image_url).then(data => directorSignatureImageBase64 = data).catch(e => console.error("Error loading director signature image:", e)) : Promise.resolve(),
-    secretaryProfile?.signature_image_url ? getImageAsBase64(secretaryProfile.signature_image_url).then(data => secretarySignatureImageBase64 = data).catch(e => console.error("Error loading secretary signature image:", e)) : Promise.resolve(),
+    schoolLogoUrl ? getImageAsBase64(schoolLogoUrl, 100, 100).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
+    municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl, 100, 100).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
+    getImageAsBase64(correctSignatureLogo, 100, 100).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading system signature logo:", e)),
+    directorProfile?.signature_image_url ? getImageAsBase64(directorProfile.signature_image_url, 150, 60).then(data => directorSignatureImageBase64 = data).catch(e => console.error("Error loading director signature image:", e)) : Promise.resolve(),
+    secretaryProfile?.signature_image_url ? getImageAsBase64(secretaryProfile.signature_image_url, 150, 60).then(data => secretarySignatureImageBase64 = data).catch(e => console.error("Error loading secretary signature image:", e)) : Promise.resolve(),
     QRCode.toDataURL(`${window.location.origin}/validar?id=${transcriptId}`, { width: 128, margin: 2 })
       .then(url => qrCodeDataUrl = url)
       .catch(err => console.error("Error generating QR code for PDF:", err))
   ]);
 
-  // Add municipality emblem (left)
+  // --- HEADER SECTION ---
+  const headerStartY = yPos;
+  const headerTextX = pageWidth / 2;
+
+  // Municipality Emblem (left)
   if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", logoMargin, headerTopY, logoWidth, logoHeight);
+    doc.addImage(municipalityEmblemBase64, "PNG", margin, headerStartY, headerLogoSize, headerLogoSize);
   }
 
-  // Add school logo (right)
+  // School Logo (right)
   if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", pageWidth - logoMargin - logoWidth, headerTopY, logoWidth, logoHeight);
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - margin - headerLogoSize, headerStartY, headerLogoSize, headerLogoSize);
   }
 
-  // Central Text Block
-  doc.setFontSize(10);
+  // Central Header Text
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text(`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`, pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 5; 
-  currentTextY += 5; 
-  doc.text(schoolName.toUpperCase(), pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 5; 
+  doc.text(`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`, headerTextX, headerStartY + 5, { align: "center" });
+  doc.setFontSize(10);
+  doc.text(schoolName.toUpperCase(), headerTextX, headerStartY + 10, { align: "center" });
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);
@@ -170,40 +186,39 @@ export const exportToPDF = async (
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, pageWidth / 2, currentTextY, { align: "center" });
-    currentTextY += 4; // Line spacing for smaller font
+    doc.text(authText, headerTextX, headerStartY + 15, { align: "center" });
   }
-
-  currentTextY += 5; // Additional space before main title
-
+  
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", pageWidth / 2, currentTextY, { align: "center" });
-  currentTextY += 10; // Space after main title
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", headerTextX, headerStartY + 25, { align: "center" });
+  yPos = headerStartY + 35; // Update yPos after header
 
-  // Update yPos for the rest of the document
-  let yPos = currentTextY;
-
-  // Student data section starts here
+  // --- STUDENT DATA SECTION ---
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`ALUNO (A): `, 15, yPos);
+  doc.text(`ALUNO (A): `, margin, yPos);
   doc.setFont("helvetica", "bold");
-  doc.text(student.full_name, 15 + doc.getTextWidth(`ALUNO (A): `), yPos);
+  doc.text(student.full_name, margin + doc.getTextWidth(`ALUNO (A): `), yPos);
   doc.setFont("helvetica", "normal");
   yPos += 7;
-  doc.text(`Mãe: ${student.mother_name || "Não informado"}`, 15, yPos);
+  doc.text(`Mãe: ${student.mother_name || "Não informado"}`, margin, yPos);
   const birthDate = new Date(student.birth_date + 'T00:00:00');
-  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, 120, yPos);
+  doc.text(`Data de Nascimento: ${birthDate.toLocaleDateString("pt-BR")}`, pageWidth / 2 + 10, yPos); // Adjusted X for second column
   yPos += 7;
-  doc.text(`Pai: ${student.father_name || "Não informado"}`, 15, yPos);
-  doc.text(`Naturalidade: ${student.birth_place || "Não informado"} - ${student.birth_state || "BA"}`, 120, yPos);
+  doc.text(`Pai: ${student.father_name || "Não informado"}`, margin, yPos);
+  doc.text(`Naturalidade: ${student.birth_place || "Não informado"} - ${student.birth_state || "BA"}`, pageWidth / 2 + 10, yPos);
   yPos += 10;
 
+  // --- TRIMESTER GRADES SECTION (if applicable) ---
   if (trimesterGrades.length > 0 && student.student_status === "cursando") {
+    if (yPos + 50 > pageHeight - margin) { // Check if enough space for table header + some rows
+      doc.addPage();
+      yPos = margin;
+    }
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("RENDIMENTO ESCOLAR POR TRIMESTRE", 15, yPos);
+    doc.text("RENDIMENTO ESCOLAR POR TRIMESTRE", margin, yPos);
     yPos += 5;
     
     if (schoolPeriod && (schoolPeriod.startDate || schoolPeriod.endDate || schoolPeriod.gradeClass || schoolPeriod.shift)) {
@@ -219,7 +234,7 @@ export const exportToPDF = async (
       if (schoolPeriod.shift) {
         periodText += periodText ? ` | Turno: ${schoolPeriod.shift}` : `Turno: ${schoolPeriod.shift}`;
       }
-      doc.text(periodText, 15, yPos);
+      doc.text(periodText, margin, yPos);
       yPos += 5;
     }
 
@@ -253,16 +268,22 @@ export const exportToPDF = async (
       ]],
       body: trimesterTableBody,
       theme: "grid",
-      headStyles: { fillColor: [0, 51, 153], textColor: 255 },
-      styles: { fontSize: 7 },
+      headStyles: { fillColor: [0, 51, 153], textColor: 255, fontSize: 7 },
+      styles: { fontSize: 7, cellPadding: 1 },
+      margin: { left: margin, right: margin },
     });
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
+  // --- ACADEMIC YEARS TABLE SECTION ---
   if (academicYears.length > 0) {
+    if (yPos + 50 > pageHeight - margin) {
+      doc.addPage();
+      yPos = margin;
+    }
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("ESTUDOS REALIZADOS - ENSINO FUNDAMENTAL", 15, yPos);
+    doc.text("ESTUDOS REALIZADOS - ENSINO FUNDAMENTAL", margin, yPos);
     yPos += 5;
     
     autoTable(doc, {
@@ -276,16 +297,22 @@ export const exportToPDF = async (
         year.state,
       ]),
       theme: "grid",
-      headStyles: { fillColor: [0, 51, 153], textColor: 255 },
-      styles: { fontSize: 8 },
+      headStyles: { fillColor: [0, 51, 153], textColor: 255, fontSize: 8 },
+      styles: { fontSize: 8, cellPadding: 1 },
+      margin: { left: margin, right: margin },
     });
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
+  // --- ANNUAL GRADES TABLE SECTION ---
   if (academicYears.length > 0) {
+    if (yPos + 50 > pageHeight - margin) {
+      doc.addPage();
+      yPos = margin;
+    }
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", 15, yPos);
+    doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", margin, yPos);
     yPos += 5;
 
     const sortedYears = [...academicYears].sort((a, b) => {
@@ -320,7 +347,7 @@ export const exportToPDF = async (
     const tableHeaders: any[] = [];
     
     const headerRow1: any[] = [
-      { content: "Base Nacional Comum", rowSpan: 3, styles: { valign: 'middle', fontStyle: 'bold', halign: 'center', fontSize: 7 } }
+      { content: "Componentes Curriculares", rowSpan: 3, styles: { valign: 'middle', fontStyle: 'bold', halign: 'center', fontSize: 7 } }
     ];
     
     const cbaYears = sortedYears.filter(y => y.grade_level === "1º Ano" || y.grade_level === "2º Ano");
@@ -528,15 +555,16 @@ export const exportToPDF = async (
       columnStyles: {
         0: { cellWidth: 35, halign: 'left' }
       },
+      margin: { left: margin, right: margin },
     });
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  if (yPos > 220) {
+  // --- CERTIFICATE TEXT SECTION ---
+  if (yPos + 50 > pageHeight - margin) {
     doc.addPage();
-    yPos = 20;
+    yPos = margin;
   }
-
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   let certificateTitle = "";
@@ -576,96 +604,51 @@ export const exportToPDF = async (
   }
   
   doc.setFont("helvetica", "normal");
-  let xPos = 20;
-  const maxWidth = pageWidth - 40;
-  
-  doc.setFont("helvetica", "normal");
-  const text1Width = doc.getTextWidth(certText1);
-  doc.setFont("helvetica", "bold");
-  const nameTextWidth = doc.getTextWidth(student.full_name);
-  doc.setFont("helvetica", "normal");
-  const text2Width = doc.getTextWidth(certText2);
-  doc.setFont("helvetica", "bold");
-  const gradeWidth = doc.getTextWidth(gradeInfo);
-  doc.setFont("helvetica", "normal");
-  const text3Width = doc.getTextWidth(certText3);
-  
-  const totalWidth = text1Width + nameTextWidth + text2Width + gradeWidth + text3Width;
-  
-  if (totalWidth <= maxWidth) {
-    xPos = (pageWidth - totalWidth) / 2;
-    doc.setFont("helvetica", "normal");
-    doc.text(certText1, xPos, yPos);
-    xPos += text1Width;
-    doc.setFont("helvetica", "bold");
-    doc.text(student.full_name, xPos, yPos);
-    xPos += nameTextWidth;
-    doc.setFont("helvetica", "normal");
-    doc.text(certText2, xPos, yPos);
-    xPos += text2Width;
-    doc.setFont("helvetica", "bold");
-    doc.text(gradeInfo, xPos, yPos);
-    xPos += gradeWidth;
-    doc.setFont("helvetica", "normal");
-    doc.text(certText3, xPos, yPos);
-    yPos += 20;
-  } else {
-    doc.setFont("helvetica", "normal");
-    const fullText = certText1 + student.full_name + certText2 + gradeInfo + certText3;
-    const wrappedText = doc.splitTextToSize(fullText, maxWidth);
-    doc.text(wrappedText, pageWidth / 2, yPos, { align: "center" });
-    yPos += wrappedText.length * 7 + 20;
+  const fullText = certText1 + student.full_name + certText2 + gradeInfo + certText3;
+  const wrappedText = doc.splitTextToSize(fullText, pageWidth - 2 * margin);
+  doc.text(wrappedText, pageWidth / 2, yPos, { align: "center" });
+  yPos += wrappedText.length * 5 + 10; // Adjusted line height for wrapped text
+
+  // --- SIGNATURES BLOCK ---
+  if (yPos + 60 > pageHeight - margin) { // Ensure enough space for signatures
+    doc.addPage();
+    yPos = margin;
   }
 
-  // --- START OF REVISED SIGNATURE BLOCK ---
-  const blockMarginX = 15;
-  const availableWidth = pageWidth - (2 * blockMarginX);
-  const columnGap = 10; // Gap between main columns
+  const signatureBlockStartY = yPos + 10;
+  const blockPadding = 5;
+  const innerWidth = pageWidth - 2 * margin;
+  const col1Width = innerWidth * 0.25; // QR Code
+  const col2Width = innerWidth * 0.35; // System Signature
+  const col3Width = innerWidth * 0.40; // Individual Signatures
 
-  // Define fixed X-coordinates for the three main sections
-  const qrBlockX = blockMarginX;
-  const systemSigBlockX = qrBlockX + (availableWidth * 0.25) + columnGap; // 25% for QR, then gap
-  const individualSigBlockX = systemSigBlockX + (availableWidth * 0.35) + columnGap; // 35% for system, then gap
+  const col1X = margin;
+  const col2X = col1X + col1Width + blockPadding;
+  const col3X = col2X + col2Width + blockPadding;
 
-  // Define widths for each section
-  const qrColumnWidth = availableWidth * 0.25;
-  const systemSigColumnWidth = availableWidth * 0.35;
-  const individualSigColumnWidth = availableWidth * 0.40;
+  let maxBlockHeight = 0; // To track the tallest column
 
-  // Common text styles and sizes
-  const smallFontSize = 7;
-  const normalFontSize = 9;
-  const boldFontSize = 9;
-  const lineHeight = 4; // Estimated line height for these font sizes
-
-  // Image dimensions
-  const qrCodeSize = 25;
-  const systemLogoWidth = 30;
-  const systemLogoHeight = (12 / 48) * systemLogoWidth; // Maintain aspect ratio (original 48x12)
-  const individualSignatureImageWidth = 40;
-  const individualSignatureImageHeight = 16;
-
-  let currentBlockY = yPos + 10; // Starting Y for the entire signature block
-
-  // --- QR Code Section (Left) ---
+  // --- Column 1: QR Code ---
   if (qrCodeDataUrl) {
-    const qrCodeCenterX = qrBlockX + qrColumnWidth / 2;
-    doc.addImage(qrCodeDataUrl, "PNG", qrCodeCenterX - qrCodeSize / 2, currentBlockY, qrCodeSize, qrCodeSize);
+    const qrCodeSize = 25;
+    const qrCodeCenterX = col1X + col1Width / 2;
+    doc.addImage(qrCodeDataUrl, "PNG", qrCodeCenterX - qrCodeSize / 2, signatureBlockStartY, qrCodeSize, qrCodeSize);
     doc.setFontSize(smallFontSize);
     doc.setFont("helvetica", "normal");
-    doc.text("Escaneie para validar a autenticidade", qrCodeCenterX, currentBlockY + qrCodeSize + lineHeight, { align: "center" });
+    doc.text("Escaneie para validar a autenticidade", qrCodeCenterX, signatureBlockStartY + qrCodeSize + 2, { align: "center" });
+    maxBlockHeight = Math.max(maxBlockHeight, qrCodeSize + 2 * smallFontSize);
   }
 
-  // --- System Digital Signature Section (Middle) ---
-  let systemSigCurrentY = currentBlockY;
+  // --- Column 2: System Digital Signature ---
+  let systemSigCurrentY = signatureBlockStartY;
+  const systemLogoWidth = 30;
+  const systemLogoHeight = (12 / 48) * systemLogoWidth; // Maintain aspect ratio
+
   if (signatureLogoBase64) {
-    const systemLogoCenterX = systemSigBlockX + systemSigColumnWidth / 2;
+    const systemLogoCenterX = col2X + col2Width / 2;
     doc.addImage(signatureLogoBase64, "PNG", systemLogoCenterX - systemLogoWidth / 2, systemSigCurrentY, systemLogoWidth, systemLogoHeight);
-    systemSigCurrentY += systemLogoHeight + 2; // Space after logo
+    systemSigCurrentY += systemLogoHeight + 2;
   }
-
-  doc.line(systemSigBlockX + 5, systemSigCurrentY, systemSigBlockX + systemSigColumnWidth - 5, systemSigCurrentY);
-  systemSigCurrentY += lineHeight; // Space after line
 
   doc.setFontSize(boldFontSize);
   doc.setFont("helvetica", "bold");
@@ -679,110 +662,116 @@ export const exportToPDF = async (
     signers.push(`Secretário(a) ${secretaryProfile.name}`);
   }
 
-  if (signers.length > 0) {
+  const isSignedBySystem = signers.length > 0;
+  if (isSignedBySystem) {
     signersText = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
   } else {
     signersText = "Este documento ainda não foi assinado digitalmente.";
   }
 
-  const wrappedSignersText = doc.splitTextToSize(signersText, systemSigColumnWidth - 10);
-  doc.text(wrappedSignersText, systemSigBlockX + systemSigColumnWidth / 2, systemSigCurrentY, { align: "center" });
+  const wrappedSignersText = doc.splitTextToSize(signersText, col2Width - 10);
+  doc.text(wrappedSignersText, col2X + col2Width / 2, systemSigCurrentY, { align: "center" });
   systemSigCurrentY += wrappedSignersText.length * lineHeight;
 
-  if (signers.length > 0) {
+  if (isSignedBySystem) {
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString("pt-BR");
+    const formattedTime = now.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
     doc.setFontSize(smallFontSize);
     doc.setFont("helvetica", "normal");
-    doc.text("Pelo sistema Correct", systemSigBlockX + systemSigColumnWidth / 2, systemSigCurrentY + lineHeight, { align: "center" });
+    doc.text(`Assinado em: ${formattedDate} às ${formattedTime}`, col2X + col2Width / 2, systemSigCurrentY + lineHeight, { align: "center" });
+    systemSigCurrentY += lineHeight;
+    doc.text("Pelo sistema Correct", col2X + col2Width / 2, systemSigCurrentY + lineHeight, { align: "center" });
     systemSigCurrentY += lineHeight;
   }
-  
-  // --- Individual Signatures Section (Right) ---
-  let individualSigCurrentY = currentBlockY;
+  maxBlockHeight = Math.max(maxBlockHeight, systemSigCurrentY - signatureBlockStartY);
+
+  // --- Column 3: Individual Signatures (Director & Secretary) ---
+  let individualSigCurrentY = signatureBlockStartY;
   const hasDirectorSignature = !!directorProfile;
   const hasSecretarySignature = !!secretaryProfile;
   const numIndividualSignatures = (hasDirectorSignature ? 1 : 0) + (hasSecretarySignature ? 1 : 0);
 
   if (numIndividualSignatures > 0) {
-    const singleSignatureBlockWidth = (individualSigColumnWidth - (numIndividualSignatures > 1 ? columnGap : 0)) / numIndividualSignatures;
-    let currentIndividualX = individualSigBlockX;
+    const singleSigBlockWidth = (col3Width - (numIndividualSignatures > 1 ? blockPadding : 0)) / numIndividualSignatures;
+    const signatureImageWidth = 40; // Fixed width for signature image
+    const signatureImageHeight = 16; // Fixed height for signature image
+    const signatureLineLength = singleSigBlockWidth - 10; // Line length with padding
+
+    let currentIndividualX = col3X;
+    let currentIndividualMaxY = individualSigCurrentY;
 
     // Director's Signature
     if (hasDirectorSignature) {
-      const directorCenterX = currentIndividualX + singleSignatureBlockWidth / 2;
-      let directorSigElementY = individualSigCurrentY;
+      const directorCenterX = currentIndividualX + singleSigBlockWidth / 2;
+      let directorElementY = individualSigCurrentY;
 
       if (directorSignatureImageBase64) {
-        doc.addImage(directorSignatureImageBase64, "PNG", directorCenterX - individualSignatureImageWidth / 2, directorSigElementY, individualSignatureImageWidth, individualSignatureImageHeight);
-        directorSigElementY += individualSignatureImageHeight + 2; // Space after image
+        doc.addImage(directorSignatureImageBase64, "PNG", directorCenterX - signatureImageWidth / 2, directorElementY, signatureImageWidth, signatureImageHeight);
+        directorElementY += signatureImageHeight + 2;
       }
       
-      doc.line(currentIndividualX + 5, directorSigElementY, currentIndividualX + singleSignatureBlockWidth - 5, directorSigElementY);
-      directorSigElementY += lineHeight; // Space after line
+      doc.line(currentIndividualX + 5, directorElementY, currentIndividualX + singleSigBlockWidth - 5, directorElementY);
+      directorElementY += lineHeight;
 
       doc.setFontSize(boldFontSize);
       doc.setFont("helvetica", "bold");
-      doc.text("Diretor(a)", directorCenterX, directorSigElementY, { align: "center" });
-      directorSigElementY += lineHeight;
+      doc.text("Diretor(a)", directorCenterX, directorElementY, { align: "center" });
+      directorElementY += lineHeight;
 
       if (directorProfile?.name) {
         doc.setFontSize(smallFontSize);
         doc.setFont("helvetica", "normal");
-        const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, singleSignatureBlockWidth - 10);
-        doc.text(wrappedDirectorName, directorCenterX, directorSigElementY, { align: "center" });
-        directorSigElementY += wrappedDirectorName.length * lineHeight;
+        const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, signatureLineLength);
+        doc.text(wrappedDirectorName, directorCenterX, directorElementY, { align: "center" });
+        directorElementY += wrappedDirectorName.length * lineHeight;
       }
       if (directorProfile?.registration_number) {
         doc.setFontSize(smallFontSize);
         doc.setFont("helvetica", "normal");
-        doc.text(directorProfile.registration_number, directorCenterX, directorSigElementY, { align: "center" });
-        directorSigElementY += lineHeight;
+        doc.text(directorProfile.registration_number, directorCenterX, directorElementY, { align: "center" });
+        directorElementY += lineHeight;
       }
-      currentIndividualX += singleSignatureBlockWidth + columnGap;
+      currentIndividualMaxY = Math.max(currentIndividualMaxY, directorElementY);
+      currentIndividualX += singleSigBlockWidth + blockPadding;
     }
 
     // Secretary's Signature
     if (hasSecretarySignature) {
-      const secretaryCenterX = currentIndividualX + singleSignatureBlockWidth / 2;
-      let secretarySigElementY = individualSigCurrentY;
+      const secretaryCenterX = currentIndividualX + singleSigBlockWidth / 2;
+      let secretaryElementY = individualSigCurrentY;
 
       if (secretarySignatureImageBase64) {
-        doc.addImage(secretarySignatureImageBase64, "PNG", secretaryCenterX - individualSignatureImageWidth / 2, secretarySigElementY, individualSignatureImageWidth, individualSignatureImageHeight);
-        secretarySigElementY += individualSignatureImageHeight + 2; // Space after image
+        doc.addImage(secretarySignatureImageBase64, "PNG", secretaryCenterX - signatureImageWidth / 2, secretaryElementY, signatureImageWidth, signatureImageHeight);
+        secretaryElementY += signatureImageHeight + 2;
       }
 
-      doc.line(currentIndividualX + 5, secretarySigElementY, currentIndividualX + singleSignatureBlockWidth - 5, secretarySigElementY);
-      secretarySigElementY += lineHeight; // Space after line
+      doc.line(currentIndividualX + 5, secretaryElementY, currentIndividualX + singleSigBlockWidth - 5, secretaryElementY);
+      secretaryElementY += lineHeight;
 
       doc.setFontSize(boldFontSize);
       doc.setFont("helvetica", "bold");
-      doc.text("Secretário(a)", secretaryCenterX, secretarySigElementY, { align: "center" });
-      secretarySigElementY += lineHeight;
+      doc.text("Secretário(a)", secretaryCenterX, secretaryElementY, { align: "center" });
+      secretaryElementY += lineHeight;
 
       if (secretaryProfile?.name) {
         doc.setFontSize(smallFontSize);
         doc.setFont("helvetica", "normal");
-        const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, singleSignatureBlockWidth - 10);
-        doc.text(wrappedSecretaryName, secretaryCenterX, secretarySigElementY, { align: "center" });
-        secretarySigElementY += wrappedSecretaryName.length * lineHeight;
+        const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, signatureLineLength);
+        doc.text(wrappedSecretaryName, secretaryCenterX, secretaryElementY, { align: "center" });
+        secretaryElementY += wrappedSecretaryName.length * lineHeight;
       }
       if (secretaryProfile?.registration_number) {
         doc.setFontSize(smallFontSize);
         doc.setFont("helvetica", "normal");
-        doc.text(secretaryProfile.registration_number, secretaryCenterX, secretarySigElementY, { align: "center" });
-        secretarySigElementY += lineHeight;
+        doc.text(secretaryProfile.registration_number, secretaryCenterX, secretaryElementY, { align: "center" });
       }
+      currentIndividualMaxY = Math.max(currentIndividualMaxY, secretaryElementY);
     }
+    maxBlockHeight = Math.max(maxBlockHeight, currentIndividualMaxY - signatureBlockStartY);
   }
 
-  // Determine the maximum height used by any of the signature blocks to set the next yPos
-  const qrBlockHeight = qrCodeDataUrl ? qrCodeSize + 2 * lineHeight : 0;
-  const systemBlockHeight = systemSigCurrentY - currentBlockY;
-  const individualBlockHeight = Math.max(
-    (hasDirectorSignature ? (individualSignatureImageHeight + 4 * lineHeight + (directorProfile?.name ? doc.splitTextToSize(directorProfile.name, singleSignatureBlockWidth - 10).length * lineHeight : 0)) : 0),
-    (hasSecretarySignature ? (individualSignatureImageHeight + 4 * lineHeight + (secretaryProfile?.name ? doc.splitTextToSize(secretaryProfile.name, singleSignatureBlockWidth - 10).length * lineHeight : 0)) : 0)
-  );
-  
-  yPos = currentBlockY + Math.max(qrBlockHeight, systemBlockHeight, individualBlockHeight) + 10; // Add padding
+  yPos = signatureBlockStartY + maxBlockHeight + 10; // Update yPos after the entire signature block
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
@@ -790,52 +779,51 @@ export const exportToPDF = async (
   const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const dateStr = `${now.getDate().toString().padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
   doc.text(`Luís Eduardo Magalhães - BA, ${dateStr}`, pageWidth / 2, yPos, { align: "center" });
-  // --- END OF REVISED SIGNATURE BLOCK ---
+  yPos += 10;
 
+  // --- OBSERVATIONS SECTION ---
   if (student.observations) {
-    if (yPos > 230) {
+    if (yPos + 30 > pageHeight - margin) {
       doc.addPage();
-      yPos = 20;
-    } else {
-      yPos += 10;
+      yPos = margin;
     }
-
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("OBSERVAÇÕES:", 15, yPos);
+    doc.text("OBSERVAÇÕES:", margin, yPos);
     yPos += 5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    const obsLines = doc.splitTextToSize(student.observations, pageWidth - 30);
-    doc.text(obsLines, 15, yPos);
+    const obsLines = doc.splitTextToSize(student.observations, pageWidth - 2 * margin);
+    doc.text(obsLines, margin, yPos);
     yPos += obsLines.length * 4 + 5;
   }
 
-  if (yPos > 240) {
+  // --- LEGEND AND IMPORTANT INFO SECTION ---
+  if (yPos + 50 > pageHeight - margin) {
     doc.addPage();
-    yPos = 20;
+    yPos = margin;
   } else {
     yPos += 10;
   }
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("LEGENDA:", 15, yPos);
+  doc.text("LEGENDA:", margin, yPos);
   yPos += 5;
   doc.setFont("helvetica", "normal");
-  doc.text("O = Ótimo (9,5 a 10,0) | MB = Muito Bom (8,0 a 9,4) | B = Bom (7,0 a 7,9)", 15, yPos);
+  doc.text("O = Ótimo (9,5 a 10,0) | MB = Muito Bom (8,0 a 9,4) | B = Bom (7,0 a 7,9)", margin, yPos);
   yPos += 5;
-  doc.text("R = Regular (5,0 a 6,9) | I = Insuficiente (0,0 a 4,9)", 15, yPos);
+  doc.text("R = Regular (5,0 a 6,9) | I = Insuficiente (0,0 a 4,9)", margin, yPos);
   yPos += 10;
 
   doc.setFont("helvetica", "bold");
-  doc.text("INFORMAÇÃO IMPORTANTE:", 15, yPos);
+  doc.text("INFORMAÇÃO IMPORTANTE:", margin, yPos);
   yPos += 5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   const infoText = "O Sistema Municipal de Ensino de Luís Eduardo Magalhães, conforme resolução n°005/2018, publicado no diário oficial do município n°858 de 23/10/2018, o Conselho Municipal de Educação adota o Ciclo Básico de Alfabetização, com dois anos de duração, sem retenção ou promoção, no decorrer deste. Faz-se necessário apenas o relatório dos níveis de habilidades do aluno nas competências de leitura, escrita e raciocínio lógico-matemático em anexo.";
-  const splitInfo = doc.splitTextToSize(infoText, pageWidth - 30);
-  doc.text(splitInfo, 15, yPos);
+  const splitInfo = doc.splitTextToSize(infoText, pageWidth - 2 * margin);
+  doc.text(splitInfo, margin, yPos);
 
   doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
 };
