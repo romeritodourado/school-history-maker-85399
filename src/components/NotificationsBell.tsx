@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/Auth/AuthContext'; // Corrigido o caminho de importação
+import { useAuth } from '@/contexts/AuthContext'; // Caminho de importação corrigido
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
