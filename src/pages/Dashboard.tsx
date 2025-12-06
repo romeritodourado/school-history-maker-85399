@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { NotificationsBell } } from '@/components/NotificationsBell'; // Importar o sino de notificações
+import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
