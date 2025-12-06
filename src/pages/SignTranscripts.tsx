@@ -441,8 +441,14 @@ export default function SignTranscripts() {
         if (!transcript) return null;
 
         console.log(`[SignTranscripts] DEBUG: Processando histórico ${transcript.id}:`);
-        console.log(`[SignTranscripts] DEBUG: Perfil do Usuário - ID: ${profile.id}, Role: ${profile.role}, School_ID: ${profile.school_id}, Municipality_ID: ${profile.municipality_id}`);
-        console.log(`[SignTranscripts] DEBUG: Histórico - ID: ${transcript.id}, Aluno: ${transcript.students?.full_name}, School_ID: ${transcript.school_id}, Municipality_ID: ${transcript.municipality_id}, Status: ${transcript.status}`);
+        console.log(`[SignTranscripts] DEBUG: Perfil do Usuário - ID: ${profile.id}, Role: ${profile.role}`);
+        console.log(`[SignTranscripts] DEBUG: profile.school_id: ${profile.school_id}`);
+        console.log(`[SignTranscripts] DEBUG: transcript.school_id: ${transcript.school_id}`);
+        console.log(`[SignTranscripts] DEBUG: profile.municipality_id: ${profile.municipality_id}`);
+        console.log(`[SignTranscripts] DEBUG: transcript.municipality_id: ${transcript.municipality_id}`);
+        console.log(`[SignTranscripts] DEBUG: Status do histórico: ${transcript.status}`);
+        console.log(`[SignTranscripts] DEBUG: Ação atual: ${currentAction}`);
+
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (profile.school_id && profile.school_id !== transcript.school_id) {
