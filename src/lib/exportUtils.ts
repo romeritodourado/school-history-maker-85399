@@ -221,7 +221,7 @@ export const exportToPDF = async (
     const uniqueSubjects = Array.from(new Set(trimesterGrades.map(g => g.subject_name)));
     const trimesterTableBody = uniqueSubjects.map(subject => {
       const t1 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 1);
-      const t2 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 2);
+      const t2 = trimesterGrimesterGrades.find(g => g.subject_name === subject && g.trimester === 2);
       const t3 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 3);
       
       return [
@@ -632,7 +632,22 @@ export const exportToPDF = async (
   const centralColumnCenterX = centralColumnX + (columnWidth / 2);
 
   // Text lines for the digital signature
-  const digitalSignatureText1 = signedByText(); // "Este documento..." or actual signers
+  const digitalSignatureText1 = (() => {
+    const signers: string[] = [];
+    if (directorProfile?.name) {
+      signers.push(`Diretor(a) ${directorProfile.name}`);
+    }
+    if (secretaryProfile?.name) {
+      signers.push(`Secretário(a) ${secretaryProfile.name}`);
+    }
+    if (signers.length === 0) {
+      return "Este documento ainda não foi assinado digitalmente.";
+    } else if (signers.length === 1) {
+      return `Este documento foi assinado digitalmente por: ${signers[0]}.`;
+    } else {
+      return `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
+    }
+  })();
   const digitalSignatureText2 = "Pelo sistema Correct";
 
   // Calculate the Y position for the digital signature text to align with QR code text
@@ -769,4 +784,152 @@ export const exportToPDF = async (
   doc.text(splitInfo, 15, yPos);
 
   doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
+};
+
+export const exportToExcel = (
+  student: StudentData,
+  academicYears: AcademicYearData[],
+  grades: { [yearId: string]: GradeData[] },
+  trimesterGrades: TrimesterGradeData[]
+) => {
+  const wb = XLSX.utils.book_new();
+
+  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
+  const authorizationDecree = student.schools?.authorization_decree_url || "";
+  const officialGazette = student.schools?.official_gazette_url || "";
+
+  const studentInfo = [
+    [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
+    [schoolName.toUpperCase()],
+    [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
+    [""],
+    ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
+    [""],
+    ["DADOS DO ALUNO"],
+    ["Nome Completo:", student.full_name],
+    ["Nome da Mãe:", student.mother_name || "Não informado"],
+    ["Nome do Pai:", student.father_name || "Não informado"],
+    ["Data de Nascimento:", new Date(student.birth_date).toLocaleDateString("pt-BR")],
+    ["Naturalidade:", student.birth_place || "Não informado"],
+    ["Estado:", student.birth_state || "BA"],
+    ["Status do Aluno:", student.student_status || "N/A"],
+    ["Séries Cursadas:", student.grade_series || "N/A"],
+    ["Observações:", student.observations || "N/A"],
+    [""],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(studentInfo);
+
+  let currentRow = studentInfo.length;
+  XLSX.utils.sheet_add_aoa(ws, [["ESTUDOS REALIZADOS"]], { origin: { r: currentRow, c: 0 } });
+  currentRow++;
+  XLSX.utils.sheet_add_aoa(ws, [["Ano", "Série", "Escola", "Cidade", "UF"]], {
+    origin: { r: currentRow, c: 0 },
+  });
+  currentRow++;
+
+  academicYears.forEach((year) => {
+    XLSX.utils.sheet_add_aoa(
+      ws,
+      [[year.calendar_year, year.grade_level, year.school_name, year.city, year.state]],
+      { origin: { r: currentRow, c: 0 } }
+    );
+    currentRow++;
+  });
+
+  currentRow += 2;
+
+  academicYears.forEach((year) => {
+    const yearGrades = grades[year.id] || [];
+    if (yearGrades.length > 0) {
+      const totalWorkload = yearGrades.reduce((sum, g) => sum + (g.workload || 0), 0);
+      
+      XLSX.utils.sheet_add_aoa(ws, [[`${year.grade_level} - ${year.calendar_year}`]], {
+        origin: { r: currentRow, c: 0 },
+      });
+      currentRow++;
+      XLSX.utils.sheet_add_aoa(ws, [["Disciplina", "Nota", "C.H.", "Faltas"]], {
+        origin: { r: currentRow, c: 0 },
+      });
+      currentRow++;
+
+      yearGrades.forEach((g) => {
+        XLSX.utils.sheet_add_aoa(
+          ws,
+          [[g.subject_name, formatGrade(g.grade), g.workload || "-", g.absences]],
+          { origin: { r: currentRow, c: 0 } }
+        );
+        currentRow++;
+      });
+      
+      XLSX.utils.sheet_add_aoa(
+        ws,
+        [["Carga Horária Total", "", `${totalWorkload}h`, ""]],
+        { origin: { r: currentRow, c: 0 } }
+      );
+      currentRow++;
+      currentRow += 2;
+    }
+  });
+
+  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
+  currentRow++;
+  
+  let statusText = "";
+  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
+  
+  if (student.student_status === "concluído") {
+    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
+  } else if (student.student_status === "cursando") {
+    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
+  } else if (student.student_status === "transferido") {
+    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
+  } else if (student.student_status === "conservado") {
+    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
+  } else {
+    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`; // Default
+  }
+  
+  XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
+  currentRow += 2;
+  
+  XLSX.utils.sheet_add_aoa(ws, [["_____________________", "", "_____________________"]], {
+    origin: { r: currentRow, c: 0 },
+  });
+  currentRow++;
+  XLSX.utils.sheet_add_aoa(ws, [["Diretor(a)", "", "Secretário(a)"]], {
+    origin: { r: currentRow, c: 0 },
+  });
+  currentRow++;
+  if (student.schools?.authorization_decree_url) {
+    XLSX.utils.sheet_add_aoa(ws, [[student.schools.authorization_decree_url, "", student.schools.official_gazette_url || ""]], {
+      origin: { r: currentRow, c: 0 },
+    });
+  }
+  currentRow += 2;
+  
+  XLSX.utils.sheet_add_aoa(
+    ws,
+    [[`Luís Eduardo Magalhães - BA, ${new Date().toLocaleDateString("pt-BR")}`]],
+    { origin: { r: currentRow, c: 0 } }
+  );
+  currentRow += 2;
+
+  XLSX.utils.sheet_add_aoa(ws, [["LEGENDA"]], { origin: { r: currentRow, c: 0 } });
+  currentRow++;
+  XLSX.utils.sheet_add_aoa(
+    ws,
+    [["O = Ótimo (9,5 a 10,0)", "MB = Muito Bom (8,0 a 9,4)", "B = Bom (7,0 a 7,9)"]],
+    { origin: { r: currentRow, c: 0 } }
+  );
+  currentRow++;
+  XLSX.utils.sheet_add_aoa(
+    ws,
+    [["R = Regular (5,0 a 6,9)", "I = Insuficiente (0,0 a 4,9)"]],
+    { origin: { r: currentRow, c: 0 } }
+  );
+
+  XLSX.utils.book_append_sheet(wb, ws, `Histórico Escolar - ${student.full_name.replace(/ /g, "_")}`);
+  XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
 };
