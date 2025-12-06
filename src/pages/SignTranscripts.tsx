@@ -243,7 +243,8 @@ export default function SignTranscripts() {
       if (!transcriptData) throw new Error('Histórico não encontrado.');
 
       // NEW CHECK: Ensure student_id is present and valid
-      if (!transcriptData.student_id) {
+      const studentId = transcriptData.student_id;
+      if (!studentId) {
         throw new Error('ID do aluno não encontrado no histórico. O histórico pode estar corrompido ou o aluno foi excluído.');
       }
 
@@ -256,7 +257,7 @@ export default function SignTranscripts() {
       }
 
       const student: StudentData = {
-        id: transcriptData.student_id, // Removed '!' as we've checked for null above
+        id: studentId, // Use the validated studentId
         full_name: (transcriptData.students as any).full_name,
         mother_name: (transcriptData.students as any).mother_name,
         father_name: (transcriptData.students as any).father_name,
