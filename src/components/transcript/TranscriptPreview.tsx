@@ -64,6 +64,7 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
+  signature_image_url: string | null; // Adicionado
 }
 
 interface TranscriptPreviewProps {
@@ -299,7 +300,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
             {` do Ensino Fundamental de 9 anos, conforme Histórico Escolar.`}
           </p>
           
-          <div className="mt-8 grid grid-cols-3 items-start"> {/* Changed items-end to items-start */}
+          <div className="mt-8 grid grid-cols-3 items-start">
             <div className="text-center">
               {qrCodeDataUrl && (
                 <img src={qrCodeDataUrl} alt="QR Code de Validação" className="mx-auto h-24 w-24 object-contain" />
@@ -308,6 +309,8 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
                 Escaneie para validar a autenticidade
               </p>
             </div>
+            
+            {/* Assinatura Digital do Sistema (Central) */}
             <div className="text-center">
               <img src={correctSignatureLogo} alt="Correct Logo Assinatura" className="mx-auto h-12 w-auto object-contain mb-2" />
               <div className="border-t border-foreground pt-2">
@@ -317,27 +320,39 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
                 </p>
               </div>
             </div>
-            <div className="text-center">
+
+            {/* Assinaturas do Diretor e Secretário (Lado a Lado) */}
+            <div className="flex justify-center gap-4">
               {directorProfile && (
-                <div className="border-t border-foreground pt-2 mb-4">
-                  <p className="text-sm font-semibold">Diretor(a)</p>
-                  {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
-                  {directorProfile.registration_number && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {directorProfile.registration_number}
-                    </p>
+                <div className="flex-1 text-center">
+                  {directorProfile.signature_image_url && (
+                    <img src={directorProfile.signature_image_url} alt="Assinatura Diretor" className="mx-auto h-16 w-auto object-contain mb-1" />
                   )}
+                  <div className="border-t border-foreground pt-2">
+                    <p className="text-sm font-semibold">Diretor(a)</p>
+                    {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
+                    {directorProfile.registration_number && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {directorProfile.registration_number}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               {secretaryProfile && (
-                <div className="border-t border-foreground pt-2">
-                  <p className="text-sm font-semibold">Secretário(a)</p>
-                  {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
-                  {secretaryProfile.registration_number && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {secretaryProfile.registration_number}
-                    </p>
+                <div className="flex-1 text-center">
+                  {secretaryProfile.signature_image_url && (
+                    <img src={secretaryProfile.signature_image_url} alt="Assinatura Secretário" className="mx-auto h-16 w-auto object-contain mb-1" />
                   )}
+                  <div className="border-t border-foreground pt-2">
+                    <p className="text-sm font-semibold">Secretário(a)</p>
+                    {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
+                    {secretaryProfile.registration_number && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {secretaryProfile.registration_number}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -615,30 +615,81 @@ const CreateTranscript = () => {
       const documentHash = await generateTranscriptHash(dataToHash);
 
       // Insert or update transcript entry
-      const transcriptData = {
-        student_id: studentId,
-        school_id: currentSchoolId,
-        municipality_id: currentMunicipalityId,
-        status: 'pending_director_signature', // Set status to pending director signature
-        document_hash: documentHash, // Store the generated hash
-        data: dataToHash, // Store a snapshot of the transcript data for verification
-      };
-
       let transcriptRecordId: string;
+      let existingDirectorSignatureId: string | null = null;
+      let existingDirectorSignedAt: string | null = null;
+      let existingSecretarySignatureId: string | null = null;
+      let existingSecretarySignedAt: string | null = null;
+      let existingSignedData: any | null = null;
 
       if (id) {
-        const { data: updatedTranscript, error: transcriptUpdateError } = await supabase
+        // Fetch existing transcript data to preserve signatures
+        const { data: existingTranscript, error: fetchTranscriptError } = await supabase
           .from('transcripts')
-          .update(transcriptData)
+          .select('id, director_signature_id, director_signed_at, secretary_signature_id, secretary_signed_at, signed_data')
           .eq('student_id', id)
-          .select('id')
           .single();
+
+        if (fetchTranscriptError && fetchTranscriptError.code !== 'PGRST116') { // PGRST116 means "no rows found"
+          throw fetchTranscriptError;
+        }
+
+        if (existingTranscript) {
+          transcriptRecordId = existingTranscript.id;
+          existingDirectorSignatureId = existingTranscript.director_signature_id;
+          existingDirectorSignedAt = existingTranscript.director_signed_at;
+          existingSecretarySignatureId = existingTranscript.secretary_signature_id;
+          existingSecretarySignedAt = existingTranscript.secretary_signed_at;
+          existingSignedData = existingTranscript.signed_data;
+        } else {
+          // If student exists but no transcript record, treat as new transcript
+          const { data: newTranscript, error: transcriptInsertError } = await supabase
+            .from('transcripts')
+            .insert([{
+              student_id: studentId,
+              school_id: currentSchoolId,
+              municipality_id: currentMunicipalityId,
+              status: 'draft', // Start as draft if no existing transcript
+              document_hash: documentHash,
+              data: dataToHash,
+            }])
+            .select('id')
+            .single();
+          if (transcriptInsertError) throw transcriptInsertError;
+          transcriptRecordId = newTranscript.id;
+        }
+
+        // Update existing transcript, preserving signature fields
+        const { error: transcriptUpdateError } = await supabase
+          .from('transcripts')
+          .update({
+            school_id: currentSchoolId,
+            municipality_id: currentMunicipalityId,
+            status: 'pending_director_signature', // Reset status for new signature flow
+            document_hash: documentHash,
+            data: dataToHash,
+            // Preserve existing signature fields
+            director_signature_id: existingDirectorSignatureId,
+            director_signed_at: existingDirectorSignedAt,
+            secretary_signature_id: existingSecretarySignatureId,
+            secretary_signed_at: existingSecretarySignedAt,
+            signed_data: existingSignedData, // Preserve existing signed_data
+          })
+          .eq('id', transcriptRecordId);
         if (transcriptUpdateError) throw transcriptUpdateError;
-        transcriptRecordId = updatedTranscript.id;
+
       } else {
+        // Insert new student and new transcript
         const { data: newTranscript, error: transcriptInsertError } = await supabase
           .from('transcripts')
-          .insert([transcriptData])
+          .insert([{
+            student_id: studentId,
+            school_id: currentSchoolId,
+            municipality_id: currentMunicipalityId,
+            status: 'pending_director_signature', // Set status to pending director signature
+            document_hash: documentHash,
+            data: dataToHash,
+          }])
           .select('id')
           .single();
         if (transcriptInsertError) throw transcriptInsertError;

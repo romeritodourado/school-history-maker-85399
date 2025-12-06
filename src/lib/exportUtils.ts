@@ -91,6 +91,7 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
+  signature_image_url: string | null; // Adicionado
 }
 
 const formatGrade = (grade: number | null) => {
@@ -128,12 +129,16 @@ export const exportToPDF = async (
   let municipalityEmblemBase64: string | null = null;
   let signatureLogoBase64: string | null = null; // Novo: para o logo de assinatura
   let qrCodeDataUrl: string | null = null;
+  let directorSignatureImageBase64: string | null = null; // Novo: para imagem de assinatura do diretor
+  let secretarySignatureImageBase64: string | null = null; // Novo: para imagem de assinatura do secretário
 
   // Load images concurrently
   await Promise.all([
     schoolLogoUrl ? getImageAsBase64(schoolLogoUrl).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
-    getImageAsBase64(correctSignatureLogo).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading signature logo:", e)), // Carregar o novo logo
+    getImageAsBase64(correctSignatureLogo).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading system signature logo:", e)), // Carregar o novo logo
+    directorProfile?.signature_image_url ? getImageAsBase64(directorProfile.signature_image_url).then(data => directorSignatureImageBase64 = data).catch(e => console.error("Error loading director signature image:", e)) : Promise.resolve(),
+    secretaryProfile?.signature_image_url ? getImageAsBase64(secretaryProfile.signature_image_url).then(data => secretarySignatureImageBase64 = data).catch(e => console.error("Error loading secretary signature image:", e)) : Promise.resolve(),
     QRCode.toDataURL(`${window.location.origin}/validar?id=${transcriptId}`, { width: 128, margin: 2 })
       .then(url => qrCodeDataUrl = url)
       .catch(err => console.error("Error generating QR code for PDF:", err))
@@ -613,7 +618,7 @@ export const exportToPDF = async (
   }
 
   // --- START OF REVISED SIGNATURE BLOCK ---
-  const isSigned = !!directorProfile || !!secretaryProfile;
+  const isSignedBySystem = !!directorProfile || !!secretaryProfile;
 
   const signatureBlockAreaY = yPos + 10; // Starting Y for the entire signature block area
   const columnWidth = (pageWidth - 30) / 3; // Each column width
@@ -624,12 +629,12 @@ export const exportToPDF = async (
   const signatureLogoDisplayWidth = 30; // Diminuído de 40 para 30
   const signatureLogoDisplayHeight = (12 / 48) * signatureLogoDisplayWidth; // Maintain aspect ratio (original 48x12)
   const textLineHeight = 4; // Estimated line height for font size 7-9
+  const signatureImageHeight = 16; // Altura fixa para as imagens de assinatura
 
   // Calculate vertical positions for the central signature block
-  // Aim to align the bottom of the QR code text with the bottom of the "Pelo sistema Correct" text
   const baseTextY = signatureBlockAreaY + qrCodeSize + 5; // This will be the Y for the QR code's descriptive text
 
-  // Central Signature (Logo + Text)
+  // Central System Signature (Logo + Text)
   const centralColumnX = columnMargin + columnWidth;
   const centralColumnCenterX = centralColumnX + (columnWidth / 2);
 
@@ -643,28 +648,20 @@ export const exportToPDF = async (
     signers.push(`Secretário(a) ${secretaryProfile.name}`);
   }
 
-  if (isSigned) {
+  if (isSignedBySystem) {
     digitalSignatureText1 = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
   } else {
     digitalSignatureText1 = "Este documento ainda não foi assinado digitalmente.";
   }
   const digitalSignatureText2 = "Pelo sistema Correct";
 
-  // Calculate the Y position for the digital signature text to align with QR code text
   const peloSistemaTextY = baseTextY;
   const signedByTextY = peloSistemaTextY - textLineHeight - 1; // 1 unit padding
   const centralLineY = signedByTextY - 5; // 5 units padding above the text
 
-  // Adjust signatureLogoY based on whether it will be displayed
-  let signatureLogoY = centralLineY;
-  if (isSigned) {
-    signatureLogoY = signedByTextY - signatureLogoDisplayHeight - 3; // 3 units padding
-  }
-
-
   doc.line(centralColumnX + 10, centralLineY, centralColumnX + columnWidth - 10, centralLineY); // Line
 
-  if (isSigned && signatureLogoBase64) { // Conditional rendering for logo
+  if (isSignedBySystem && signatureLogoBase64) { // Conditional rendering for logo
     const logoX = centralColumnCenterX - (signatureLogoDisplayWidth / 2);
     doc.addImage(signatureLogoBase64, "PNG", logoX, signatureLogoY, signatureLogoDisplayWidth, signatureLogoDisplayHeight);
   }
@@ -673,7 +670,7 @@ export const exportToPDF = async (
   doc.setFont("helvetica", "bold");
   doc.text(digitalSignatureText1, centralColumnCenterX, signedByTextY, { align: "center" });
 
-  if (isSigned) { // Conditional rendering for "Pelo sistema Correct"
+  if (isSignedBySystem) { // Conditional rendering for "Pelo sistema Correct"
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.text(digitalSignatureText2, centralColumnCenterX, peloSistemaTextY, { align: "center" });
@@ -690,49 +687,79 @@ export const exportToPDF = async (
     doc.text("Escaneie para validar a autenticidade", columnMargin + (columnWidth / 2), peloSistemaTextY, { align: "center" });
   }
 
-  // Director and Secretary Signatures (Right Column)
+  // Director and Secretary Signatures (Right Column - side-by-side)
   const rightColumnX = columnMargin + (columnWidth * 2);
-  const rightColumnCenterX = rightColumnX + (columnWidth / 2);
+  const rightColumnCenter = rightColumnX + (columnWidth / 2);
+
+  const signatureAreaWidth = columnWidth; // The width available for both signatures
+  const singleSignatureWidth = (signatureAreaWidth - 5) / 2; // 5 units for gap between them
 
   let currentSignatureY = centralLineY; // Start signatures from the same line as the central block's line
 
-  if (directorProfile) {
-    doc.line(rightColumnX + 10, currentSignatureY, rightColumnX + columnWidth - 10, currentSignatureY);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("Diretor(a)", rightColumnCenterX, currentSignatureY + 5, { align: "center" });
-    if (directorProfile.name) {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.text(directorProfile.name, rightColumnCenterX, currentSignatureY + 8, { align: "center" });
-    }
-    if (directorProfile.registration_number) {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.text(directorProfile.registration_number, rightColumnCenterX, currentSignatureY + 11, { align: "center" });
-    }
-    currentSignatureY += 20; // Space for next signature or date
-  }
+  const hasDirectorSignature = !!directorProfile;
+  const hasSecretarySignature = !!secretaryProfile;
 
-  if (secretaryProfile) {
-    // If director is present, add more space between director and secretary
-    if (directorProfile) currentSignatureY += 10;
+  if (hasDirectorSignature || hasSecretarySignature) {
+    // Calculate starting X for the first signature block
+    let startX = rightColumnX;
+    if (hasDirectorSignature && hasSecretarySignature) {
+      // Both present, center them within the right column
+      startX = rightColumnX + (signatureAreaWidth / 2) - (singleSignatureWidth * 2 + 5) / 2;
+    } else if (hasDirectorSignature || hasSecretarySignature) {
+      // Only one present, center it
+      startX = rightColumnX + (signatureAreaWidth / 2) - singleSignatureWidth / 2;
+    }
 
-    doc.line(rightColumnX + 10, currentSignatureY, rightColumnX + columnWidth - 10, currentSignatureY);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("Secretário(a)", rightColumnCenterX, currentSignatureY + 5, { align: "center" });
-    if (secretaryProfile.name) {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.text(secretaryProfile.name, rightColumnCenterX, currentSignatureY + 8, { align: "center" });
+    if (hasDirectorSignature) {
+      const directorX = startX;
+      const directorTextX = directorX + (singleSignatureWidth / 2);
+
+      if (directorSignatureImageBase64) {
+        const imgWidth = 40; // Fixed width for signature image
+        const imgHeight = 16; // Fixed height for signature image
+        doc.addImage(directorSignatureImageBase64, "PNG", directorX + (singleSignatureWidth / 2) - (imgWidth / 2), currentSignatureY - imgHeight - 2, imgWidth, imgHeight);
+      }
+      doc.line(directorX + 5, currentSignatureY, directorX + singleSignatureWidth - 5, currentSignatureY);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Diretor(a)", directorTextX, currentSignatureY + 5, { align: "center" });
+      if (directorProfile?.name) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(directorProfile.name, directorTextX, currentSignatureY + 8, { align: "center" });
+      }
+      if (directorProfile?.registration_number) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(directorProfile.registration_number, directorTextX, currentSignatureY + 11, { align: "center" });
+      }
     }
-    if (secretaryProfile.registration_number) {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.text(secretaryProfile.registration_number, rightColumnCenterX, currentSignatureY + 11, { align: "center" });
+
+    if (hasSecretarySignature) {
+      const secretaryX = hasDirectorSignature ? startX + singleSignatureWidth + 5 : startX;
+      const secretaryTextX = secretaryX + (singleSignatureWidth / 2);
+
+      if (secretarySignatureImageBase64) {
+        const imgWidth = 40; // Fixed width for signature image
+        const imgHeight = 16; // Fixed height for signature image
+        doc.addImage(secretarySignatureImageBase64, "PNG", secretaryX + (singleSignatureWidth / 2) - (imgWidth / 2), currentSignatureY - imgHeight - 2, imgWidth, imgHeight);
+      }
+      doc.line(secretaryX + 5, currentSignatureY, secretaryX + singleSignatureWidth - 5, currentSignatureY);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Secretário(a)", secretaryTextX, currentSignatureY + 5, { align: "center" });
+      if (secretaryProfile?.name) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(secretaryProfile.name, secretaryTextX, currentSignatureY + 8, { align: "center" });
+      }
+      if (secretaryProfile?.registration_number) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(secretaryProfile.registration_number, secretaryTextX, currentSignatureY + 11, { align: "center" });
+      }
     }
-    currentSignatureY += 20;
+    currentSignatureY += 20; // Advance Y for the date
   }
 
   // Update yPos for the date text, ensuring it's below all signature elements

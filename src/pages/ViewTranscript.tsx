@@ -72,6 +72,7 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
+  signature_image_url: string | null; // Adicionado
 }
 
 const ViewTranscript = () => {
@@ -133,7 +134,7 @@ const ViewTranscript = () => {
       if (transcriptRecord.director_signature_id) {
         const { data: dirProfile, error: dirError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role')
+          .select('id, name, registration_number, role, signature_image_url') // Adicionado signature_image_url
           .eq('id', transcriptRecord.director_signature_id)
           .single();
         if (dirError) console.error('Error fetching director profile:', dirError);
@@ -146,7 +147,7 @@ const ViewTranscript = () => {
       if (transcriptRecord.secretary_signature_id) {
         const { data: secProfile, error: secError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role')
+          .select('id, name, registration_number, role, signature_image_url') // Adicionado signature_image_url
           .eq('id', transcriptRecord.secretary_signature_id)
           .single();
         if (secError) console.error('Error fetching secretary profile:', secError);
