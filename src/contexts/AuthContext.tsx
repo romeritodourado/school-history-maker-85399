@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
+// Types
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type AppRole = Profile["role"];
 
@@ -59,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const mountedRef = useRef(true);
   const initDone = useRef(false);
   const sessionInitialized = useRef(false);
-  const didFetchInitialProfile = useRef(false);
+  const didFetchInitialProfile = useRef(false); // Nova flag para evitar busca duplicada de perfil
 
   useEffect(() => {
     return () => {
@@ -67,9 +68,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // ================== FETCH PROFILE =====================
   const fetchProfileForUser = useCallback(async (userId: string) => {
     try {
       console.log("AuthContext: Buscando perfil para o usuário:", userId);
+
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
@@ -114,12 +117,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
 
-        if (sessionData?.user && !didFetchInitialProfile.current) {
+        if (sessionData?.user && !didFetchInitialProfile.current) { // Usar a nova flag aqui
           didFetchInitialProfile.current = true;
           console.log("AuthContext: Processando sessão inicial do usuário:", sessionData.user.id);
           setUser(sessionData.user);
           setSession(sessionData);
-          await fetchProfileForUser(sessionData.user.id);
+          const prof = await fetchProfileForUser(sessionData.user.id);
+          
+          if (!prof) {
+            console.warn("AuthContext: Perfil não encontrado para o usuário:", sessionData.user.id);
+          }
         } else if (!sessionData?.user) {
           console.log("AuthContext: Nenhuma sessão ativa encontrada");
           setUser(null);
@@ -129,3 +136,164 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
+      } finally {
+        // Timer de segurança para liberar initialSessionChecked
+        setTimeout(() => {
+          console.log("AuthContext: Timer de segurança ativado (1000ms) → Liberando initialSessionChecked");
+          if (mountedRef.current) {
+            setInitialSessionChecked(true);
+            setSessionLoading(false);
+          }
+        }, 1000); // Aumentado para 1000ms
+      }
+    };
+
+    init();
+  }, [fetchProfileForUser]);
+
+  // ================== AUTH LISTENER =====================
+  useEffect(() => {
+    console.log("AuthContext: Configurando listener de auth state change.");
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, sessionData) => {
+        console.log("Auth state changed - Event:", event, "Session:", sessionData?.user?.id);
+
+        // Evitar processamento duplicado do SIGNED_IN
+        if (event === "SIGNED_IN" && sessionData?.user) {
+          // Se a sessão já foi inicializada com este mesmo usuário, ignorar
+          if (sessionInitialized.current && user?.id === sessionData.user.id) {
+            console.log("AuthContext: SIGNED_IN recebido para usuário já autenticado, ignorando.");
+            return;
+          }
+          
+          console.log("AuthContext: Processando SIGNED_IN para usuário:", sessionData.user.id);
+          sessionInitialized.current = true;
+          setAuthLoading(true);
+          
+          const prof = await fetchProfileForUser(sessionData.user.id);
+
+          if (mountedRef.current) {
+            setUser(sessionData.user);
+            setSession(sessionData);
+            setProfile(prof ?? null);
+            setRole(prof?.role ?? null);
+            setAuthLoading(false);
+          }
+        } 
+        else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          if (sessionData?.user) {
+            console.log("AuthContext: Atualizando dados do usuário:", sessionData.user.id);
+            setAuthLoading(true);
+            
+            const prof = await fetchProfileForUser(sessionData.user.id);
+
+            if (mountedRef.current) {
+              setUser(sessionData.user);
+              setSession(sessionData);
+              setProfile(prof ?? null);
+              setRole(prof?.role ?? null);
+              setAuthLoading(false);
+            }
+          }
+        } 
+        else if (event === "SIGNED_OUT") {
+          console.log("AuthContext: Processando SIGNED_OUT");
+          sessionInitialized.current = false;
+          if (mountedRef.current) {
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            setRole(null);
+            setActiveMunicipalityIdForSuperAdmin(null);
+            setAuthLoading(false);
+          }
+        }
+      }
+    );
+
+    return () => {
+      console.log("AuthContext: Removendo listener de auth state change.");
+      try {
+        listener.subscription.unsubscribe();
+      } catch (err) {
+        console.warn("AuthContext: Erro ao desinscrever listener:", err);
+      }
+    };
+  }, [fetchProfileForUser, user?.id]);
+
+  // ================== AUTH OPERATIONS =====================
+  const signIn = async (email: string, password: string) => {
+    setOperationLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string,
+    roleParam: AppRole,
+    municipality_id?: string,
+    school_id?: string
+  ) => {
+    setOperationLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, role: roleParam, municipality_id, school_id },
+        },
+      });
+      return { error };
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    setOperationLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      return { error };
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        role,
+        sessionLoading,
+        authLoading,
+        operationLoading,
+        initialSessionChecked,
+        signIn,
+        signUp,
+        signOut,
+        activeMunicipalityIdForSuperAdmin,
+        setActiveMunicipalityIdForSuperAdmin,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+};
