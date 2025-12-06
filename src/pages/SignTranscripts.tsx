@@ -175,6 +175,7 @@ export default function SignTranscripts() {
       setPendingTranscripts(data || []);
       setSelectedTranscripts([]); // Clear selections on data refresh
     } catch (error: any) {
+      console.error('Error fetching notifications:', error);
       toast({
         title: 'Erro ao carregar históricos',
         description: error.message || 'Não foi possível carregar os históricos pendentes.',
@@ -241,6 +242,11 @@ export default function SignTranscripts() {
       if (transcriptError) throw transcriptError;
       if (!transcriptData) throw new Error('Histórico não encontrado.');
 
+      // NEW CHECK: Ensure student_id is present and valid
+      if (!transcriptData.student_id) {
+        throw new Error('ID do aluno não encontrado no histórico. O histórico pode estar corrompido ou o aluno foi excluído.');
+      }
+
       // Explicitly check for student and school data
       if (!transcriptData.students) {
         throw new Error('Dados do aluno não encontrados para este histórico. O aluno pode ter sido excluído ou há uma inconsistência nos dados.');
@@ -250,7 +256,7 @@ export default function SignTranscripts() {
       }
 
       const student: StudentData = {
-        id: transcriptData.student_id!, 
+        id: transcriptData.student_id, // Removed '!' as we've checked for null above
         full_name: (transcriptData.students as any).full_name,
         mother_name: (transcriptData.students as any).mother_name,
         father_name: (transcriptData.students as any).father_name,
