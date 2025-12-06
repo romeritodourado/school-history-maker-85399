@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import correctLogo from "/correct-logo.png"; // Importar o logo
+import correctLogo from "/correct-logo.png"; // Importar o logo principal
+import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
 import QRCode from "qrcode"; // Importar a biblioteca qrcode
 import { useEffect, useState } from "react"; // Importar useEffect e useState
 
@@ -308,7 +309,7 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
               </p>
             </div>
             <div className="text-center">
-              <img src={correctLogo} alt="Correct Logo" className="mx-auto h-12 w-auto object-contain mb-2" />
+              <img src={correctSignatureLogo} alt="Correct Logo Assinatura" className="mx-auto h-12 w-auto object-contain mb-2" />
               <div className="border-t border-foreground pt-2">
                 <p className="text-sm font-semibold">{signedByText()}</p>
                 <p className="text-xs text-muted-foreground mt-1">

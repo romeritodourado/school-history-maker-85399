@@ -2,7 +2,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode"; // Importar a biblioteca qrcode
-import correctLogo from "/correct-logo.png"; // Importar o logo
+import correctLogo from "/correct-logo.png"; // Importar o logo principal
+import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
 
 // Convert image to base64
 const getImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -125,12 +126,14 @@ export const exportToPDF = async (
 
   let schoolLogoBase64: string | null = null;
   let municipalityEmblemBase64: string | null = null;
+  let signatureLogoBase64: string | null = null; // Novo: para o logo de assinatura
   let qrCodeDataUrl: string | null = null;
 
   // Load images concurrently
   await Promise.all([
     schoolLogoUrl ? getImageAsBase64(schoolLogoUrl).then(data => schoolLogoBase64 = data).catch(e => console.error("Error loading school logo:", e)) : Promise.resolve(),
     municipalityEmblemUrl ? getImageAsBase64(municipalityEmblemUrl).then(data => municipalityEmblemBase64 = data).catch(e => console.error("Error loading municipality emblem:", e)) : Promise.resolve(),
+    getImageAsBase64(correctSignatureLogo).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading signature logo:", e)), // Carregar o novo logo
     QRCode.toDataURL(`${window.location.origin}/validar?id=${transcriptId}`, { width: 128, margin: 2 })
       .then(url => qrCodeDataUrl = url)
       .catch(err => console.error("Error generating QR code for PDF:", err))
@@ -622,9 +625,17 @@ export const exportToPDF = async (
     doc.text("Escaneie para validar a autenticidade", blockMargin + (blockWidth / 2), signatureBlockY + logoHeight + 5, { align: "center" });
   }
 
-  // Correct Logo and Digital Signature Text (Center)
-  const correctLogoX = blockMargin + blockWidth + (blockWidth / 2) - (logoWidth / 2);
-  doc.addImage(correctLogo, "PNG", correctLogoX, signatureBlockY + 5, logoWidth, logoWidth * (12/48)); // Adjust height for correctLogo aspect ratio
+  // Correct Signature Logo and Digital Signature Text (Center)
+  if (signatureLogoBase64) {
+    const signatureLogoWidth = 48; // Largura original da imagem
+    const signatureLogoHeight = 12; // Altura original da imagem
+    const displayWidth = 40; // Largura desejada no PDF
+    const displayHeight = (signatureLogoHeight / signatureLogoWidth) * displayWidth; // Manter proporção
+    
+    const signatureLogoX = blockMargin + blockWidth + (blockWidth / 2) - (displayWidth / 2);
+    doc.addImage(signatureLogoBase64, "PNG", signatureLogoX, signatureBlockY + 5, displayWidth, displayHeight);
+  }
+  
   doc.line(blockMargin + blockWidth + 10, signatureBlockY + logoHeight + 10, blockMargin + (blockWidth * 2) - 10, signatureBlockY + logoHeight + 10);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
