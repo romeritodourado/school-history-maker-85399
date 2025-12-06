@@ -221,7 +221,7 @@ export const exportToPDF = async (
     const uniqueSubjects = Array.from(new Set(trimesterGrades.map(g => g.subject_name)));
     const trimesterTableBody = uniqueSubjects.map(subject => {
       const t1 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 1);
-      const t2 = trimesterGrimesterGrades.find(g => g.subject_name === subject && g.trimester === 2);
+      const t2 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 2);
       const t3 = trimesterGrades.find(g => g.subject_name === subject && g.trimester === 3);
       
       return [
@@ -613,13 +613,15 @@ export const exportToPDF = async (
   }
 
   // --- START OF REVISED SIGNATURE BLOCK ---
+  const isSigned = !!directorProfile || !!secretaryProfile;
+
   const signatureBlockAreaY = yPos + 10; // Starting Y for the entire signature block area
   const columnWidth = (pageWidth - 30) / 3; // Each column width
   const columnMargin = 15; // Left margin for the first column
 
   // Define heights for elements
   const qrCodeSize = 25; // Adjusted for better fit
-  const signatureLogoDisplayWidth = 40;
+  const signatureLogoDisplayWidth = 30; // Diminuído de 40 para 30
   const signatureLogoDisplayHeight = (12 / 48) * signatureLogoDisplayWidth; // Maintain aspect ratio (original 48x12)
   const textLineHeight = 4; // Estimated line height for font size 7-9
 
@@ -632,34 +634,37 @@ export const exportToPDF = async (
   const centralColumnCenterX = centralColumnX + (columnWidth / 2);
 
   // Text lines for the digital signature
-  const digitalSignatureText1 = (() => {
-    const signers: string[] = [];
-    if (directorProfile?.name) {
-      signers.push(`Diretor(a) ${directorProfile.name}`);
-    }
-    if (secretaryProfile?.name) {
-      signers.push(`Secretário(a) ${secretaryProfile.name}`);
-    }
-    if (signers.length === 0) {
-      return "Este documento ainda não foi assinado digitalmente.";
-    } else if (signers.length === 1) {
-      return `Este documento foi assinado digitalmente por: ${signers[0]}.`;
-    } else {
-      return `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
-    }
-  })();
+  let digitalSignatureText1 = "";
+  const signers: string[] = [];
+  if (directorProfile?.name) {
+    signers.push(`Diretor(a) ${directorProfile.name}`);
+  }
+  if (secretaryProfile?.name) {
+    signers.push(`Secretário(a) ${secretaryProfile.name}`);
+  }
+
+  if (isSigned) {
+    digitalSignatureText1 = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
+  } else {
+    digitalSignatureText1 = "Este documento ainda não foi assinado digitalmente.";
+  }
   const digitalSignatureText2 = "Pelo sistema Correct";
 
   // Calculate the Y position for the digital signature text to align with QR code text
-  // We want the bottom of "Pelo sistema Correct" to be at `baseTextY`
   const peloSistemaTextY = baseTextY;
   const signedByTextY = peloSistemaTextY - textLineHeight - 1; // 1 unit padding
-  const signatureLogoY = signedByTextY - signatureLogoDisplayHeight - 3; // 3 units padding
-  const centralLineY = signatureLogoY - 5; // 5 units padding above the logo
+  const centralLineY = signedByTextY - 5; // 5 units padding above the text
+
+  // Adjust signatureLogoY based on whether it will be displayed
+  let signatureLogoY = centralLineY;
+  if (isSigned) {
+    signatureLogoY = signedByTextY - signatureLogoDisplayHeight - 3; // 3 units padding
+  }
+
 
   doc.line(centralColumnX + 10, centralLineY, centralColumnX + columnWidth - 10, centralLineY); // Line
 
-  if (signatureLogoBase64) {
+  if (isSigned && signatureLogoBase64) { // Conditional rendering for logo
     const logoX = centralColumnCenterX - (signatureLogoDisplayWidth / 2);
     doc.addImage(signatureLogoBase64, "PNG", logoX, signatureLogoY, signatureLogoDisplayWidth, signatureLogoDisplayHeight);
   }
@@ -668,9 +673,11 @@ export const exportToPDF = async (
   doc.setFont("helvetica", "bold");
   doc.text(digitalSignatureText1, centralColumnCenterX, signedByTextY, { align: "center" });
 
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text(digitalSignatureText2, centralColumnCenterX, peloSistemaTextY, { align: "center" });
+  if (isSigned) { // Conditional rendering for "Pelo sistema Correct"
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(digitalSignatureText2, centralColumnCenterX, peloSistemaTextY, { align: "center" });
+  }
 
   // QR Code (Left Column)
   if (qrCodeDataUrl) {
