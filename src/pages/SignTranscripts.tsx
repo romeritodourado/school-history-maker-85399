@@ -785,7 +785,7 @@ export default function SignTranscripts() {
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
             </DialogDescription>
-          </CardHeader>
+          </DialogHeader> {/* Correct closing tag for DialogHeader */}
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
