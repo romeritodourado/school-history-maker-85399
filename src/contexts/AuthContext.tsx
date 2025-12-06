@@ -60,7 +60,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const mountedRef = useRef(true);
   const initDone = useRef(false);
   const sessionInitialized = useRef(false);
-  const didFetchInitialProfile = useRef(false); // Nova flag para evitar busca duplicada de perfil
 
   useEffect(() => {
     return () => {
@@ -117,8 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data } = await supabase.auth.getSession();
         const sessionData = data?.session ?? null;
 
-        if (sessionData?.user && !didFetchInitialProfile.current) { // Usar a nova flag aqui
-          didFetchInitialProfile.current = true;
+        if (sessionData?.user) {
           console.log("AuthContext: Processando sessão inicial do usuário:", sessionData.user.id);
           setUser(sessionData.user);
           setSession(sessionData);
@@ -126,8 +124,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           if (!prof) {
             console.warn("AuthContext: Perfil não encontrado para o usuário:", sessionData.user.id);
+            // If profile not found, consider user not fully authenticated for app purposes
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            setRole(null);
+          } else {
+            setProfile(prof);
+            setRole(prof.role);
           }
-        } else if (!sessionData?.user) {
+        } else {
           console.log("AuthContext: Nenhuma sessão ativa encontrada");
           setUser(null);
           setSession(null);
@@ -136,15 +142,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
+        // Ensure state is cleared on error
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
       } finally {
-        // Timer de segurança para liberar initialSessionChecked
-        setTimeout(() => {
-          console.log("AuthContext: Timer de segurança ativado (1000ms) → Liberando initialSessionChecked");
-          if (mountedRef.current) {
-            setInitialSessionChecked(true);
-            setSessionLoading(false);
-          }
-        }, 1000); // Aumentado para 1000ms
+        // Ensure these are set regardless of success or failure
+        if (mountedRef.current) {
+          setInitialSessionChecked(true); // Mark initial check as complete
+          setSessionLoading(false);      // Stop session loading
+        }
       }
     };
 
