@@ -154,8 +154,8 @@ export default function SignTranscripts() {
           created_at,
           director_signature_id,
           secretary_signature_id,
-          school_id,             // ADICIONADO
-          municipality_id,       // ADICIONADO
+          school_id,
+          municipality_id,
           students (full_name),
           schools (name)
         `)
@@ -400,10 +400,10 @@ export default function SignTranscripts() {
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (profile.school_id !== transcript.school_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${profile.school_id}, ID da escola do histórico: ${transcript.school_id}. Não é possível assinar.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). Não é possível assinar.`);
         }
         if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${profile.municipality_id}, ID da rede do histórico: ${transcript.municipality_id}. Não é possível assinar.`);
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. Não é possível assinar.`);
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
@@ -726,7 +726,7 @@ export default function SignTranscripts() {
             <DialogTitle>Pré-visualização do Histórico</DialogTitle>
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
-            </CardDescription>
+            </DialogDescription>
           </DialogHeader>
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
