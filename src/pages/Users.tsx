@@ -85,12 +85,16 @@ export default function Users() {
   }, []);
 
   useEffect(() => {
+    console.log("useEffect [formData.municipality_id, schools]: formData.municipality_id =", formData.municipality_id);
     if (formData.municipality_id) {
-      setFilteredSchools(schools.filter(s => s.municipality_id === formData.municipality_id));
+      const newFilteredSchools = schools.filter(s => s.municipality_id === formData.municipality_id);
+      setFilteredSchools(newFilteredSchools);
+      console.log("useEffect [formData.municipality_id, schools]: Filtered schools =", newFilteredSchools);
     } else {
       setFilteredSchools([]);
+      console.log("useEffect [formData.municipality_id, schools]: No municipality selected, filtered schools cleared.");
     }
-    setFormData(prev => ({ ...prev, school_id: '' })); // Reset school when municipality changes
+    // Removed: setFormData(prev => ({ ...prev, school_id: '' })); to avoid unintended resets
   }, [formData.municipality_id, schools]);
 
   const fetchData = async () => {
@@ -503,14 +507,17 @@ export default function Users() {
       <div className="flex gap-2">
         <Button variant="ghost" size="icon" onClick={() => {
           setEditingUser(user);
-          setFormData({
+          const initialFormData = {
             email: user.email || '',
             password: '', // Password is not editable directly
             name: user.name || '',
             role: user.role,
             municipality_id: user.municipality_id || '',
             school_id: user.school_id || '',
-          });
+          };
+          setFormData(initialFormData);
+          console.log("handleEdit: Editing user", user);
+          console.log("handleEdit: Initial formData", initialFormData);
           setDialogOpen(true);
         }}>
           <Edit className="h-4 w-4" />
@@ -632,7 +639,8 @@ export default function Users() {
                   <div>
                     <Label htmlFor="municipality_id">Rede Municipal {roleRequiresMunicipality(formData.role) && '*'}</Label>
                     <Select
-                      value={formData.municipality_id}
+                      key={formData.role} // Add key to force re-render when role changes
+                      value={formData.municipality_id || ''}
                       onValueChange={(value) => setFormData({ ...formData, municipality_id: value })}
                       disabled={
                         (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && 
@@ -641,7 +649,7 @@ export default function Users() {
                       required={roleRequiresMunicipality(formData.role)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a rede municipal" />
+                        <SelectValue placeholder={roleRequiresMunicipality(formData.role) ? "Selecione a rede municipal (obrigatório)" : "Selecione a rede municipal"} />
                       </SelectTrigger>
                       <SelectContent>
                         {municipalities.map((municipality) => (
@@ -657,25 +665,33 @@ export default function Users() {
                 {/* Conditional rendering for School Select */}
                 { roleRequiresSchool(formData.role) && (
                   <div>
-                    <Label htmlFor="school_id">Escola {roleRequiresSchool(formData.role) && '*'}</Label>
+                    <Label htmlFor="school_id">
+                      Escola {roleRequiresSchool(formData.role) && '*'}
+                    </Label>
                     <Select
-                      value={formData.school_id}
+                      key={formData.municipality_id + formData.role} // Add key to force re-render
+                      value={formData.school_id || ''} // Ensure value is always a string
                       onValueChange={(value) => setFormData({ ...formData, school_id: value })}
                       disabled={
-                        currentUserRole === 'school_admin' && 
-                        currentUserProfile?.school_id !== formData.school_id
+                        (currentUserRole === 'school_admin' && 
+                        currentUserProfile?.school_id !== formData.school_id) ||
+                        !formData.municipality_id // Disable if no municipality is selected
                       }
                       required={roleRequiresSchool(formData.role)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a escola" />
+                        <SelectValue placeholder={roleRequiresSchool(formData.role) ? "Selecione a escola (obrigatório)" : "Selecione a escola"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredSchools.map((school) => (
-                          <SelectItem key={school.id} value={school.id}>
-                            {school.name}
-                          </SelectItem>
-                        ))}
+                        {filteredSchools.length === 0 && formData.municipality_id ? (
+                          <SelectItem value="" disabled>Nenhuma escola encontrada para esta rede</SelectItem>
+                        ) : (
+                          filteredSchools.map((school) => (
+                            <SelectItem key={school.id} value={school.id}>
+                              {school.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
