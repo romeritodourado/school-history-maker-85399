@@ -84,18 +84,76 @@ export default function Users() {
     fetchData();
   }, []);
 
+  // Effect to filter schools based on selected municipality
   useEffect(() => {
-    console.log("useEffect [formData.municipality_id, schools]: formData.municipality_id =", formData.municipality_id);
     if (formData.municipality_id) {
-      const newFilteredSchools = schools.filter(s => s.municipality_id === formData.municipality_id);
-      setFilteredSchools(newFilteredSchools);
-      console.log("useEffect [formData.municipality_id, schools]: Filtered schools =", newFilteredSchools);
+      setFilteredSchools(schools.filter(s => s.municipality_id === formData.municipality_id));
     } else {
       setFilteredSchools([]);
-      console.log("useEffect [formData.municipality_id, schools]: No municipality selected, filtered schools cleared.");
     }
-    // Removed: setFormData(prev => ({ ...prev, school_id: '' })); to avoid unintended resets
+    // Clear school_id if municipality changes, unless it's an edit and the school is still valid for the new municipality
+    // This is handled by the role-based effect now, but a direct clear here is also safe.
+    // setFormData(prev => ({ ...prev, school_id: '' })); // Removed this line as it was causing issues
   }, [formData.municipality_id, schools]);
+
+  // Effect to handle municipality_id and school_id based on role change
+  useEffect(() => {
+    setFormData(prev => {
+      const newFormData = { ...prev };
+      let changed = false;
+
+      // Handle municipality_id based on new role
+      if (roleRequiresMunicipality(prev.role)) {
+        // If current user is municipal-level, default to their municipality
+        if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
+          if (newFormData.municipality_id !== currentUserProfile.municipality_id) {
+            newFormData.municipality_id = currentUserProfile.municipality_id;
+            changed = true;
+          }
+        } else if (!newFormData.municipality_id && editingUser?.municipality_id) {
+          // If editing and municipality_id is required but not set in form, use existing user's municipality_id
+          newFormData.municipality_id = editingUser.municipality_id;
+          changed = true;
+        } else if (!newFormData.municipality_id && !editingUser) {
+          // For new users, if required and not set, ensure it's empty for user to select
+          newFormData.municipality_id = '';
+          changed = true;
+        }
+      } else {
+        if (newFormData.municipality_id !== '') {
+          newFormData.municipality_id = ''; // Clear if not required
+          changed = true;
+        }
+      }
+
+      // Handle school_id based on new role
+      if (roleRequiresSchool(prev.role)) {
+        // If current user is school-level, default to their school
+        if ((currentUserRole === 'school_admin' || currentUserRole === 'secretary') && currentUserProfile?.school_id) {
+          if (newFormData.school_id !== currentUserProfile.school_id) {
+            newFormData.school_id = currentUserProfile.school_id;
+            changed = true;
+          }
+        } else if (!newFormData.school_id && editingUser?.school_id) {
+          // If editing and school_id is required but not set in form, use existing user's school_id
+          newFormData.school_id = editingUser.school_id;
+          changed = true;
+        } else if (!newFormData.school_id && !editingUser) {
+          // For new users, if required and not set, ensure it's empty for user to select
+          newFormData.school_id = '';
+          changed = true;
+        }
+      } else {
+        if (newFormData.school_id !== '') {
+          newFormData.school_id = ''; // Clear if not required
+          changed = true;
+        }
+      }
+      
+      return changed ? newFormData : prev;
+    });
+  }, [formData.role, currentUserRole, currentUserProfile, municipalities, schools, editingUser]);
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -612,8 +670,10 @@ export default function Users() {
                       setFormData(prev => ({
                         ...prev,
                         role: value,
-                        municipality_id: roleRequiresMunicipality(value) && currentUserProfile?.municipality_id ? currentUserProfile.municipality_id : '', // Set default municipality if current user has one and role requires it
-                        school_id: roleRequiresSchool(value) && currentUserProfile?.school_id ? currentUserProfile.school_id : '', // Set default school if current user has one and role requires it
+                        // Clear municipality_id and school_id when role changes,
+                        // the useEffect will then set defaults if applicable.
+                        municipality_id: '', 
+                        school_id: '',
                       }));
                     }}
                     disabled={
