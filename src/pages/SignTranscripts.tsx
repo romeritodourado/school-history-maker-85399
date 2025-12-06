@@ -124,6 +124,26 @@ export default function SignTranscripts() {
 
   useEffect(() => {
     if (!authLoading && user && profile && schoolIdFromUrl) {
+      // Adiciona uma verificação inicial para perfis de nível escolar sem school_id
+      if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
+        toast({
+          title: 'Erro de Configuração',
+          description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
+          variant: 'destructive',
+        });
+        setLoading(false); // Impede o carregamento e ações futuras
+        return;
+      }
+      // Adiciona uma verificação inicial para perfis de nível municipal sem municipality_id
+      if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
+        toast({
+          title: 'Erro de Configuração',
+          description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
+          variant: 'destructive',
+        });
+        setLoading(false); // Impede o carregamento e ações futuras
+        return;
+      }
       fetchPendingTranscripts();
     } else if (!authLoading && (!user || !profile)) {
       toast({
@@ -368,6 +388,25 @@ export default function SignTranscripts() {
       return;
     }
 
+    // Adiciona uma verificação específica para perfis de nível escolar sem school_id
+    if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
+      toast({
+        title: 'Erro de Permissão',
+        description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Adiciona uma verificação específica para perfis de nível municipal sem municipality_id
+    if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
+      toast({
+        title: 'Erro de Permissão',
+        description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSigning(true);
     try {
       // Re-authenticate user to confirm action
@@ -393,17 +432,15 @@ export default function SignTranscripts() {
         if (!transcript) return null;
 
         console.log(`[SignTranscripts] Tentando assinar histórico ${transcript.id}:`);
-        console.log(`  ID da escola do perfil do usuário: ${profile.school_id}`);
-        console.log(`  ID da escola do histórico: ${transcript.school_id}`);
-        console.log(`  ID da rede municipal do perfil do usuário: ${profile.municipality_id}`);
-        console.log(`  ID da rede municipal do histórico: ${transcript.municipality_id}`);
+        console.log(`  Perfil do Usuário: ID=${profile.id}, Nome=${profile.name}, Email=${user.email}, Cargo=${profile.role}, School_ID=${profile.school_id}, Municipality_ID=${profile.municipality_id}`);
+        console.log(`  Histórico: ID=${transcript.id}, Aluno=${transcript.students?.full_name}, Escola_ID=${transcript.school_id}, Rede_ID=${transcript.municipality_id}, Status=${transcript.status}`);
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
-        if (profile.school_id !== transcript.school_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). Não é possível assinar.`);
+        if (profile.school_id && profile.school_id !== transcript.school_id) {
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${profile.school_id}, ID da escola do histórico: ${transcript.school_id}. Não é possível assinar.`);
         }
-        if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. Não é possível assinar.`);
+        if (profile.municipality_id && (profile.role === 'municipal_secretary' || profile.role === 'network_manager') && profile.municipality_id !== transcript.municipality_id) {
+          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${profile.municipality_id}, ID da rede do histórico: ${transcript.municipality_id}. Não é possível assinar.`);
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
