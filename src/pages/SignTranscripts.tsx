@@ -241,17 +241,37 @@ export default function SignTranscripts() {
       if (transcriptError) throw transcriptError;
       if (!transcriptData) throw new Error('Histórico não encontrado.');
 
-      const student = transcriptData.students as StudentData;
-      const school = transcriptData.schools as StudentData['schools'];
+      // Explicitly check for student and school data
+      if (!transcriptData.students) {
+        throw new Error('Dados do aluno não encontrados para este histórico. O aluno pode ter sido excluído ou há uma inconsistência nos dados.');
+      }
+      if (!transcriptData.schools) {
+        throw new Error('Dados da escola não encontrados para este histórico. A escola pode ter sido excluída ou há uma inconsistência nos dados.');
+      }
+
+      const student: StudentData = {
+        id: transcriptData.student_id!, 
+        full_name: (transcriptData.students as any).full_name,
+        mother_name: (transcriptData.students as any).mother_name,
+        father_name: (transcriptData.students as any).father_name,
+        birth_date: (transcriptData.students as any).birth_date,
+        birth_place: (transcriptData.students as any).birth_place,
+        birth_state: (transcriptData.students as any).birth_state,
+        student_status: (transcriptData.students as any).student_status,
+        grade_series: (transcriptData.students as any).grade_series,
+        observations: (transcriptData.students as any).observations,
+        school_id: transcriptData.school_id, 
+        schools: transcriptData.schools as StudentData['schools'], 
+      };
 
       setPreviewTranscriptId(transcriptData.id);
-      setPreviewStudent({ ...student, schools: school });
+      setPreviewStudent(student);
 
       // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
         .select("*")
-        .eq("student_id", student.id)
+        .eq("student_id", student.id) 
         .order("calendar_year");
 
       if (yearsError) throw yearsError;
@@ -263,7 +283,7 @@ export default function SignTranscripts() {
         const { data: gradesData, error: gradesError } = await supabase
           .from("annual_grades")
           .select("subject_name, grade, workload, absences")
-          .eq("academic_year_id", year.id);
+          .eq("academic_year_id", year.id); 
 
         if (gradesError) throw gradesError;
         gradesMap[year.id] = gradesData || [];
@@ -284,7 +304,7 @@ export default function SignTranscripts() {
         const { data: trimesterData, error: trimesterError } = await supabase
           .from("trimester_grades")
           .select("subject_name, trimester, grade, absences")
-          .eq("academic_year_id", latestYear.id);
+          .eq("academic_year_id", latestYear.id); 
 
         if (trimesterError) throw trimesterError;
         setPreviewTrimesterGrades(trimesterData || []);
