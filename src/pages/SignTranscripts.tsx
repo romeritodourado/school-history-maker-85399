@@ -441,13 +441,15 @@ export default function SignTranscripts() {
         if (!transcript) return null;
 
         console.log(`[SignTranscripts] DEBUG: Processando histórico ${transcript.id}:`);
-        console.log(`[SignTranscripts] DEBUG: Perfil do Usuário - ID: ${profile.id}, Role: ${profile.role}`);
-        console.log(`[SignTranscripts] DEBUG: profile.school_id: ${profile.school_id}`);
-        console.log(`[SignTranscripts] DEBUG: transcript.school_id: ${transcript.school_id}`);
-        console.log(`[SignTranscripts] DEBUG: profile.municipality_id: ${profile.municipality_id}`);
-        console.log(`[SignTranscripts] DEBUG: transcript.municipality_id: ${transcript.municipality_id}`);
-        console.log(`[SignTranscripts] DEBUG: Status do histórico: ${transcript.status}`);
-        console.log(`[SignTranscripts] DEBUG: Ação atual: ${currentAction}`);
+        console.log(`[SignTranscripts] DEBUG: User ID: ${user.id}`);
+        console.log(`[SignTranscripts] DEBUG: Profile ID: ${profile.id}`);
+        console.log(`[SignTranscripts] DEBUG: Profile Role: ${profile.role}`);
+        console.log(`[SignTranscripts] DEBUG: Profile School ID: ${profile.school_id}`);
+        console.log(`[SignTranscripts] DEBUG: Transcript School ID: ${transcript.school_id}`);
+        console.log(`[SignTranscripts] DEBUG: Profile Municipality ID: ${profile.municipality_id}`);
+        console.log(`[SignTranscripts] DEBUG: Transcript Municipality ID: ${transcript.municipality_id}`);
+        console.log(`[SignTranscripts] DEBUG: Transcript Status: ${transcript.status}`);
+        console.log(`[SignTranscripts] DEBUG: Current Action: ${currentAction}`);
 
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
@@ -513,6 +515,8 @@ export default function SignTranscripts() {
       }));
 
       const validUpdates = updates.filter(Boolean);
+      console.log(`[SignTranscripts] DEBUG: Valid updates to send to Supabase:`, validUpdates);
+
 
       if (validUpdates.length > 0) {
         const { error: updateError } = await supabase
@@ -781,7 +785,7 @@ export default function SignTranscripts() {
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
             </DialogDescription>
-          </DialogHeader>
+          </CardHeader>
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
