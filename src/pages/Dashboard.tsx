@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit, Signature } from 'lucide-react'; // Adicionado Signature
+import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit, Signature, Info } from 'lucide-react'; // Adicionado Info
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +43,18 @@ interface CustomRole {
   permissions: string[];
 }
 
+interface SelectedSchoolDetails {
+  id: string;
+  name: string;
+  inep: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  logo_url: string | null;
+  authorization_decree_url: string | null;
+  official_gazette_url: string | null;
+}
+
 // Definição dos cargos padrão do sistema
 const systemRoles = [
   { 
@@ -69,7 +81,7 @@ const systemRoles = [
     description: 'Responsável pela administração escolar',
     isSystemRole: true
   },
-  { 
+  {
     id: 'secretary', 
     name: 'Secretário(a) Escolar',
     description: 'Auxiliar administrativo da escola',
@@ -196,12 +208,26 @@ export default function Dashboard() {
   const [isDeletingRole, setIsDeletingRole] = useState(false);
   const { toast } = useToast();
 
+  // New states for school details
+  const [selectedSchoolDetails, setSelectedSchoolDetails] = useState<SelectedSchoolDetails | null>(null);
+  const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
+
   useEffect(() => {
     if (role === 'super_admin') {
       fetchMunicipalities();
       fetchCustomRoles();
     }
   }, [role]);
+
+  // Effect to fetch selected school details for school_admin, secretary, administrative_assistant
+  useEffect(() => {
+    const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
+    if (!loading && isSchoolLevelUser && profile?.school_id) {
+      fetchSelectedSchoolDetails(profile.school_id);
+    } else if (!isSchoolLevelUser || !profile?.school_id) {
+      setSelectedSchoolDetails(null);
+    }
+  }, [loading, profile?.school_id, role]);
 
   const fetchMunicipalities = async () => {
     const { data, error } = await supabase
@@ -235,6 +261,28 @@ export default function Dashboard() {
     }));
     
     setCustomRoles(rolesWithMunicipalityName as CustomRole[]);
+  };
+
+  const fetchSelectedSchoolDetails = async (schoolId: string) => {
+    setLoadingSchoolDetails(true);
+    const { data, error } = await supabase
+      .from('schools')
+      .select('id, name, inep, address, city, state, logo_url, authorization_decree_url, official_gazette_url')
+      .eq('id', schoolId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching school details:", error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar os detalhes da escola.',
+        variant: 'destructive',
+      });
+      setSelectedSchoolDetails(null);
+    } else {
+      setSelectedSchoolDetails(data as SelectedSchoolDetails);
+    }
+    setLoadingSchoolDetails(false);
   };
 
   const handleSelectMunicipality = (municipalityId: string) => {
@@ -538,6 +586,8 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -1008,39 +1058,101 @@ export default function Dashboard() {
             </Card>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((card) => {
-              const Icon = card.icon;
-              // Check if the current user's role is allowed to see this card
-              if (card.roles && role && card.roles.includes(role)) {
-                // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
-                if (card.title === 'Assinar Históricos' && !profile?.school_id) {
-                  return null; // Don't render if no school_id is available for signing
-                }
-                
-                let cardPath = card.path;
-                // Adjust path for 'Assinar Históricos' if profile.school_id is available
-                if (card.title === 'Assinar Históricos' && profile?.school_id) {
-                  cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
-                }
-
-                return (
-                  <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                    onClick={() => navigate(cardPath)}>
-                    <CardHeader>
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Icon className="h-6 w-6 text-primary" />
-                        </div>
-                        <CardTitle>{card.title}</CardTitle>
+          <div className="space-y-6">
+            {/* Conditionally show selected school details for school-level users */}
+            {isSchoolLevelUser && profile?.school_id && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <School className="h-5 w-5" />
+                    Sua Escola
+                  </CardTitle>
+                  <CardDescription>Detalhes da escola associada ao seu perfil.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {loadingSchoolDetails ? (
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Carregando detalhes da escola...
+                    </div>
+                  ) : selectedSchoolDetails ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {selectedSchoolDetails.logo_url && (
+                          <img src={selectedSchoolDetails.logo_url} alt="Logo da Escola" className="h-10 w-10 object-contain" />
+                        )}
+                        <p className="text-lg font-semibold">{selectedSchoolDetails.name}</p>
                       </div>
-                      <CardDescription>{card.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                );
-              }
-              return null;
-            })}
+                      {selectedSchoolDetails.inep && (
+                        <p><span className="font-semibold">INEP:</span> {selectedSchoolDetails.inep}</p>
+                      )}
+                      {selectedSchoolDetails.address && (
+                        <p><span className="font-semibold">Endereço:</span> {selectedSchoolDetails.address}</p>
+                      )}
+                      {selectedSchoolDetails.city && selectedSchoolDetails.state && (
+                        <p><span className="font-semibold">Localização:</span> {selectedSchoolDetails.city} - {selectedSchoolDetails.state}</p>
+                      )}
+                      {selectedSchoolDetails.authorization_decree_url && (
+                        <p><span className="font-semibold">Decreto de Autorização:</span> {selectedSchoolDetails.authorization_decree_url}</p>
+                      )}
+                      {selectedSchoolDetails.official_gazette_url && (
+                        <p><span className="font-semibold">Diário Oficial:</span> {selectedSchoolDetails.official_gazette_url}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Info className="h-4 w-4" />
+                      Nenhuma escola associada ao seu perfil ou detalhes não encontrados.
+                      <Link to="/account-settings">
+                        <Button variant="link" className="p-0 h-auto ml-1">
+                          Verificar configurações da conta
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {cards.map((card) => {
+                const Icon = card.icon;
+                // Check if the current user's role is allowed to see this card
+                if (card.roles && role && card.roles.includes(role)) {
+                  // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
+                  if (card.title === 'Assinar Históricos' && !profile?.school_id) {
+                    return null; // Don't render if no school_id is available for signing
+                  }
+                  
+                  let cardPath = card.path;
+                  // Adjust path for 'Assinar Históricos' if profile.school_id is available
+                  if (card.title === 'Assinar Históricos' && profile?.school_id) {
+                    cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
+                  } else if (card.path === '/novo-historico' || card.path === '/lista-alunos') {
+                    // For student-related pages, pass schoolId if available
+                    if (profile?.school_id) {
+                      cardPath = `${card.path}?schoolId=${profile.school_id}`;
+                    }
+                  }
+
+                  return (
+                    <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+                      onClick={() => navigate(cardPath)}>
+                      <CardHeader>
+                        <div className="flex items-center space-x-2">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Icon className="h-6 w-6 text-primary" />
+                          </div>
+                          <CardTitle>{card.title}</CardTitle>
+                        </div>
+                        <CardDescription>{card.description}</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  );
+                }
+                return null;
+              })}
+            </div>
           </div>
         )}
       </main>
