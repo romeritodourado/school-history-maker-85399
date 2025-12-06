@@ -85,8 +85,8 @@ interface TranscriptToSign {
   created_at: string;
   director_signature_id: string | null;
   secretary_signature_id: string | null;
-  school_id: string; // ADICIONADO
-  municipality_id: string; // ADICIONADO
+  school_id: string;
+  municipality_id: string;
   students: {
     full_name: string;
   } | null;
@@ -154,8 +154,8 @@ export default function SignTranscripts() {
           created_at,
           director_signature_id,
           secretary_signature_id,
-          school_id,             // ADICIONADO
-          municipality_id,       // ADICIONADO
+          school_id,
+          municipality_id,
           students (full_name),
           schools (name)
         `)
