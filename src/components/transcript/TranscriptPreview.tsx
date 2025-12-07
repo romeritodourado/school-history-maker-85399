@@ -130,8 +130,7 @@ export const TranscriptPreview = ({
     return field === "grade" ? formatGrade(grade.grade) : grade.absences;
   };
 
-  const rawMunicipalityName = student.schools?.municipalities?.name || "Não Informado";
-  const extractedMunicipalityName = rawMunicipalityName.split(" DE ").pop() || "Não Informado"; // Extrai apenas o nome da municipalidade
+  const municipalityCityName = student.schools?.city || "Não Informado"; // Usar o campo 'city' diretamente
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
   const authorizationDecree = student.schools?.authorization_decree_url || "";
   const officialGazette = student.schools?.official_gazette_url || "";
@@ -170,7 +169,7 @@ export const TranscriptPreview = ({
             
             {/* Central Text */}
             <div className="flex-1 text-center space-y-1">
-              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {extractedMunicipalityName}</h2>
+              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {municipalityCityName.toUpperCase()}</h2>
               <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
