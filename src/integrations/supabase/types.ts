@@ -26,7 +26,6 @@ export type Database = {
           student_id: string
           trimester_shift: string | null
           trimester_year: string | null
-          student_status: string | null // ADDED
         }
         Insert: {
           calendar_year: number
@@ -44,7 +43,6 @@ export type Database = {
           student_id: string
           trimester_shift?: string | null
           trimester_year?: string | null
-          student_status?: string | null // ADDED
         }
         Update: {
           calendar_year?: number
@@ -62,7 +60,6 @@ export type Database = {
           student_id?: string
           trimester_shift?: string | null
           trimester_year?: string | null
-          student_status?: string | null // ADDED
         }
         Relationships: [
           {

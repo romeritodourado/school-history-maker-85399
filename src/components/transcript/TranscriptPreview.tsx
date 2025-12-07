@@ -47,7 +47,6 @@ interface AcademicYearData {
   school_period_end?: string | null;
   trimester_year?: string | null;
   trimester_shift?: string | null;
-  student_status?: string | null; // ADDED
 }
 
 interface GradeData {
@@ -291,7 +290,6 @@ export const TranscriptPreview = ({
                 <TableHead>Estabelecimento de Ensino</TableHead>
                 <TableHead>Cidade</TableHead>
                 <TableHead>UF</TableHead>
-                <TableHead>Status</TableHead> {/* ADDED */}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -302,7 +300,6 @@ export const TranscriptPreview = ({
                   <TableCell>{year.school_name}</TableCell>
                   <TableCell>{year.city}</TableCell>
                   <TableCell>{year.state}</TableCell>
-                  <TableCell>{year.student_status ? year.student_status.charAt(0).toUpperCase() + year.student_status.slice(1) : 'N/A'}</TableCell> {/* ADDED */}
                 </TableRow>
               ))}
             </TableBody>

@@ -17,6 +17,7 @@ interface TranscriptValidation {
   municipality_name: string;
   completion_year: number | null;
   grade_series: string | null;
+  student_status: string | null; // ADDED
   is_valid: boolean;
   document_hash: string | null;
   signed_data: any | null;
@@ -72,7 +73,7 @@ export default function ValidateTranscript() {
           signed_data,
           director_signed_at,
           secretary_signed_at,
-          students (full_name, completion_year, grade_series),
+          students (full_name, completion_year, grade_series, student_status),
           schools (name),
           municipalities (name),
           director_signature_id (name, registration_number),
@@ -103,6 +104,7 @@ export default function ValidateTranscript() {
         municipality_name: (transcriptData.municipalities as { name: string } | null)?.name || 'Não informado',
         completion_year: (transcriptData.students as { completion_year: number | null } | null)?.completion_year || null,
         grade_series: (transcriptData.students as { grade_series: string | null } | null)?.grade_series || null,
+        student_status: (transcriptData.students as { student_status: string | null } | null)?.student_status || null, // ADDED
         is_valid: isValid,
         document_hash: transcriptData.document_hash,
         signed_data: transcriptData.signed_data,
@@ -165,6 +167,7 @@ export default function ValidateTranscript() {
               <CardTitle className="text-2xl text-center mb-4">
                 Validação de Histórico Escolar
               </CardTitle>
+              {/* Badge moved here, centered */}
               <Badge 
                 variant={validation.is_valid ? "default" : "destructive"}
                 className="text-lg px-4 py-2"
@@ -235,6 +238,19 @@ export default function ValidateTranscript() {
                     <div>
                       <p className="text-sm text-muted-foreground">Série/Ano</p>
                       <p className="font-semibold">{validation.grade_series}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {validation.student_status && ( // ADDED: Display student status
+                <>
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status do Aluno</p>
+                      <p className="font-semibold">{validation.student_status.charAt(0).toUpperCase() + validation.student_status.slice(1)}</p>
                     </div>
                   </div>
                   <Separator />

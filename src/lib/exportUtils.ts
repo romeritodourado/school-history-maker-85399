@@ -85,7 +85,6 @@ interface AcademicYearData {
   school_period_end?: string | null;
   trimester_year?: string | null;
   trimester_shift?: string | null;
-  student_status?: string | null; // ADDED
 }
 
 interface GradeData {
@@ -373,14 +372,13 @@ export const exportToPDF = async (
     
     autoTable(doc, {
       startY: yPos,
-      head: [["Ano", "Ano/Série", "Estabelecimento", "Cidade", "UF", "Status"]], // ADDED "Status"
+      head: [["Ano", "Ano/Série", "Estabelecimento", "Cidade", "UF"]],
       body: academicYears.map((year) => [
         year.calendar_year.toString(),
         year.grade_level,
         year.school_name,
         year.city,
         year.state,
-        year.student_status ? year.student_status.charAt(0).toUpperCase() + year.student_status.slice(1) : 'N/A', // ADDED
       ]),
       theme: "grid",
       headStyles: { fillColor: [0, 51, 153], textColor: 255, fontSize: 8 },
@@ -995,7 +993,7 @@ export const exportToExcel = (
   let currentRow = studentInfo.length;
   XLSX.utils.sheet_add_aoa(ws, [["ESTUDOS REALIZADOS"]], { origin: { r: currentRow, c: 0 } });
   currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Ano", "Série", "Escola", "Cidade", "UF", "Status"]], { // ADDED "Status"
+  XLSX.utils.sheet_add_aoa(ws, [["Ano", "Série", "Escola", "Cidade", "UF"]], {
     origin: { r: currentRow, c: 0 },
   });
   currentRow++;
@@ -1003,7 +1001,7 @@ export const exportToExcel = (
   academicYears.forEach((year) => {
     XLSX.utils.sheet_add_aoa(
       ws,
-      [[year.calendar_year, year.grade_level, year.school_name, year.city, year.state, year.student_status ? year.student_status.charAt(0).toUpperCase() + year.student_status.slice(1) : 'N/A']], // ADDED
+      [[year.calendar_year, year.grade_level, year.school_name, year.city, year.state]],
       { origin: { r: currentRow, c: 0 } }
     );
     currentRow++;

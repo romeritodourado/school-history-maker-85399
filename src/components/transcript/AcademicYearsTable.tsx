@@ -20,12 +20,11 @@ interface AcademicYearsTableProps {
   academicYears: AcademicYear[];
   setAcademicYears: (years: AcademicYear[]) => void;
   gradeLevels: string[];
-  studentStatusOptions: string[]; // ADDED
   schools: SchoolOption[];
   selectedSchoolId: string | null;
 }
 
-export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevels, studentStatusOptions, schools, selectedSchoolId }: AcademicYearsTableProps) => {
+export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevels, schools, selectedSchoolId }: AcademicYearsTableProps) => {
   // Sort years by grade level (descending - newest on top)
   const sortedYears = [...academicYears].sort((a, b) => {
     const gradeA = parseInt(a.grade_level.match(/\d+/)?.[0] || "0");
@@ -46,7 +45,6 @@ export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevel
         shift: "",
         class_name: "",
         reclassified: false,
-        student_status: "cursando", // ADDED default status
       },
     ]);
   };
@@ -90,7 +88,6 @@ export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevel
                     <span className="font-semibold">
                       {year.grade_level} - {year.calendar_year} 
                       {year.school_name && ` - ${year.school_name}`}
-                      {year.student_status && ` (${year.student_status.charAt(0).toUpperCase() + year.student_status.slice(1)})`} {/* Display status */}
                     </span>
                     {academicYears.length > 1 && (
                       <Button
@@ -190,25 +187,6 @@ export const AcademicYearsTable = ({ academicYears, setAcademicYears, gradeLevel
                         onChange={(e) => updateYear(realIndex, "class_name", e.target.value)}
                         placeholder="A, B, C..."
                       />
-                    </div>
-
-                    <div className="space-y-2"> {/* ADDED Student Status Select */}
-                      <Label>Status do Aluno no Ano</Label>
-                      <Select
-                        value={year.student_status || "cursando"}
-                        onValueChange={(value) => updateYear(realIndex, "student_status", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {studentStatusOptions.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">

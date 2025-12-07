@@ -50,7 +50,6 @@ export interface AcademicYear {
   school_period_end?: string | null;
   trimester_year?: string | null;
   trimester_shift?: string | null;
-  student_status?: string; // ADDED
 }
 
 export interface Grade {
@@ -121,7 +120,6 @@ const CreateTranscript = () => {
       shift: "",
       class_name: "",
       reclassified: false,
-      student_status: "cursando", // ADDED default status for new academic year
     },
   ]);
 
@@ -368,7 +366,6 @@ const CreateTranscript = () => {
             school_period_end: year.school_period_end,
             trimester_year: year.trimester_year,
             trimester_shift: year.trimester_shift,
-            student_status: year.student_status || "cursando", // ADDED
           }))
         );
 
@@ -553,11 +550,9 @@ const CreateTranscript = () => {
           school_period_end: schoolPeriod.endDate,
           trimester_year: schoolPeriod.gradeClass,
           trimester_shift: schoolPeriod.shift,
-          student_status: year.student_status || "cursando", // ADDED
         } : {
           ...year,
           student_id: studentId,
-          student_status: year.student_status || "cursando", // ADDED
         };
 
         const { data: academicYear, error: yearError } = await supabase
@@ -910,7 +905,7 @@ const CreateTranscript = () => {
                       ))}
                     </select>
                     <p className="text-xs text-muted-foreground">
-                      Este status é para o aluno em geral. O status por ano letivo é definido na aba "Anos Letivos".
+                      Este status é para o aluno em geral.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -969,7 +964,6 @@ const CreateTranscript = () => {
               academicYears={academicYears}
               setAcademicYears={setAcademicYears}
               gradeLevels={GRADE_LEVELS}
-              studentStatusOptions={STUDENT_STATUS_OPTIONS} // Pass options
               schools={schools} // Passando schools
               selectedSchoolId={selectedSchoolId} // Passando selectedSchoolId
             />
