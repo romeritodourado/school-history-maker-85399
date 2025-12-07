@@ -144,7 +144,8 @@ export const exportToPDF = async (
 
   let yPos = margin; // Current Y position for drawing
 
-  const municipalityName = student.schools?.municipalities?.name || "Não Informado";
+  const rawMunicipalityName = student.schools?.municipalities?.name || "Não Informado";
+  const extractedMunicipalityName = rawMunicipalityName.split(" DE ").pop() || "Não Informado"; // Extrai apenas o nome da municipalidade
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
   const authorizationDecree = student.schools?.authorization_decree_url || "";
   const officialGazette = student.schools?.official_gazette_url || "";
@@ -229,7 +230,7 @@ export const exportToPDF = async (
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  const municipalityHeaderText = `PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`;
+  const municipalityHeaderText = `PREFEITURA MUNICIPAL de ${extractedMunicipalityName.toUpperCase()}`;
   const wrappedMunicipalityText = doc.splitTextToSize(municipalityHeaderText, textAvailableWidth);
   wrappedMunicipalityText.forEach((line: string) => {
     doc.text(line, headerTextX, currentHeaderY, { align: "center" });
@@ -961,13 +962,15 @@ export const exportToExcel = (
 ) => {
   const wb = XLSX.utils.book_new();
 
-  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const rawMunicipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
+  const extractedMunicipalityName = rawMunicipalityName.split(" DE ").pop() || "Não Informado"; // Extrai apenas o nome da municipalidade
   const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
   const authorizationDecree = student.schools?.authorization_decree_url || "";
   const officialGazette = student.schools?.official_gazette_url || "";
 
   const studentInfo = [
-    [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
+    [`PREFEITURA MUNICIPAL de ${extractedMunicipalityName.toUpperCase()}`],
+    ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], // Adicionado
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
     [""],
