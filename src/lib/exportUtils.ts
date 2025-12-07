@@ -165,7 +165,8 @@ export const exportToPDF = async (
     getImageAsBase64(correctSignatureLogo, 100, 100).then(data => signatureLogoBase64 = data).catch(e => console.error("Error loading system signature logo:", e)),
     directorProfile?.signature_image_url ? getImageAsBase64(directorProfile.signature_image_url, 150, 60).then(data => directorSignatureImageBase64 = data).catch(e => console.error("Error loading director signature image:", e)) : Promise.resolve(),
     secretaryProfile?.signature_image_url ? getImageAsBase64(secretaryProfile.signature_image_url, 150, 60).then(data => secretarySignatureImageBase64 = data).catch(e => console.error("Error loading secretary signature image:", e)) : Promise.resolve(),
-    QRCode.toDataURL(`${window.location.origin}/validar?id=${transcriptId}`, { width: 128, margin: 2 })
+    // Alterado para usar o domínio de produção diretamente
+    QRCode.toDataURL(`https://correct.vercel.app/validar?id=${transcriptId}`, { width: 128, margin: 2 })
       .then(url => qrCodeDataUrl = url)
       .catch(err => console.error("Error generating QR code for PDF:", err))
   ]);
@@ -250,7 +251,7 @@ export const exportToPDF = async (
   wrappedSchoolText.forEach((line: string) => {
     doc.text(line, headerTextX, currentHeaderY, { align: "center" });
     currentHeaderY += lineHeight;
-  });
+    });
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);

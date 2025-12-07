@@ -98,7 +98,8 @@ export const TranscriptPreview = ({
 
   useEffect(() => {
     if (transcriptId) {
-      const validationUrl = `${window.location.origin}/validar?id=${transcriptId}`;
+      // Alterado para usar o domínio de produção diretamente
+      const validationUrl = `https://correct.vercel.app/validar?id=${transcriptId}`;
       QRCode.toDataURL(validationUrl, { width: 128, margin: 2 })
         .then(url => setQrCodeDataUrl(url))
         .catch(err => console.error("Error generating QR code:", err));
