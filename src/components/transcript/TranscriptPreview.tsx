@@ -169,7 +169,7 @@ export const TranscriptPreview = ({
             
             {/* Central Text */}
             <div className="flex-1 text-center space-y-1">
-              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {municipalityCityName.toUpperCase()}</h2>
+              <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL DE {municipalityCityName.toUpperCase()}</h2>
               <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3>
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (

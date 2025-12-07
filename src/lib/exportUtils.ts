@@ -229,7 +229,7 @@ export const exportToPDF = async (
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  const municipalityHeaderText = `PREFEITURA MUNICIPAL de ${municipalityCityName.toUpperCase()}`;
+  const municipalityHeaderText = `PREFEITURA MUNICIPAL DE ${municipalityCityName.toUpperCase()}`;
   const wrappedMunicipalityText = doc.splitTextToSize(municipalityHeaderText, textAvailableWidth);
   wrappedMunicipalityText.forEach((line: string) => {
     doc.text(line, headerTextX, currentHeaderY, { align: "center" });
@@ -967,7 +967,7 @@ export const exportToExcel = (
   const officialGazette = student.schools?.official_gazette_url || "";
 
   const studentInfo = [
-    [`PREFEITURA MUNICIPAL de ${municipalityCityName.toUpperCase()}`],
+    [`PREFEITURA MUNICIPAL DE ${municipalityCityName.toUpperCase()}`],
     ["SECRETARIA MUNICIPAL DA EDUCAÇÃO"], // Adicionado
     [schoolName.toUpperCase()],
     [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
