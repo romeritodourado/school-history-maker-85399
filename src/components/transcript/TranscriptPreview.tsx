@@ -170,6 +170,7 @@ export const TranscriptPreview = ({
             {/* Central Text */}
             <div className="flex-1 text-center space-y-1">
               <h2 className="text-sm font-bold text-primary uppercase">PREFEITURA MUNICIPAL de {municipalityName}</h2>
+              <h3 className="text-sm font-bold text-primary uppercase">SECRETARIA MUNICIPAL DA EDUCAÇÃO</h3> {/* Nova linha adicionada */}
               <h3 className="text-sm font-bold text-primary uppercase">{schoolName}</h3>
               {(authorizationDecree || officialGazette) && (
                 <p className="text-xs text-muted-foreground mt-1">

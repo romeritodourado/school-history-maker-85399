@@ -236,7 +236,15 @@ export const exportToPDF = async (
     currentHeaderY += lineHeight;
   });
 
-  doc.setFontSize(10);
+  // NEW LINE: SECRETARIA MUNICIPAL DA EDUCAÇÃO
+  const secretaryHeaderText = "SECRETARIA MUNICIPAL DA EDUCAÇÃO";
+  const wrappedSecretaryText = doc.splitTextToSize(secretaryHeaderText, textAvailableWidth);
+  wrappedSecretaryText.forEach((line: string) => {
+    doc.text(line, headerTextX, currentHeaderY, { align: "center" });
+    currentHeaderY += lineHeight;
+  });
+
+  doc.setFontSize(10); // School name should be slightly larger than municipality/secretary
   const schoolHeaderText = schoolName.toUpperCase();
   const wrappedSchoolText = doc.splitTextToSize(schoolHeaderText, textAvailableWidth);
   wrappedSchoolText.forEach((line: string) => {
