@@ -330,6 +330,9 @@ export const TranscriptPreview = ({
               <p className="text-xs text-muted-foreground mt-2">
                 Escaneie para validar a autenticidade
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Este documento pode ter sua autenticidade confirmada pelo QR Code acima.
+              </p>
             </div>
             
             {/* Assinatura Digital do Sistema (Central) */}

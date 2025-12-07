@@ -700,8 +700,10 @@ export const exportToPDF = async (
     doc.setFontSize(6); // Reduzido de smallFontSize para 6
     doc.setFont("helvetica", "normal");
     const qrTextX = col1X + usableColumnWidth / 2;
-    const qrTextY = qrCodeY + qrCodeSize + 5;
-    doc.text("Validar autenticidade", qrTextX, qrTextY, { align: "center" });
+    let qrTextY = qrCodeY + qrCodeSize + 5;
+    doc.text("Escaneie para validar a autenticidade", qrTextX, qrTextY, { align: "center" });
+    qrTextY += 3;
+    doc.text("Este documento pode ter sua autenticidade confirmada pelo QR Code acima.", qrTextX, qrTextY, { align: "center" });
   }
 
   // --- Column 2: System Digital Signature ---
