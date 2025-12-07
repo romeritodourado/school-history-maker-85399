@@ -211,25 +211,38 @@ export const exportToPDF = async (
   });
 
   // --- HEADER SECTION ---
-  const headerStartY = yPos;
   const headerTextX = pageWidth / 2;
+  const textAvailableWidth = pageWidth - (margin * 2) - (headerLogoSize * 2) - 20; // 20px padding on each side of text from logo
 
   // Municipality Emblem (left)
   if (municipalityEmblemBase64) {
-    doc.addImage(municipalityEmblemBase64, "PNG", margin, headerStartY, headerLogoSize, headerLogoSize);
+    doc.addImage(municipalityEmblemBase64, "PNG", margin, yPos, headerLogoSize, headerLogoSize);
   }
 
   // School Logo (right)
   if (schoolLogoBase64) {
-    doc.addImage(schoolLogoBase64, "PNG", pageWidth - margin - headerLogoSize, headerStartY, headerLogoSize, headerLogoSize);
+    doc.addImage(schoolLogoBase64, "PNG", pageWidth - margin - headerLogoSize, yPos, headerLogoSize, headerLogoSize);
   }
 
   // Central Header Text
+  let currentHeaderY = yPos + 5; // Start text a bit below the top of logos
+
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text(`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`, headerTextX, headerStartY + 5, { align: "center" });
+  const municipalityHeaderText = `PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`;
+  const wrappedMunicipalityText = doc.splitTextToSize(municipalityHeaderText, textAvailableWidth);
+  wrappedMunicipalityText.forEach((line: string) => {
+    doc.text(line, headerTextX, currentHeaderY, { align: "center" });
+    currentHeaderY += lineHeight;
+  });
+
   doc.setFontSize(10);
-  doc.text(schoolName.toUpperCase(), headerTextX, headerStartY + 10, { align: "center" });
+  const schoolHeaderText = schoolName.toUpperCase();
+  const wrappedSchoolText = doc.splitTextToSize(schoolHeaderText, textAvailableWidth);
+  wrappedSchoolText.forEach((line: string) => {
+    doc.text(line, headerTextX, currentHeaderY, { align: "center" });
+    currentHeaderY += lineHeight;
+  });
 
   if (authorizationDecree || officialGazette) {
     doc.setFontSize(7);
@@ -238,13 +251,23 @@ export const exportToPDF = async (
     if (authorizationDecree) authText += `Autorização: ${authorizationDecree}`;
     if (authorizationDecree && officialGazette) authText += ` - `;
     if (officialGazette) authText += `D.O.: ${officialGazette}`;
-    doc.text(authText, headerTextX, headerStartY + 15, { align: "center" });
+    const wrappedAuthText = doc.splitTextToSize(authText, textAvailableWidth);
+    wrappedAuthText.forEach((line: string) => {
+      doc.text(line, headerTextX, currentHeaderY, { align: "center" });
+      currentHeaderY += lineHeight;
+    });
   }
   
+  currentHeaderY += 5; // Add some space before the main title
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", headerTextX, headerStartY + 25, { align: "center" });
-  yPos = headerStartY + 35; // Update yPos after header
+  doc.text("HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL", headerTextX, currentHeaderY, { align: "center" });
+  yPos = currentHeaderY + 10; // Update yPos after header, adding a bit more space
+
+  // Ensure yPos is below the lowest part of the header (logos or text)
+  const finalHeaderY = Math.max(yPos, margin + headerLogoSize + 5); // +5 for a small buffer
+  yPos = finalHeaderY;
+
 
   // --- STUDENT DATA SECTION ---
   doc.setFontSize(10);
