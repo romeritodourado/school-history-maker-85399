@@ -778,6 +778,17 @@ export const exportToPDF = async (
         doc.text(directorProfile.registration_number, directorCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += 3;
       }
+      
+      // Adicionar data e hora da assinatura do diretor
+      if (directorProfile && (directorProfile as any).director_signed_at) {
+        const signedDate = new Date((directorProfile as any).director_signed_at);
+        const formattedSignedDate = signedDate.toLocaleDateString("pt-BR");
+        const formattedSignedTime = signedDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Assinado em: ${formattedSignedDate} às ${formattedSignedTime}`, directorCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += 3;
+      }
     }
 
     // Secretary's Signature (adicionar espaço antes se houver diretor)
@@ -816,6 +827,17 @@ export const exportToPDF = async (
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
         doc.text(secretaryProfile.registration_number, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += 3;
+      }
+      
+      // Adicionar data e hora da assinatura do secretário
+      if (secretaryProfile && (secretaryProfile as any).secretary_signed_at) {
+        const signedDate = new Date((secretaryProfile as any).secretary_signed_at);
+        const formattedSignedDate = signedDate.toLocaleDateString("pt-BR");
+        const formattedSignedTime = signedDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Assinado em: ${formattedSignedDate} às ${formattedSignedTime}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
       }
     }
   }
