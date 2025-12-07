@@ -160,16 +160,15 @@ export default function ValidateTranscript() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <div className="container mx-auto max-w-3xl py-8">
         <Card className="border-2 shadow-lg">
-          <CardHeader className="relative bg-gradient-to-r from-primary/10 to-secondary/10 p-6">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6">
             <div className="flex flex-col items-center justify-center">
-              <Link to="/" className="mb-2">
-                <img src={correctLogo} alt="Correct Logo" className="h-16 w-16 object-contain" />
+              <Link to="/" className="mb-4"> {/* Increased margin-bottom */}
+                <img src={correctLogo} alt="Correct Logo" className="h-32 w-32 object-contain" /> {/* Increased size */}
               </Link>
-              <CardTitle className="text-2xl text-center">
+              <CardTitle className="text-2xl text-center mb-4"> {/* Added margin-bottom */}
                 Validação de Histórico Escolar
               </CardTitle>
-            </div>
-            <div className="absolute top-6 right-6">
+              {/* Badge moved here, centered */}
               <Badge 
                 variant={validation.is_valid ? "default" : "destructive"}
                 className="text-lg px-4 py-2"
