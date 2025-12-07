@@ -129,6 +129,9 @@ export const exportToPDF = async (
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15; // General page margin
   const headerLogoSize = 20; // Reduced logo size for header
+  const smallFontSize = 8; // Define small font size
+  const boldFontSize = 9; // Define bold font size
+  const lineHeight = 4; // Define line height
 
   let yPos = margin; // Current Y position for drawing
 
@@ -157,6 +160,37 @@ export const exportToPDF = async (
       .then(url => qrCodeDataUrl = url)
       .catch(err => console.error("Error generating QR code for PDF:", err))
   ]);
+
+  // --- PDF METADATA ---
+  let signatureSubject = "Assinaturas Digitais: ";
+  let signatureKeywords: string[] = ["Histórico Escolar", "Assinatura Digital", student.full_name, schoolName];
+
+  if (directorProfile?.name) {
+    signatureSubject += `Diretor(a) ${directorProfile.name}`;
+    signatureKeywords.push(`Diretor(a) ${directorProfile.name}`);
+    if (directorProfile.registration_number) {
+      signatureKeywords.push(`Registro Diretor: ${directorProfile.registration_number}`);
+    }
+  }
+  if (secretaryProfile?.name) {
+    if (directorProfile?.name) signatureSubject += ", ";
+    signatureSubject += `Secretário(a) ${secretaryProfile.name}`;
+    signatureKeywords.push(`Secretário(a) ${secretaryProfile.name}`);
+    if (secretaryProfile.registration_number) {
+      signatureKeywords.push(`Registro Secretário: ${secretaryProfile.registration_number}`);
+    }
+  }
+  if (!directorProfile?.name && !secretaryProfile?.name) {
+    signatureSubject += "Nenhuma assinatura digital encontrada.";
+  }
+
+  doc.setProperties({
+    title: `Histórico Escolar - ${student.full_name}`,
+    author: "Sistema de Histórico Escolar Correct",
+    subject: signatureSubject,
+    keywords: signatureKeywords.join(", "),
+    creator: "Sistema de Histórico Escolar Correct",
+  });
 
   // --- HEADER SECTION ---
   const headerStartY = yPos;
