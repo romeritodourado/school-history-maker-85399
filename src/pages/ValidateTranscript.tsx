@@ -51,7 +51,7 @@ export default function ValidateTranscript() {
   useEffect(() => {
     if (transcriptId) {
       validateTranscript();
-      const validationUrl = `${window.location.origin}/validar?id=${transcriptId}`;
+      const validationUrl = `https://correct.vercel.app/validar?id=${transcriptId}`;
       QRCode.toDataURL(validationUrl, { width: 128, margin: 2 })
         .then(url => setQrCodeDataUrl(url))
         .catch(err => console.error("Error generating QR code:", err));
@@ -160,14 +160,16 @@ export default function ValidateTranscript() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <div className="container mx-auto max-w-3xl py-8">
         <Card className="border-2 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-            <div className="flex items-center justify-between">
-              <Link to="/" className="flex items-center gap-2">
-                <img src={correctLogo} alt="Correct Logo" className="h-8 w-8" />
-                <CardTitle className="text-2xl">
-                  Validação de Histórico Escolar
-                </CardTitle>
+          <CardHeader className="relative bg-gradient-to-r from-primary/10 to-secondary/10 p-6">
+            <div className="flex flex-col items-center justify-center">
+              <Link to="/" className="mb-2">
+                <img src={correctLogo} alt="Correct Logo" className="h-16 w-16 object-contain" />
               </Link>
+              <CardTitle className="text-2xl text-center">
+                Validação de Histórico Escolar
+              </CardTitle>
+            </div>
+            <div className="absolute top-6 right-6">
               <Badge 
                 variant={validation.is_valid ? "default" : "destructive"}
                 className="text-lg px-4 py-2"
