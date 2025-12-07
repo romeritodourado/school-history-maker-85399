@@ -360,7 +360,7 @@ export const TranscriptPreview = ({
                     {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
                     {directorProfile.registration_number && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {directorProfile.registration_number}
+                        Registro: {directorProfile.registration_number}
                       </p>
                     )}
                     {directorSignedAt && ( // NOVO: Exibir data e hora da assinatura do diretor
@@ -381,7 +381,7 @@ export const TranscriptPreview = ({
                     {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
                     {secretaryProfile.registration_number && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {secretaryProfile.registration_number}
+                        Registro: {secretaryProfile.registration_number}
                       </p>
                     )}
                     {secretarySignedAt && ( // NOVO: Exibir data e hora da assinatura do secretário

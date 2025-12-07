@@ -15,7 +15,7 @@ import { passwordChangeSchema, profileUpdateSchema } from '@/lib/validationSchem
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
 export default function AccountSettings() {
-  const { user, profile, role, loading: authLoading } = useAuth();
+  const { user, profile, role, loading: authLoading, refreshProfile } = useAuth(); // Adicionado refreshProfile
   const navigate = useNavigate();
   const { toast } = useToast();
   const [name, setName] = useState('');
@@ -81,6 +81,9 @@ export default function AccountSettings() {
         const { error: authUpdateError } = await supabase.auth.updateUser({ email });
         if (authUpdateError) throw authUpdateError;
       }
+      
+      // Forçar a atualização do perfil no AuthContext
+      await refreshProfile();
 
       toast({
         title: 'Sucesso',

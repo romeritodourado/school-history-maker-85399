@@ -801,7 +801,7 @@ export const exportToPDF = async (
       if (directorProfile?.registration_number) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(directorProfile.registration_number, directorCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`Registro: ${directorProfile.registration_number}`, directorCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
         individualSigCurrentY += 3;
       }
       
@@ -849,7 +849,7 @@ export const exportToPDF = async (
       if (secretaryProfile?.registration_number) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(secretaryProfile.registration_number, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`Registro: ${secretaryProfile.registration_number}`, secretaryCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
         individualSigCurrentY += 3;
       }
       

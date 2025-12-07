@@ -36,6 +36,7 @@ interface AuthContextType {
     school_id?: string
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
+  refreshProfile: () => Promise<void>; // Adicionado: Função para atualizar o perfil
 
   activeMunicipalityIdForSuperAdmin: string | null;
   setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
@@ -102,6 +103,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return null;
     }
   }, []);
+
+  // Adicionado: Função para atualizar o perfil manualmente
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      console.log("AuthContext: Manual refreshProfile triggered for user:", user.id);
+      setAuthLoading(true);
+      const prof = await fetchProfileForUser(user.id);
+      if (mountedRef.current) {
+        setProfile(prof ?? null);
+        setRole(prof?.role ?? null);
+        setAuthLoading(false);
+      }
+    }
+  }, [user?.id, fetchProfileForUser]);
 
   // ================== INIT SESSION =====================
   useEffect(() => {
@@ -291,6 +306,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         signIn,
         signUp,
         signOut,
+        refreshProfile, // Adicionado
         activeMunicipalityIdForSuperAdmin,
         setActiveMunicipalityIdForSuperAdmin,
       }}
