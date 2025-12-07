@@ -644,47 +644,60 @@ export const exportToPDF = async (
   yPos += wrappedText.length * 5 + 10; // Adjusted line height for wrapped text
 
   // --- SIGNATURES BLOCK ---
-  if (yPos + 60 > pageHeight - margin) { // Ensure enough space for signatures
+  if (yPos + 80 > pageHeight - margin) { // Ensure enough space for signatures (increased from 60 to 80)
     doc.addPage();
     yPos = margin;
   }
 
-  const signatureBlockStartY = yPos + 10;
-  const blockPadding = 5;
-  const innerWidth = pageWidth - 2 * margin;
-  const col1Width = innerWidth * 0.25; // QR Code
-  const col2Width = innerWidth * 0.35; // System Signature
-  const col3Width = innerWidth * 0.40; // Individual Signatures
+  // Ajuste de layout: aumentar o espaço entre o texto do certificado e as assinaturas
+  yPos += 10;
 
-  const col1X = margin;
-  const col2X = col1X + col1Width + blockPadding;
-  const col3X = col2X + col2Width + blockPadding;
+  // --- SIGNATURES SECTION WITH IMPROVED LAYOUT ---
+  const signatureSectionStartY = yPos;
+  const signatureSectionHeight = 70; // Altura fixa para a seção de assinaturas
+  const signatureSectionWidth = pageWidth - 2 * margin;
+  
+  // Dividir o espaço em 3 colunas iguais
+  const columnWidth = signatureSectionWidth / 3;
+  const columnPadding = 5;
+  const usableColumnWidth = columnWidth - 2 * columnPadding;
+  
+  // Coordenadas das colunas
+  const col1X = margin + columnPadding;
+  const col2X = margin + columnWidth + columnPadding;
+  const col3X = margin + 2 * columnWidth + columnPadding;
+  
+  // Altura máxima para elementos na seção de assinaturas
+  const maxSignatureHeight = signatureSectionHeight - 10;
 
-  let maxBlockHeight = 0; // To track the tallest column
-
-  // --- Column 1: QR Code ---
+  // --- Column 1: QR Code (movido para cima) ---
   if (qrCodeDataUrl) {
-    const qrCodeSize = 25;
-    const qrCodeCenterX = col1X + col1Width / 2;
-    doc.addImage(qrCodeDataUrl, "PNG", qrCodeCenterX - qrCodeSize / 2, signatureBlockStartY, qrCodeSize, qrCodeSize);
-    doc.setFontSize(smallFontSize);
+    const qrCodeSize = 20; // Reduzido de 25 para 20
+    const qrCodeX = col1X + (usableColumnWidth - qrCodeSize) / 2; // Centralizar
+    const qrCodeY = signatureSectionStartY + 5; // Mais próximo do topo
+    
+    doc.addImage(qrCodeDataUrl, "PNG", qrCodeX, qrCodeY, qrCodeSize, qrCodeSize);
+    
+    // Texto abaixo do QR Code
+    doc.setFontSize(6); // Reduzido de smallFontSize para 6
     doc.setFont("helvetica", "normal");
-    doc.text("Escaneie para validar a autenticidade", qrCodeCenterX, signatureBlockStartY + qrCodeSize + 2, { align: "center" });
-    maxBlockHeight = Math.max(maxBlockHeight, qrCodeSize + 2 * smallFontSize);
+    const qrTextX = col1X + usableColumnWidth / 2;
+    const qrTextY = qrCodeY + qrCodeSize + 5;
+    doc.text("Validar autenticidade", qrTextX, qrTextY, { align: "center" });
   }
 
   // --- Column 2: System Digital Signature ---
-  let systemSigCurrentY = signatureBlockStartY;
-  const systemLogoWidth = 30;
-  const systemLogoHeight = (12 / 48) * systemLogoWidth; // Maintain aspect ratio
+  let systemSigCurrentY = signatureSectionStartY + 5;
+  const systemLogoWidth = 25; // Reduzido de 30 para 25
+  const systemLogoHeight = (12 / 48) * systemLogoWidth; // Manter proporção
 
   if (signatureLogoBase64) {
-    const systemLogoCenterX = col2X + col2Width / 2;
-    doc.addImage(signatureLogoBase64, "PNG", systemLogoCenterX - systemLogoWidth / 2, systemSigCurrentY, systemLogoWidth, systemLogoHeight);
+    const systemLogoX = col2X + (usableColumnWidth - systemLogoWidth) / 2; // Centralizar
+    doc.addImage(signatureLogoBase64, "PNG", systemLogoX, systemSigCurrentY, systemLogoWidth, systemLogoHeight);
     systemSigCurrentY += systemLogoHeight + 2;
   }
 
-  doc.setFontSize(boldFontSize);
+  doc.setFontSize(7); // Reduzido de boldFontSize para 7
   doc.setFont("helvetica", "bold");
   
   let signersText = "";
@@ -698,114 +711,117 @@ export const exportToPDF = async (
 
   const isSignedBySystem = signers.length > 0;
   if (isSignedBySystem) {
-    signersText = `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
+    signersText = `Assinado digitalmente por: ${signers.join(' e ')}.`;
   } else {
-    signersText = "Este documento ainda não foi assinado digitalmente.";
+    signersText = "Documento não assinado digitalmente.";
   }
 
-  const wrappedSignersText = doc.splitTextToSize(signersText, col2Width - 10);
-  doc.text(wrappedSignersText, col2X + col2Width / 2, systemSigCurrentY, { align: "center" });
-  systemSigCurrentY += wrappedSignersText.length * lineHeight;
+  const wrappedSignersText = doc.splitTextToSize(signersText, usableColumnWidth);
+  const signersTextX = col2X + usableColumnWidth / 2;
+  doc.text(wrappedSignersText, signersTextX, systemSigCurrentY, { align: "center" });
+  systemSigCurrentY += wrappedSignersText.length * 3; // Reduzido espaçamento
 
   if (isSignedBySystem) {
     const now = new Date();
     const formattedDate = now.toLocaleDateString("pt-BR");
     const formattedTime = now.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
-    doc.setFontSize(smallFontSize);
+    doc.setFontSize(6); // Reduzido de smallFontSize para 6
     doc.setFont("helvetica", "normal");
-    doc.text(`Assinado em: ${formattedDate} às ${formattedTime}`, col2X + col2Width / 2, systemSigCurrentY + lineHeight, { align: "center" });
-    systemSigCurrentY += lineHeight;
-    doc.text("Pelo sistema Correct", col2X + col2Width / 2, systemSigCurrentY + lineHeight, { align: "center" });
-    systemSigCurrentY += lineHeight;
+    const systemTextX = col2X + usableColumnWidth / 2;
+    doc.text(`Em: ${formattedDate}`, systemTextX, systemSigCurrentY, { align: "center" });
+    systemSigCurrentY += 3;
+    doc.text("Pelo sistema Correct", systemTextX, systemSigCurrentY, { align: "center" });
   }
-  maxBlockHeight = Math.max(maxBlockHeight, systemSigCurrentY - signatureBlockStartY);
 
   // --- Column 3: Individual Signatures (Director & Secretary) ---
-  let individualSigCurrentY = signatureBlockStartY;
+  let individualSigCurrentY = signatureSectionStartY + 5;
   const hasDirectorSignature = !!directorProfile;
   const hasSecretarySignature = !!secretaryProfile;
-  const numIndividualSignatures = (hasDirectorSignature ? 1 : 0) + (hasSecretarySignature ? 1 : 0);
-
-  if (numIndividualSignatures > 0) {
-    const singleSigBlockWidth = (col3Width - (numIndividualSignatures > 1 ? blockPadding : 0)) / numIndividualSignatures;
-    const signatureImageWidth = 40; // Fixed width for signature image
-    const signatureImageHeight = 16; // Fixed height for signature image
-    const signatureLineLength = singleSigBlockWidth - 10; // Line length with padding
-
-    let currentIndividualX = col3X;
-    let currentIndividualMaxY = individualSigCurrentY;
-
+  
+  // Se houver assinaturas individuais, exibi-las
+  if (hasDirectorSignature || hasSecretarySignature) {
+    const signatureImageWidth = 30; // Reduzido de 40 para 30
+    const signatureImageHeight = 12; // Reduzido de 16 para 12
+    const signatureLineLength = usableColumnWidth - 10;
+    
     // Director's Signature
     if (hasDirectorSignature) {
-      const directorCenterX = currentIndividualX + singleSigBlockWidth / 2;
-      let directorElementY = individualSigCurrentY;
-
+      const directorCenterX = col3X + usableColumnWidth / 2;
+      
       if (directorSignatureImageBase64) {
-        doc.addImage(directorSignatureImageBase64, "PNG", directorCenterX - signatureImageWidth / 2, directorElementY, signatureImageWidth, signatureImageHeight);
-        directorElementY += signatureImageHeight + 2;
+        const imageX = directorCenterX - signatureImageWidth / 2;
+        doc.addImage(directorSignatureImageBase64, "PNG", imageX, individualSigCurrentY, signatureImageWidth, signatureImageHeight);
+        individualSigCurrentY += signatureImageHeight + 2;
       }
       
-      doc.line(currentIndividualX + 5, directorElementY, currentIndividualX + singleSigBlockWidth - 5, directorElementY);
-      directorElementY += lineHeight;
+      // Linha de assinatura
+      const lineStartX = col3X + 5;
+      const lineEndX = col3X + usableColumnWidth - 5;
+      doc.line(lineStartX, individualSigCurrentY, lineEndX, individualSigCurrentY);
+      individualSigCurrentY += 3;
 
-      doc.setFontSize(boldFontSize);
+      doc.setFontSize(7);
       doc.setFont("helvetica", "bold");
-      doc.text("Diretor(a)", directorCenterX, directorElementY, { align: "center" });
-      directorElementY += lineHeight;
+      doc.text("Diretor(a)", directorCenterX, individualSigCurrentY, { align: "center" });
+      individualSigCurrentY += 3;
 
       if (directorProfile?.name) {
-        doc.setFontSize(smallFontSize);
+        doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
         const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, signatureLineLength);
-        doc.text(wrappedDirectorName, directorCenterX, directorElementY, { align: "center" });
-        directorElementY += wrappedDirectorName.length * lineHeight;
+        doc.text(wrappedDirectorName, directorCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += wrappedDirectorName.length * 2.5; // Reduzido espaçamento
       }
       if (directorProfile?.registration_number) {
-        doc.setFontSize(smallFontSize);
+        doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(directorProfile.registration_number, directorCenterX, directorElementY, { align: "center" });
-        directorElementY += lineHeight;
+        doc.text(directorProfile.registration_number, directorCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += 3;
       }
-      currentIndividualMaxY = Math.max(currentIndividualMaxY, directorElementY);
-      currentIndividualX += singleSigBlockWidth + blockPadding;
     }
 
-    // Secretary's Signature
+    // Secretary's Signature (adicionar espaço antes se houver diretor)
+    if (hasDirectorSignature && hasSecretarySignature) {
+      individualSigCurrentY += 5; // Espaço entre assinaturas
+    }
+
     if (hasSecretarySignature) {
-      const secretaryCenterX = currentIndividualX + singleSigBlockWidth / 2;
-      let secretaryElementY = individualSigCurrentY;
-
+      const secretaryCenterX = col3X + usableColumnWidth / 2;
+      
       if (secretarySignatureImageBase64) {
-        doc.addImage(secretarySignatureImageBase64, "PNG", secretaryCenterX - signatureImageWidth / 2, secretaryElementY, signatureImageWidth, signatureImageHeight);
-        secretaryElementY += signatureImageHeight + 2;
+        const imageX = secretaryCenterX - signatureImageWidth / 2;
+        doc.addImage(secretarySignatureImageBase64, "PNG", imageX, individualSigCurrentY, signatureImageWidth, signatureImageHeight);
+        individualSigCurrentY += signatureImageHeight + 2;
       }
+      
+      // Linha de assinatura
+      const lineStartX = col3X + 5;
+      const lineEndX = col3X + usableColumnWidth - 5;
+      doc.line(lineStartX, individualSigCurrentY, lineEndX, individualSigCurrentY);
+      individualSigCurrentY += 3;
 
-      doc.line(currentIndividualX + 5, secretaryElementY, currentIndividualX + singleSigBlockWidth - 5, secretaryElementY);
-      secretaryElementY += lineHeight;
-
-      doc.setFontSize(boldFontSize);
+      doc.setFontSize(7);
       doc.setFont("helvetica", "bold");
-      doc.text("Secretário(a)", secretaryCenterX, secretaryElementY, { align: "center" });
-      secretaryElementY += lineHeight;
+      doc.text("Secretário(a)", secretaryCenterX, individualSigCurrentY, { align: "center" });
+      individualSigCurrentY += 3;
 
       if (secretaryProfile?.name) {
-        doc.setFontSize(smallFontSize);
+        doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
         const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, signatureLineLength);
-        doc.text(wrappedSecretaryName, secretaryCenterX, secretaryElementY, { align: "center" });
-        secretaryElementY += wrappedSecretaryName.length * lineHeight;
+        doc.text(wrappedSecretaryName, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += wrappedSecretaryName.length * 2.5; // Reduzido espaçamento
       }
       if (secretaryProfile?.registration_number) {
-        doc.setFontSize(smallFontSize);
+        doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(secretaryProfile.registration_number, secretaryCenterX, secretaryElementY, { align: "center" });
+        doc.text(secretaryProfile.registration_number, secretaryCenterX, individualSigCurrentY, { align: "center" });
       }
-      currentIndividualMaxY = Math.max(currentIndividualMaxY, secretaryElementY);
     }
-    maxBlockHeight = Math.max(maxBlockHeight, currentIndividualMaxY - signatureBlockStartY);
   }
 
-  yPos = signatureBlockStartY + maxBlockHeight + 10; // Update yPos after the entire signature block
+  // Atualizar yPos após a seção de assinaturas
+  yPos = signatureSectionStartY + signatureSectionHeight + 10;
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
