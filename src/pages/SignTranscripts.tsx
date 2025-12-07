@@ -95,6 +95,17 @@ interface TranscriptToSign {
   } | null;
 }
 
+// Função para gerar o hash do conteúdo do histórico (duplicada para validação independente)
+async function generateTranscriptHash(data: any): Promise<string> {
+  const dataString = JSON.stringify(data);
+  const textEncoder = new TextEncoder();
+  const dataBuffer = textEncoder.encode(dataString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
 export default function SignTranscripts() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -183,6 +194,7 @@ export default function SignTranscripts() {
           secretary_signature_id,
           school_id,
           municipality_id,
+          data, // Fetch the full data content
           students (full_name),
           schools (name)
         `)
@@ -496,23 +508,27 @@ export default function SignTranscripts() {
         }
         // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
-        // Fetch current signed_data to merge
-        const { data: currentTranscriptData, error: fetchError } = await supabase
+        // Fetch the full 'data' content of the transcript
+        const { data: fullTranscriptData, error: fetchDataError } = await supabase
           .from('transcripts')
-          .select('signed_data')
+          .select('data, signed_data') // Also fetch existing signed_data
           .eq('id', transcriptId)
           .single();
 
-        if (fetchError) throw fetchError;
+        if (fetchDataError) throw fetchDataError;
+        if (!fullTranscriptData || !fullTranscriptData.data) {
+          throw new Error(`Conteúdo do histórico (data) não encontrado para o ID: ${transcriptId}`);
+        }
 
-        const existingSignedData = currentTranscriptData?.signed_data || {};
-        let newSignedData = { ...existingSignedData };
+        let newSignedData = { ...(fullTranscriptData.signed_data || fullTranscriptData.data) }; // Start with existing signed_data or full data
 
         const baseUpdate = { updated_at: now };
+        let newDocumentHash: string | null = null;
 
         if (currentAction === 'sign') {
           if (role === 'school_admin') {
             newSignedData = { ...newSignedData, director: signerProfileData };
+            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
             return {
               ...baseUpdate,
               id: transcriptId,
@@ -520,9 +536,11 @@ export default function SignTranscripts() {
               director_signature_id: user.id,
               status: 'pending_secretary_signature', // Next step for secretary
               signed_data: newSignedData,
+              document_hash: newDocumentHash, // Update document_hash
             };
           } else if (role === 'secretary') {
             newSignedData = { ...newSignedData, secretary: signerProfileData };
+            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
             return {
               ...baseUpdate,
               id: transcriptId,
@@ -530,18 +548,22 @@ export default function SignTranscripts() {
               secretary_signature_id: user.id,
               status: 'signed', // Fully signed
               signed_data: newSignedData,
+              document_hash: newDocumentHash, // Update document_hash
             };
           }
         } else if (currentAction === 'reject') {
+          // When rejecting, clear signatures and signed_data, reset status
+          newDocumentHash = await generateTranscriptHash(fullTranscriptData.data); // Hash of original data
           return {
             ...baseUpdate,
             id: transcriptId,
             status: 'rejected',
-            director_signed_at: null, // Clear previous signatures if rejected
+            director_signed_at: null,
             director_signature_id: null,
             secretary_signed_at: null,
             secretary_signature_id: null,
             signed_data: {}, // Clear signed data on rejection
+            document_hash: newDocumentHash, // Reset hash to original data hash
           };
         }
         return null;
