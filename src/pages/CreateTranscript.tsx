@@ -34,6 +34,8 @@ const SUBJECTS = [
 ];
 
 const GRADE_LEVELS = ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"];
+const STUDENT_STATUS_OPTIONS = ["cursando", "transferido", "concluído", "conservado"];
+
 
 export interface AcademicYear {
   calendar_year: number;
@@ -48,6 +50,7 @@ export interface AcademicYear {
   school_period_end?: string | null;
   trimester_year?: string | null;
   trimester_shift?: string | null;
+  student_status?: string; // ADDED
 }
 
 export interface Grade {
@@ -102,7 +105,7 @@ const CreateTranscript = () => {
     birth_date: "",
     birth_place: "",
     birth_state: "BA",
-    student_status: "cursando",
+    student_status: "cursando", // This is the overall student status, not per year
     grade_series: "",
     observations: "",
   });
@@ -118,6 +121,7 @@ const CreateTranscript = () => {
       shift: "",
       class_name: "",
       reclassified: false,
+      student_status: "cursando", // ADDED default status for new academic year
     },
   ]);
 
@@ -364,6 +368,7 @@ const CreateTranscript = () => {
             school_period_end: year.school_period_end,
             trimester_year: year.trimester_year,
             trimester_shift: year.trimester_shift,
+            student_status: year.student_status || "cursando", // ADDED
           }))
         );
 
@@ -548,9 +553,11 @@ const CreateTranscript = () => {
           school_period_end: schoolPeriod.endDate,
           trimester_year: schoolPeriod.gradeClass,
           trimester_shift: schoolPeriod.shift,
+          student_status: year.student_status || "cursando", // ADDED
         } : {
           ...year,
-          student_id: studentId
+          student_id: studentId,
+          student_status: year.student_status || "cursando", // ADDED
         };
 
         const { data: academicYear, error: yearError } = await supabase
@@ -891,18 +898,20 @@ const CreateTranscript = () => {
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="student_status">Status do Aluno *</Label>
+                    <Label htmlFor="student_status">Status do Aluno (Geral)</Label>
                     <select
                       id="student_status"
                       value={studentData.student_status}
                       onChange={(e) => setStudentData({ ...studentData, student_status: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <option value="cursando">Cursando</option>
-                      <option value="transferido">Transferido</option>
-                      <option value="concluído">Concluído</option>
-                      <option value="conservado">Conservado</option>
+                      {STUDENT_STATUS_OPTIONS.map(status => (
+                        <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                      ))}
                     </select>
+                    <p className="text-xs text-muted-foreground">
+                      Este status é para o aluno em geral. O status por ano letivo é definido na aba "Anos Letivos".
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="grade_series">Séries Cursadas</Label>
@@ -960,6 +969,7 @@ const CreateTranscript = () => {
               academicYears={academicYears}
               setAcademicYears={setAcademicYears}
               gradeLevels={GRADE_LEVELS}
+              studentStatusOptions={STUDENT_STATUS_OPTIONS} // Pass options
               schools={schools} // Passando schools
               selectedSchoolId={selectedSchoolId} // Passando selectedSchoolId
             />
