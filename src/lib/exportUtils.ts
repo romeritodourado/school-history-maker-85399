@@ -114,6 +114,12 @@ const formatGrade = (grade: number | null) => {
   return grade.toFixed(1);
 };
 
+const formatDateTime = (dateTimeString: string | null) => {
+  if (!dateTimeString) return "N/A";
+  const date = new Date(dateTimeString);
+  return date.toLocaleDateString("pt-BR") + " às " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+};
+
 export const exportToPDF = async (
   student: StudentData,
   academicYears: AcademicYearData[],
@@ -122,7 +128,10 @@ export const exportToPDF = async (
   schoolPeriod: { startDate: string; endDate: string; gradeClass: string; shift: string } | undefined,
   transcriptId: string,
   directorProfile?: ProfileData | null,
-  secretaryProfile?: ProfileData | null
+  secretaryProfile?: ProfileData | null,
+  directorSignedAt?: string | null, // NOVO
+  secretarySignedAt?: string | null, // NOVO
+  documentHash?: string | null // NOVO
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -171,6 +180,9 @@ export const exportToPDF = async (
     if (directorProfile.registration_number) {
       signatureKeywords.push(`Registro Diretor: ${directorProfile.registration_number}`);
     }
+    if (directorSignedAt) { // NOVO
+      signatureKeywords.push(`Assinado Diretor: ${formatDateTime(directorSignedAt)}`);
+    }
   }
   if (secretaryProfile?.name) {
     if (directorProfile?.name) signatureSubject += ", ";
@@ -179,9 +191,15 @@ export const exportToPDF = async (
     if (secretaryProfile.registration_number) {
       signatureKeywords.push(`Registro Secretário: ${secretaryProfile.registration_number}`);
     }
+    if (secretarySignedAt) { // NOVO
+      signatureKeywords.push(`Assinado Secretário: ${formatDateTime(secretarySignedAt)}`);
+    }
   }
   if (!directorProfile?.name && !secretaryProfile?.name) {
     signatureSubject += "Nenhuma assinatura digital encontrada.";
+  }
+  if (documentHash) { // NOVO
+    signatureKeywords.push(`Hash Documento: ${documentHash}`);
   }
 
   doc.setProperties({
@@ -728,17 +746,25 @@ export const exportToPDF = async (
     doc.setFontSize(6); // Reduzido de smallFontSize para 6
     doc.setFont("helvetica", "normal");
     const systemTextX = col2X + usableColumnWidth / 2;
-    doc.text(`Em: ${formattedDate}`, systemTextX, systemSigCurrentY, { align: "center" });
+    doc.text(`Em: ${formattedDate} às ${formattedTime}`, systemTextX, systemSigCurrentY, { align: "center" }); // NOVO: Adicionado hora
     systemSigCurrentY += 3;
     doc.text("Pelo sistema Correct", systemTextX, systemSigCurrentY, { align: "center" });
   }
+  
+  if (documentHash) { // NOVO: Exibir hash do documento
+    systemSigCurrentY += 3;
+    doc.setFontSize(5);
+    doc.setFont("helvetica", "normal");
+    const hashDisplay = `Hash: ${documentHash.substring(0, 10)}...${documentHash.substring(documentHash.length - 10)}`;
+    doc.text(hashDisplay, col2X + usableColumnWidth / 2, systemSigCurrentY, { align: "center" });
+  }
+
 
   // --- Column 3: Individual Signatures (Director & Secretary) ---
   let individualSigCurrentY = signatureSectionStartY + 5;
   const hasDirectorSignature = !!directorProfile;
   const hasSecretarySignature = !!secretaryProfile;
   
-  // Se houver assinaturas individuais, exibi-las
   if (hasDirectorSignature || hasSecretarySignature) {
     const signatureImageWidth = 30; // Reduzido de 40 para 30
     const signatureImageHeight = 12; // Reduzido de 16 para 12
@@ -770,7 +796,7 @@ export const exportToPDF = async (
         doc.setFont("helvetica", "normal");
         const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, signatureLineLength);
         doc.text(wrappedDirectorName, directorCenterX, individualSigCurrentY, { align: "center" });
-        individualSigCurrentY += wrappedDirectorName.length * 2.5; // Reduzido espaçamento
+        individualSigCurrentY += wrappedDirectorName.length * 2.5;
       }
       if (directorProfile?.registration_number) {
         doc.setFontSize(6);
@@ -779,21 +805,18 @@ export const exportToPDF = async (
         individualSigCurrentY += 3;
       }
       
-      // Adicionar data e hora da assinatura do diretor
-      if (directorProfile && (directorProfile as any).director_signed_at) {
-        const signedDate = new Date((directorProfile as any).director_signed_at);
-        const formattedSignedDate = signedDate.toLocaleDateString("pt-BR");
-        const formattedSignedTime = signedDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+      // Adicionar data e hora da assinatura do diretor (using directorSignedAt)
+      if (directorSignedAt) { // ATUALIZADO
         doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
-        doc.text(`Assinado em: ${formattedSignedDate} às ${formattedSignedTime}`, directorCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`Assinado em: ${formatDateTime(directorSignedAt)}`, directorCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += 3;
       }
     }
 
     // Secretary's Signature (adicionar espaço antes se houver diretor)
     if (hasDirectorSignature && hasSecretarySignature) {
-      individualSigCurrentY += 5; // Espaço entre assinaturas
+      individualSigCurrentY += 5;
     }
 
     if (hasSecretarySignature) {
@@ -821,7 +844,7 @@ export const exportToPDF = async (
         doc.setFont("helvetica", "normal");
         const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, signatureLineLength);
         doc.text(wrappedSecretaryName, secretaryCenterX, individualSigCurrentY, { align: "center" });
-        individualSigCurrentY += wrappedSecretaryName.length * 2.5; // Reduzido espaçamento
+        individualSigCurrentY += wrappedSecretaryName.length * 2.5;
       }
       if (secretaryProfile?.registration_number) {
         doc.setFontSize(6);
@@ -830,14 +853,11 @@ export const exportToPDF = async (
         individualSigCurrentY += 3;
       }
       
-      // Adicionar data e hora da assinatura do secretário
-      if (secretaryProfile && (secretaryProfile as any).secretary_signed_at) {
-        const signedDate = new Date((secretaryProfile as any).secretary_signed_at);
-        const formattedSignedDate = signedDate.toLocaleDateString("pt-BR");
-        const formattedSignedTime = signedDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+      // Adicionar data e hora da assinatura do secretário (using secretarySignedAt)
+      if (secretarySignedAt) { // ATUALIZADO
         doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
-        doc.text(`Assinado em: ${formattedSignedDate} às ${formattedSignedTime}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`Assinado em: ${formatDateTime(secretarySignedAt)}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
       }
     }
   }
@@ -898,152 +918,4 @@ export const exportToPDF = async (
   doc.text(splitInfo, margin, yPos);
 
   doc.save(`historico_${student.full_name.replace(/ /g, "_")}.pdf`);
-};
-
-export const exportToExcel = (
-  student: StudentData,
-  academicYears: AcademicYearData[],
-  grades: { [yearId: string]: GradeData[] },
-  trimesterGrades: TrimesterGradeData[]
-) => {
-  const wb = XLSX.utils.book_new();
-
-  const municipalityName = student.schools?.municipalities?.name || "PREFEITURA MUNICIPAL";
-  const schoolName = student.schools?.name || "ESCOLA MUNICIPAL";
-  const authorizationDecree = student.schools?.authorization_decree_url || "";
-  const officialGazette = student.schools?.official_gazette_url || "";
-
-  const studentInfo = [
-    [`PREFEITURA MUNICIPAL de ${municipalityName.toUpperCase()}`],
-    [schoolName.toUpperCase()],
-    [(authorizationDecree || officialGazette) ? `Autorização: ${authorizationDecree} - D.O.: ${officialGazette}` : ""],
-    [""],
-    ["HISTÓRICO ESCOLAR - ENSINO FUNDAMENTAL"],
-    [""],
-    ["DADOS DO ALUNO"],
-    ["Nome Completo:", student.full_name],
-    ["Nome da Mãe:", student.mother_name || "Não informado"],
-    ["Nome do Pai:", student.father_name || "Não informado"],
-    ["Data de Nascimento:", new Date(student.birth_date).toLocaleDateString("pt-BR")],
-    ["Naturalidade:", student.birth_place || "Não informado"],
-    ["Estado:", student.birth_state || "BA"],
-    ["Status do Aluno:", student.student_status || "N/A"],
-    ["Séries Cursadas:", student.grade_series || "N/A"],
-    ["Observações:", student.observations || "N/A"],
-    [""],
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet(studentInfo);
-
-  let currentRow = studentInfo.length;
-  XLSX.utils.sheet_add_aoa(ws, [["ESTUDOS REALIZADOS"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Ano", "Série", "Escola", "Cidade", "UF"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-
-  academicYears.forEach((year) => {
-    XLSX.utils.sheet_add_aoa(
-      ws,
-      [[year.calendar_year, year.grade_level, year.school_name, year.city, year.state]],
-      { origin: { r: currentRow, c: 0 } }
-    );
-    currentRow++;
-  });
-
-  currentRow += 2;
-
-  academicYears.forEach((year) => {
-    const yearGrades = grades[year.id] || [];
-    if (yearGrades.length > 0) {
-      const totalWorkload = yearGrades.reduce((sum, g) => sum + (g.workload || 0), 0);
-      
-      XLSX.utils.sheet_add_aoa(ws, [[`${year.grade_level} - ${year.calendar_year}`]], {
-        origin: { r: currentRow, c: 0 },
-      });
-      currentRow++;
-      XLSX.utils.sheet_add_aoa(ws, [["Disciplina", "Nota", "C.H.", "Faltas"]], {
-        origin: { r: currentRow, c: 0 },
-      });
-      currentRow++;
-
-      yearGrades.forEach((g) => {
-        XLSX.utils.sheet_add_aoa(
-          ws,
-          [[g.subject_name, formatGrade(g.grade), g.workload || "-", g.absences]],
-          { origin: { r: currentRow, c: 0 } }
-        );
-        currentRow++;
-      });
-      
-      XLSX.utils.sheet_add_aoa(
-        ws,
-        [["Carga Horária Total", "", `${totalWorkload}h`, ""]],
-        { origin: { r: currentRow, c: 0 } }
-      );
-      currentRow++;
-      currentRow += 2;
-    }
-  });
-
-  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  
-  let statusText = "";
-  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
-  
-  if (student.student_status === "concluído") {
-    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "cursando") {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "transferido") {
-    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
-  } else if (student.student_status === "conservado") {
-    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
-  } else {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`; // Default
-  }
-  
-  XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(ws, [["_____________________", "", "_____________________"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Diretor(a)", "", "Secretário(a)"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  if (student.schools?.authorization_decree_url) {
-    XLSX.utils.sheet_add_aoa(ws, [[student.schools.authorization_decree_url, "", student.schools.official_gazette_url || ""]], {
-      origin: { r: currentRow, c: 0 },
-    });
-  }
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [[`Luís Eduardo Magalhães - BA, ${new Date().toLocaleDateString("pt-BR")}`]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow += 2;
-
-  XLSX.utils.sheet_add_aoa(ws, [["LEGENDA"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["O = Ótimo (9,5 a 10,0)", "MB = Muito Bom (8,0 a 9,4)", "B = Bom (7,0 a 7,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["R = Regular (5,0 a 6,9)", "I = Insuficiente (0,0 a 4,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-
-  XLSX.utils.book_append_sheet(wb, ws, `historico_${student.full_name.replace(/ /g, "_")}`);
-  XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);
 };

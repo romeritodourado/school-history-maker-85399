@@ -76,9 +76,24 @@ interface TranscriptPreviewProps {
   transcriptId: string | null; // Adicionar transcriptId
   directorProfile?: ProfileData | null; // Novo: Perfil do Diretor
   secretaryProfile?: ProfileData | null; // Novo: Perfil do Secretário
+  directorSignedAt?: string | null; // NOVO: Data e hora da assinatura do diretor
+  secretarySignedAt?: string | null; // NOVO: Data e hora da assinatura do secretário
+  documentHash?: string | null; // NOVO: Hash do documento
 }
 
-export const TranscriptPreview = ({ student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId, directorProfile, secretaryProfile }: TranscriptPreviewProps) => {
+export const TranscriptPreview = ({ 
+  student, 
+  academicYears, 
+  grades, 
+  trimesterGrades, 
+  schoolPeriod, 
+  transcriptId, 
+  directorProfile, 
+  secretaryProfile,
+  directorSignedAt, // NOVO
+  secretarySignedAt, // NOVO
+  documentHash // NOVO
+}: TranscriptPreviewProps) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,8 +106,15 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
   }, [transcriptId]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    if (!dateString) return "N/A";
+    const date = new Date(dateString + 'T00:00:00'); // Assuming date-only string
     return date.toLocaleDateString("pt-BR");
+  };
+
+  const formatDateTime = (dateTimeString: string | null) => {
+    if (!dateTimeString) return "N/A";
+    const date = new Date(dateTimeString);
+    return date.toLocaleDateString("pt-BR") + " às " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatGrade = (grade: number | null) => {
@@ -318,6 +340,11 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
                 <p className="text-xs text-muted-foreground mt-1">
                   Pelo sistema Correct
                 </p>
+                {documentHash && ( // NOVO: Exibir hash do documento
+                  <p className="text-xs text-muted-foreground mt-1 break-all">
+                    Hash do Documento: {documentHash.substring(0, 10)}...{documentHash.substring(documentHash.length - 10)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -336,6 +363,11 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
                         {directorProfile.registration_number}
                       </p>
                     )}
+                    {directorSignedAt && ( // NOVO: Exibir data e hora da assinatura do diretor
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Assinado em: {formatDateTime(directorSignedAt)}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -350,6 +382,11 @@ export const TranscriptPreview = ({ student, academicYears, grades, trimesterGra
                     {secretaryProfile.registration_number && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {secretaryProfile.registration_number}
+                      </p>
+                    )}
+                    {secretarySignedAt && ( // NOVO: Exibir data e hora da assinatura do secretário
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Assinado em: {formatDateTime(secretarySignedAt)}
                       </p>
                     )}
                   </div>

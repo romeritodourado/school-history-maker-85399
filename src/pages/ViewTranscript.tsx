@@ -87,6 +87,9 @@ const ViewTranscript = () => {
   const [schoolPeriod, setSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
   const [directorProfile, setDirectorProfile] = useState<ProfileData | null>(null); // Novo estado
   const [secretaryProfile, setSecretaryProfile] = useState<ProfileData | null>(null); // Novo estado
+  const [directorSignedAt, setDirectorSignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do diretor
+  const [secretarySignedAt, setSecretarySignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do secretário
+  const [documentHash, setDocumentHash] = useState<string | null>(null); // NOVO: Hash do documento
 
   useEffect(() => {
     if (studentId) {
@@ -122,12 +125,15 @@ const ViewTranscript = () => {
       // Fetch the transcript record to get its ID and signature IDs
       const { data: transcriptRecord, error: transcriptRecordError } = await supabase
         .from('transcripts')
-        .select('id, director_signature_id, secretary_signature_id')
+        .select('id, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash') // ATUALIZADO: Incluindo datas de assinatura e hash
         .eq('student_id', studentId)
         .single();
 
       if (transcriptRecordError) throw transcriptRecordError;
       setTranscriptId(transcriptRecord.id); // Set the transcript ID
+      setDirectorSignedAt(transcriptRecord.director_signed_at); // NOVO
+      setSecretarySignedAt(transcriptRecord.secretary_signed_at); // NOVO
+      setDocumentHash(transcriptRecord.document_hash); // NOVO
 
       // Fetch director profile if ID exists
       let fetchedDirectorProfile: ProfileData | null = null;
@@ -212,7 +218,19 @@ const ViewTranscript = () => {
   const handleExportPDF = async () => {
     if (student && academicYears.length > 0 && transcriptId) { // Pass transcriptId
       try {
-        await exportToPDF(student, academicYears, grades, trimesterGrades, schoolPeriod, transcriptId, directorProfile, secretaryProfile);
+        await exportToPDF(
+          student,
+          academicYears,
+          grades,
+          trimesterGrades,
+          schoolPeriod,
+          transcriptId,
+          directorProfile,
+          secretaryProfile,
+          directorSignedAt, // NOVO
+          secretarySignedAt, // NOVO
+          documentHash // NOVO
+        );
         toast({
           title: "Sucesso",
           description: "PDF gerado com sucesso",
@@ -297,6 +315,9 @@ const ViewTranscript = () => {
           transcriptId={transcriptId} // Pass the transcriptId
           directorProfile={directorProfile}
           secretaryProfile={secretaryProfile}
+          directorSignedAt={directorSignedAt} // NOVO
+          secretarySignedAt={secretarySignedAt} // NOVO
+          documentHash={documentHash} // NOVO
         />
       </main>
     </div>
