@@ -7,7 +7,7 @@ import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, School } fr
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
-import QRCode from "qrcode"; // Importar a biblioteca qrcode
+// QRCode import removed as it's no longer needed for this page
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
@@ -44,17 +44,14 @@ export default function ValidateTranscript() {
   const [validation, setValidation] = useState<TranscriptValidation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  // const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null); // Removed state
 
   const transcriptId = searchParams.get('id');
 
   useEffect(() => {
     if (transcriptId) {
       validateTranscript();
-      const validationUrl = `https://correct.vercel.app/validar?id=${transcriptId}`;
-      QRCode.toDataURL(validationUrl, { width: 128, margin: 2 })
-        .then(url => setQrCodeDataUrl(url))
-        .catch(err => console.error("Error generating QR code:", err));
+      // QR Code generation logic removed from here
     } else {
       setError('ID do histórico não fornecido');
       setLoading(false);
@@ -162,13 +159,12 @@ export default function ValidateTranscript() {
         <Card className="border-2 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6">
             <div className="flex flex-col items-center justify-center">
-              <Link to="/" className="mb-4"> {/* Increased margin-bottom */}
-                <img src={correctLogo} alt="Correct Logo" className="h-32 w-32 object-contain" /> {/* Increased size */}
+              <Link to="/" className="mb-4">
+                <img src={correctLogo} alt="Correct Logo" className="h-32 w-32 object-contain" />
               </Link>
-              <CardTitle className="text-2xl text-center mb-4"> {/* Added margin-bottom */}
+              <CardTitle className="text-2xl text-center mb-4">
                 Validação de Histórico Escolar
               </CardTitle>
-              {/* Badge moved here, centered */}
               <Badge 
                 variant={validation.is_valid ? "default" : "destructive"}
                 className="text-lg px-4 py-2"
@@ -305,15 +301,6 @@ export default function ValidateTranscript() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {qrCodeDataUrl && (
-              <div className="text-center mt-8">
-                <img src={qrCodeDataUrl} alt="QR Code de Validação" className="mx-auto h-32 w-32 object-contain border p-1 rounded-md" />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Este QR Code leva à página de validação oficial deste documento.
-                </p>
               </div>
             )}
           </CardContent>
