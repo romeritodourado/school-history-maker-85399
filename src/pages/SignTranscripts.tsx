@@ -201,10 +201,10 @@ export default function SignTranscripts() {
         .eq('school_id', schoolIdFromUrl)
         .order('created_at', { ascending: false });
 
-      if (role === 'school_admin') {
-        query = query.eq('status', 'pending_director_signature');
-      } else if (role === 'secretary') {
+      if (role === 'secretary') { // Changed role order
         query = query.eq('status', 'pending_secretary_signature');
+      } else if (role === 'school_admin') { // Changed role order
+        query = query.eq('status', 'pending_director_signature');
       } else {
         // Roles not authorized to sign
         setPendingTranscripts([]);
@@ -526,26 +526,26 @@ export default function SignTranscripts() {
         let newDocumentHash: string | null = null;
 
         if (currentAction === 'sign') {
-          if (role === 'school_admin') {
-            newSignedData = { ...newSignedData, director: signerProfileData };
-            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
-            return {
-              ...baseUpdate,
-              id: transcriptId,
-              director_signed_at: now,
-              director_signature_id: user.id,
-              status: 'pending_secretary_signature', // Next step for secretary
-              signed_data: newSignedData,
-              document_hash: newDocumentHash, // Update document_hash
-            };
-          } else if (role === 'secretary') {
-            newSignedData = { ...newSignedData, secretary: signerProfileData };
+          if (role === 'secretary') { // Changed role order
+            newSignedData = { ...newSignedData, secretary: signerProfileData }; // Secretary signs first
             newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
             return {
               ...baseUpdate,
               id: transcriptId,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
+              status: 'pending_director_signature', // Next step for director
+              signed_data: newSignedData,
+              document_hash: newDocumentHash, // Update document_hash
+            };
+          } else if (role === 'school_admin') { // Changed role order
+            newSignedData = { ...newSignedData, director: signerProfileData }; // Director signs last
+            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
+            return {
+              ...baseUpdate,
+              id: transcriptId,
+              director_signed_at: now,
+              director_signature_id: user.id,
               status: 'signed', // Fully signed
               signed_data: newSignedData,
               document_hash: newDocumentHash, // Update document_hash
@@ -586,25 +586,25 @@ export default function SignTranscripts() {
           if (!transcript) continue;
 
           if (currentAction === 'sign') {
-            if (role === 'school_admin') {
-              // Notify secretary
-              const { data: secretaryProfiles, error: secretaryError } = await supabase
+            if (role === 'secretary') { // Changed role order
+              // Notify director
+              const { data: directorProfiles, error: directorError } = await supabase
                 .from('profiles')
                 .select('id')
                 .eq('school_id', schoolIdFromUrl)
-                .eq('role', 'secretary');
+                .eq('role', 'school_admin'); // Changed to school_admin
 
-              if (secretaryError) console.error('Client: Error fetching secretary for notification:', secretaryError);
+              if (directorError) console.error('Client: Error fetching director for notification:', directorError);
 
-              if (secretaryProfiles && secretaryProfiles.length > 0) {
-                for (const secretary of secretaryProfiles) {
-                  console.log(`Client: Invoking create-notification for secretary ${secretary.id} for student ${transcript.students?.full_name}`);
+              if (directorProfiles && directorProfiles.length > 0) {
+                for (const director of directorProfiles) {
+                  console.log(`Client: Invoking create-notification for director ${director.id} for student ${transcript.students?.full_name}`);
                   const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
                     body: JSON.stringify({
-                      user_id: secretary.id,
+                      user_id: director.id, // Changed to director.id
                       type: 'transcript_pending_signature',
                       target_id: transcriptId,
-                      message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Secretário(a).`,
+                      message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Diretor(a).`, // Changed message
                     }),
                     headers: {
                       'Content-Type': 'application/json',
@@ -612,28 +612,28 @@ export default function SignTranscripts() {
                   });
 
                   if (notificationError) {
-                    console.error('Client: Error invoking create-notification edge function for secretary:', notificationError);
+                    console.error('Client: Error invoking create-notification edge function for director:', notificationError);
                     toast({
                       title: "Erro na notificação",
-                      description: notificationError.message || "Não foi possível enviar a notificação para o secretário.",
+                      description: notificationError.message || "Não foi possível enviar a notificação para o diretor.",
                       variant: "destructive",
                     });
                   } else if (notificationResponse && notificationResponse.error) {
-                    console.error('Client: Edge function returned error for secretary notification:', notificationResponse.error);
+                    console.error('Client: Edge function returned error for director notification:', notificationResponse.error);
                     toast({
                       title: "Erro na notificação",
-                      description: notificationResponse.error || "Não foi possível enviar a notificação para o secretário.",
+                      description: notificationResponse.error || "Não foi possível enviar a notificação para o diretor.",
                       variant: "destructive",
                     });
                   } else {
-                    console.log('Client: Notification edge function invoked successfully for secretary:', notificationResponse);
+                    console.log('Client: Notification edge function invoked successfully for director:', notificationResponse);
                   }
                 }
               }
-            } else if (role === 'secretary') {
+            } else if (role === 'school_admin') { // Changed role order
               // Notify the creator that it's fully signed
               // For now, we'll just toast success. A more robust system might notify the original creator.
-              console.log(`Client: Transcript ${transcriptId} fully signed by secretary. No further notification logic implemented for creator.`);
+              console.log(`Client: Transcript ${transcriptId} fully signed by director. No further notification logic implemented for creator.`);
             }
           } else if (currentAction === 'reject') {
             // Notify the creator that it was rejected
@@ -691,8 +691,8 @@ export default function SignTranscripts() {
     );
   }
 
-  const currentRoleLabel = role === 'school_admin' ? 'Diretor(a)' : 'Secretário(a) Escolar';
-  const pendingStatusLabel = role === 'school_admin' ? 'aguardando sua assinatura como Diretor(a)' : 'aguardando sua assinatura como Secretário(a) Escolar';
+  const currentRoleLabel = role === 'secretary' ? 'Secretário(a) Escolar' : 'Diretor(a)'; // Changed role order
+  const pendingStatusLabel = role === 'secretary' ? 'aguardando sua assinatura como Secretário(a) Escolar' : 'aguardando sua assinatura como Diretor(a)'; // Changed role order
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">

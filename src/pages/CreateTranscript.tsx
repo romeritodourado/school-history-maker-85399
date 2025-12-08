@@ -667,7 +667,7 @@ const CreateTranscript = () => {
           .update({
             school_id: currentSchoolId,
             municipality_id: currentMunicipalityId,
-            status: 'pending_director_signature', // Reset status for new signature flow
+            status: 'pending_secretary_signature', // Changed to pending_secretary_signature
             document_hash: documentHash,
             data: dataToHash,
             // Preserve existing signature fields
@@ -688,7 +688,7 @@ const CreateTranscript = () => {
             student_id: studentId,
             school_id: currentSchoolId,
             municipality_id: currentMunicipalityId,
-            status: 'pending_director_signature', // Set status to pending director signature
+            status: 'pending_secretary_signature', // Changed to pending_secretary_signature
             document_hash: documentHash,
             data: dataToHash,
           }])
@@ -698,24 +698,24 @@ const CreateTranscript = () => {
         transcriptRecordId = newTranscript.id;
       }
 
-      // Create notification for the school's director using an Edge Function
-      const { data: directorProfiles, error: directorError } = await supabase
+      // Create notification for the school's secretary using an Edge Function
+      const { data: secretaryProfiles, error: secretaryError } = await supabase
         .from('profiles')
         .select('id')
         .eq('school_id', currentSchoolId)
-        .eq('role', 'school_admin');
+        .eq('role', 'secretary'); // Changed to secretary
 
-      if (directorError) console.error('Client: Error fetching director for notification:', directorError);
+      if (secretaryError) console.error('Client: Error fetching secretary for notification:', secretaryError);
 
-      if (directorProfiles && directorProfiles.length > 0) {
-        for (const director of directorProfiles) {
-          console.log(`Client: Invoking create-notification for director ${director.id} for student ${studentData.full_name}`);
+      if (secretaryProfiles && secretaryProfiles.length > 0) {
+        for (const secretary of secretaryProfiles) {
+          console.log(`Client: Invoking create-notification for secretary ${secretary.id} for student ${studentData.full_name}`);
           const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
             body: JSON.stringify({
-              user_id: director.id,
+              user_id: secretary.id, // Changed to secretary.id
               type: 'transcript_pending_signature',
               target_id: transcriptRecordId,
-              message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Diretor(a).`,
+              message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Secretário(a).`, // Changed message
             }),
             headers: {
               'Content-Type': 'application/json',
@@ -723,28 +723,28 @@ const CreateTranscript = () => {
           });
 
           if (notificationError) {
-            console.error('Client: Error invoking create-notification edge function:', notificationError);
+            console.error('Client: Error invoking create-notification edge function for secretary:', notificationError);
             toast({
               title: "Erro na notificação",
-              description: notificationError.message || "Não foi possível enviar a notificação para o diretor.",
+              description: notificationError.message || "Não foi possível enviar a notificação para o secretário.",
               variant: "destructive",
             });
           } else if (notificationResponse && notificationResponse.error) {
-            console.error('Client: Edge function returned error for director notification:', notificationResponse.error);
+            console.error('Client: Edge function returned error for secretary notification:', notificationResponse.error);
             toast({
               title: "Erro na notificação",
-              description: notificationResponse.error || "Não foi possível enviar a notificação para o diretor.",
+              description: notificationResponse.error || "Não foi possível enviar a notificação para o secretário.",
               variant: "destructive",
             });
           } else {
-            console.log('Client: Notification edge function invoked successfully for director:', notificationResponse);
+            console.log('Client: Notification edge function invoked successfully for secretary:', notificationResponse);
           }
         }
       }
 
       toast({
         title: "Sucesso",
-        description: id ? "Histórico escolar atualizado e enviado para assinatura do Diretor(a)." : "Histórico escolar criado e enviado para assinatura do Diretor(a).",
+        description: id ? "Histórico escolar atualizado e enviado para assinatura do Secretário(a)." : "Histórico escolar criado e enviado para assinatura do Secretário(a).", // Changed message
       });
 
       navigate(`/visualizar/${studentId}`);
