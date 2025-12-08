@@ -139,29 +139,62 @@ export default function SignTranscripts() {
     console.log("SignTranscripts useEffect: Profile Municipality ID =", profile?.municipality_id);
     console.log("SignTranscripts useEffect: School ID from URL =", schoolIdFromUrl);
 
-    if (!authLoading && user && profile && schoolIdFromUrl) {
-      // Adiciona uma verificação inicial para perfis de nível escolar sem school_id
-      if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
+    if (!authLoading && user && profile) {
+      // Verificação mais robusta: o usuário deve ter um school_id para acessar esta página
+      // Esta verificação é feita aqui e também na página de destino
+      const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
+      
+      if (isSchoolLevelUser && !profile.school_id) {
         toast({
-          title: 'Erro de Configuração',
+          title: 'Erro de Configuração do Perfil',
           description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
           variant: 'destructive',
           duration: 8000, // Make it last longer
         });
         setLoading(false); // Impede o carregamento e ações futuras
+        // Redireciona para o dashboard ou outra página segura
+        navigate('/');
         return; // IMPORTANT: return here to stop further execution
       }
-      // Adiciona uma verificação inicial para perfis de nível municipal sem municipality_id
-      if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
+      
+      // Se for um usuário municipal, verificar municipality_id
+      const isMunicipalLevelUser = ['municipal_secretary', 'network_manager'].includes(profile.role || '');
+      if (isMunicipalLevelUser && !profile.municipality_id) {
         toast({
-          title: 'Erro de Configuração',
+          title: 'Erro de Configuração do Perfil',
           description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
           variant: 'destructive',
-          duration: 8000, // Make it last longer
+          duration: 8000,
         });
-        setLoading(false); // Impede o carregamento e ações futuras
-        return; // IMPORTANT: return here to stop further execution
+        setLoading(false);
+        navigate('/');
+        return;
       }
+      
+      // Se chegou aqui, o perfil parece estar OK para continuar
+      // Mas ainda precisamos verificar se o schoolIdFromUrl é válido
+      if (!schoolIdFromUrl) {
+        toast({
+          title: 'Erro',
+          description: 'ID da escola não fornecido na URL. Redirecionando para o dashboard.',
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
+      }
+      
+      // Verificar se o usuário tem permissão para acessar esta escola
+      // Esta verificação é feita no backend, mas podemos fazer uma verificação preliminar aqui
+      if (isSchoolLevelUser && profile.school_id !== schoolIdFromUrl) {
+        toast({
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar os históricos desta escola.',
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
+      }
+      
       fetchPendingTranscripts();
     } else if (!authLoading && (!user || !profile)) {
       toast({
@@ -170,19 +203,13 @@ export default function SignTranscripts() {
         variant: 'destructive',
       });
       navigate('/login');
-    } else if (!authLoading && !schoolIdFromUrl) {
-      toast({
-        title: 'Erro',
-        description: 'ID da escola não fornecido. Redirecionando para o dashboard.',
-        variant: 'destructive',
-      });
-      navigate('/');
     }
-  }, [authLoading, user, profile, schoolIdFromUrl, navigate, toast, role]);
+  }, [authLoading, user, profile, schoolIdFromUrl, navigate, toast]);
 
   const fetchPendingTranscripts = async () => {
     setLoading(true);
     try {
+      // O schoolIdFromUrl já foi verificado no useEffect
       let query = supabase
         .from('transcripts')
         .select(`
@@ -198,7 +225,7 @@ export default function SignTranscripts() {
           students (full_name),
           schools (name)
         `)
-        .eq('school_id', schoolIdFromUrl)
+        .eq('school_id', schoolIdFromUrl) // Usar o schoolId da URL
         .order('created_at', { ascending: false });
 
       if (role === 'secretary') { // Changed role order
@@ -408,7 +435,11 @@ export default function SignTranscripts() {
     }
 
     // --- VERIFICAÇÃO INICIAL DE CONFIGURAÇÃO DO PERFIL ---
-    if ((profile.role === 'school_admin' || profile.role === 'secretary') && !profile.school_id) {
+    // Esta verificação já foi feita no useEffect, mas vamos repetir por segurança
+    const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
+    const isMunicipalLevelUser = ['municipal_secretary', 'network_manager'].includes(profile.role || '');
+    
+    if (isSchoolLevelUser && !profile.school_id) {
       toast({
         title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
@@ -417,7 +448,7 @@ export default function SignTranscripts() {
       });
       return;
     }
-    if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager') && !profile.municipality_id) {
+    if (isMunicipalLevelUser && !profile.municipality_id) {
       toast({
         title: 'Erro de Configuração do Perfil',
         description: `Seu perfil de ${profile.role} não está associado a uma rede municipal. Por favor, entre em contato com o administrador do sistema para corrigir.`,
@@ -477,22 +508,24 @@ export default function SignTranscripts() {
 
 
         // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
-        if (userSchoolId === null) {
-          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id is null.`);
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma escola. Por favor, verifique as configurações da sua conta.`);
-        }
-        if (transcriptSchoolId === null) {
-          console.error(`[SignTranscripts] RLS Mismatch (School): Transcript school_id is null.`);
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma escola. Por favor, entre em contato com o suporte.`);
-        }
+        if (isSchoolLevelUser) {
+          if (userSchoolId === null) {
+            console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id is null.`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma escola. Por favor, verifique as configurações da sua conta.`);
+          }
+          if (transcriptSchoolId === null) {
+            console.error(`[SignTranscripts] RLS Mismatch (School): Transcript school_id is null.`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma escola. Por favor, entre em contato com o suporte.`);
+          }
 
-        if (userSchoolId !== transcriptSchoolId) {
-          console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id (${userSchoolId}) does not match transcript school_id (${transcriptSchoolId}).`);
-          throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${userSchoolId}, ID da escola do histórico: ${transcriptSchoolId}. Não é possível assinar.`);
+          if (userSchoolId !== transcriptSchoolId) {
+            console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id (${userSchoolId}) does not match transcript school_id (${transcriptSchoolId}).`);
+            throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${userSchoolId}, ID da escola do histórico: ${transcriptSchoolId}. Não é possível assinar.`);
+          }
         }
         
         // Check for municipality_id for municipal roles
-        if ((profile.role === 'municipal_secretary' || profile.role === 'network_manager')) {
+        if (isMunicipalLevelUser) {
           if (userMunicipalityId === null) {
             console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id is null.`);
             throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma rede municipal. Por favor, verifique as configurações da sua conta.`);
@@ -591,7 +624,7 @@ export default function SignTranscripts() {
               const { data: directorProfiles, error: directorError } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('school_id', schoolIdFromUrl)
+                .eq('school_id', schoolIdFromUrl) // Usar o schoolId da URL
                 .eq('role', 'school_admin'); // Changed to school_admin
 
               if (directorError) console.error('Client: Error fetching director for notification:', directorError);
@@ -671,6 +704,7 @@ export default function SignTranscripts() {
     );
   }
 
+  // Verificação final antes de renderizar a página
   if (!user || !profile || !schoolIdFromUrl || (role !== 'school_admin' && role !== 'secretary')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

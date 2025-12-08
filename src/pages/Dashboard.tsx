@@ -542,6 +542,7 @@ export default function Dashboard() {
       path: `/assinar-historicos?schoolId=${profile?.school_id}`, // Link dinâmico
       roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
       order: 1, // Prioridade alta
+      requiresSchoolId: true, // Indica que precisa de school_id
     },
     {
       title: 'Novo Histórico',
@@ -550,6 +551,7 @@ export default function Dashboard() {
       path: '/novo-historico',
       roles: ['municipal_secretary', 'network_manager', 'secretary', 'administrative_assistant'], // Removido 'school_admin'
       order: 2,
+      requiresSchoolId: true, // Indica que precisa de school_id
     },
     {
       title: 'Lista de Alunos',
@@ -558,6 +560,7 @@ export default function Dashboard() {
       path: '/lista-alunos',
       roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
       order: 3,
+      requiresSchoolId: true, // Indica que precisa de school_id
     },
     {
       title: 'Carga Horária',
@@ -566,6 +569,7 @@ export default function Dashboard() {
       path: '/carga-horaria',
       roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
       order: 4,
+      requiresSchoolId: false, // Não precisa de school_id
     },
     {
       title: 'Gerenciar Escolas',
@@ -574,6 +578,7 @@ export default function Dashboard() {
       path: '/escolas',
       roles: ['municipal_secretary', 'network_manager'],
       order: 5,
+      requiresSchoolId: false, // Não precisa de school_id
     },
     {
       title: 'Validar Histórico',
@@ -582,6 +587,7 @@ export default function Dashboard() {
       path: '/validar',
       roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
       order: 6,
+      requiresSchoolId: false, // Não precisa de school_id
     },
   ];
 
@@ -598,6 +604,15 @@ export default function Dashboard() {
   // Filter and sort cards based on role
   const filteredAndSortedCards = cards
     .filter(card => card.roles && role && card.roles.includes(role))
+    // Adiciona verificação para cards que requerem school_id
+    .filter(card => {
+      if (card.requiresSchoolId) {
+        // Se o card requer school_id, só mostra se profile.school_id existir
+        return profile?.school_id;
+      }
+      // Se não requer, mostra normalmente
+      return true;
+    })
     .sort((a, b) => a.order - b.order);
 
   return (
@@ -1128,25 +1143,30 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAndSortedCards.map((card) => {
                 const Icon = card.icon;
-                // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
-                if (card.title === 'Assinar Históricos' && !profile?.school_id) {
-                  return null; // Don't render if no school_id is available for signing
-                }
                 
                 let cardPath = card.path;
-                // Adjust path for 'Assinar Históricos' if profile.school_id is available
-                if (card.title === 'Assinar Históricos' && profile?.school_id) {
-                  cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
-                } else if (card.path === '/novo-historico' || card.path === '/lista-alunos') {
-                  // For student-related pages, pass schoolId if available
-                  if (profile?.school_id) {
+                // Ajusta o path para páginas que requerem schoolId
+                if (card.requiresSchoolId && profile?.school_id) {
+                  if (card.path === '/novo-historico' || card.path === '/lista-alunos' || card.title === 'Assinar Históricos') {
                     cardPath = `${card.path}?schoolId=${profile.school_id}`;
                   }
                 }
 
                 return (
                   <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                    onClick={() => navigate(cardPath)}>
+                    onClick={() => {
+                      // Só navega se o card não requer school_id ou se o profile.school_id existe
+                      if (!card.requiresSchoolId || profile?.school_id) {
+                        navigate(cardPath);
+                      } else {
+                        // Opcional: Mostrar um toast informando que o perfil não está completo
+                        toast({
+                          title: "Perfil incompleto",
+                          description: "Seu perfil não está associado a uma escola. Por favor, entre em contato com o administrador.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}>
                     <CardHeader>
                       <div className="flex items-center space-x-2">
                         <div className="p-2 bg-primary/10 rounded-lg">
