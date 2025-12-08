@@ -1156,7 +1156,7 @@ export default function Dashboard() {
                 return (
                   <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
                     onClick={() => {
-                      console.log("[Dashboard] Navigating with cardPath:", cardPath); // ADDED LOG
+                      console.log("[Dashboard] Navigating with cardPath (before navigate):", cardPath); // ADDED LOG HERE
                       if (!card.requiresSchoolId || profile?.school_id) {
                         navigate(cardPath);
                       } else {
