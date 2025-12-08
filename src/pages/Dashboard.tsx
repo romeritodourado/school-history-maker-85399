@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit, Signature, Info } from 'lucide-react'; // Adicionado Info
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } => '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
@@ -213,7 +213,7 @@ export default function Dashboard() {
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
 
   useEffect(() => {
-    console.log("[Dashboard] Current profile?.school_id:", profile?.school_id, "Type:", typeof profile?.school_id); // ADDED LOG
+    console.log("[Dashboard] Current profile?.school_id:", profile?.school_id, "Type:", typeof profile?.school_id);
     if (role === 'super_admin') {
       fetchMunicipalities();
       fetchCustomRoles();
@@ -1148,15 +1148,17 @@ export default function Dashboard() {
                 let cardPath = card.path;
                 // Ajusta o path para páginas que requerem schoolId
                 if (card.requiresSchoolId && profile?.school_id) {
+                  // Garante que profile.school_id é uma string limpa e codificada
+                  const cleanSchoolId = encodeURIComponent(String(profile.school_id).trim());
                   if (card.path === '/novo-historico' || card.path === '/lista-alunos' || card.title === 'Assinar Históricos') {
-                    cardPath = `${card.path}?schoolId=${profile.school_id}`;
+                    cardPath = `${card.path}?schoolId=${cleanSchoolId}`;
                   }
                 }
 
                 return (
                   <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
                     onClick={() => {
-                      console.log("[Dashboard] Navigating with cardPath (before navigate):", cardPath); // ADDED LOG HERE
+                      console.log("[Dashboard] Navigating with cardPath (before navigate):", cardPath);
                       if (!card.requiresSchoolId || profile?.school_id) {
                         navigate(cardPath);
                       } else {
