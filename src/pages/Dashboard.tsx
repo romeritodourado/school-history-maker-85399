@@ -213,11 +213,12 @@ export default function Dashboard() {
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
 
   useEffect(() => {
+    console.log("[Dashboard] Current profile?.school_id:", profile?.school_id, "Type:", typeof profile?.school_id); // ADDED LOG
     if (role === 'super_admin') {
       fetchMunicipalities();
       fetchCustomRoles();
     }
-  }, [role]);
+  }, [role, profile?.school_id]);
 
   // Effect to fetch selected school details for school_admin, secretary, administrative_assistant
   useEffect(() => {
@@ -539,7 +540,7 @@ export default function Dashboard() {
       title: 'Assinar Históricos', // Novo card
       description: 'Assinar digitalmente históricos escolares pendentes',
       icon: Signature,
-      path: `/assinar-historicos?schoolId=${profile?.school_id}`, // Link dinâmico
+      path: `/assinar-historicos`, // Removido o query param direto aqui
       roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
       order: 1, // Prioridade alta
       requiresSchoolId: true, // Indica que precisa de school_id
@@ -1155,11 +1156,10 @@ export default function Dashboard() {
                 return (
                   <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
                     onClick={() => {
-                      // Só navega se o card não requer school_id ou se o profile.school_id existe
+                      console.log("[Dashboard] Navigating with cardPath:", cardPath); // ADDED LOG
                       if (!card.requiresSchoolId || profile?.school_id) {
                         navigate(cardPath);
                       } else {
-                        // Opcional: Mostrar um toast informando que o perfil não está completo
                         toast({
                           title: "Perfil incompleto",
                           description: "Seu perfil não está associado a uma escola. Por favor, entre em contato com o administrador.",

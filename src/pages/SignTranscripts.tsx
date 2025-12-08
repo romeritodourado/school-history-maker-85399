@@ -135,9 +135,9 @@ export default function SignTranscripts() {
 
   useEffect(() => {
     console.log("SignTranscripts useEffect: Current User Role =", role);
-    console.log("SignTranscripts useEffect: Profile School ID =", profile?.school_id);
+    console.log("SignTranscripts useEffect: Profile School ID =", profile?.school_id, "Type:", typeof profile?.school_id); // Added type log
     console.log("SignTranscripts useEffect: Profile Municipality ID =", profile?.municipality_id);
-    console.log("SignTranscripts useEffect: School ID from URL =", schoolIdFromUrl);
+    console.log("SignTranscripts useEffect: School ID from URL (raw) =", schoolIdFromUrl, "Type:", typeof schoolIdFromUrl); // Added type log and (raw)
 
     if (!authLoading && user && profile) {
       const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
@@ -178,8 +178,8 @@ export default function SignTranscripts() {
       }
       
       // --- ADDED DEBUG LOGS AND EXPLICIT STRING CONVERSION HERE ---
-      const profileSchoolIdString = profile.school_id ? String(profile.school_id) : null;
-      const urlSchoolIdString = schoolIdFromUrl ? String(schoolIdFromUrl) : null;
+      const profileSchoolIdString = profile.school_id ? String(profile.school_id).trim() : null; // Added .trim()
+      const urlSchoolIdString = schoolIdFromUrl ? String(schoolIdFromUrl).trim() : null; // Added .trim()
 
       console.log(`[DEBUG SignTranscripts] Comparing: profileSchoolIdString='${profileSchoolIdString}' (type: ${typeof profileSchoolIdString})`);
       console.log(`[DEBUG SignTranscripts] Comparing: urlSchoolIdString='${urlSchoolIdString}' (type: ${typeof urlSchoolIdString})`);
@@ -566,7 +566,7 @@ export default function SignTranscripts() {
             newSignedData = { ...newSignedData, secretary: signerProfileData };
             newDocumentHash = await generateTranscriptHash(newSignedData);
             return {
-              ...baseUpdate,
+              // ...baseUpdate, // baseUpdate is not defined, this was a placeholder. Remove it.
               id: transcriptId,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
@@ -578,7 +578,7 @@ export default function SignTranscripts() {
             newSignedData = { ...newSignedData, director: signerProfileData };
             newDocumentHash = await generateTranscriptHash(newSignedData);
             return {
-              ...baseUpdate,
+              // ...baseUpdate, // baseUpdate is not defined, this was a placeholder. Remove it.
               id: transcriptId,
               director_signed_at: now,
               director_signature_id: user.id,
@@ -590,7 +590,7 @@ export default function SignTranscripts() {
         } else if (currentAction === 'reject') {
           newDocumentHash = await generateTranscriptHash(fullTranscriptData.data);
           return {
-            ...baseUpdate,
+            // ...baseUpdate, // baseUpdate is not defined, this was a placeholder. Remove it.
             id: transcriptId,
             status: 'rejected',
             director_signed_at: null,
