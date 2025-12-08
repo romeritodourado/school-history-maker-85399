@@ -561,6 +561,7 @@ export default function SignTranscripts() {
       }));
 
       const validUpdates = updates.filter(Boolean);
+      console.log("[SignTranscripts] handleConfirmAction: validUpdates before upsert:", validUpdates); // Log de depuração
 
       if (validUpdates.length > 0) {
         const { error: updateError } = await supabase
