@@ -109,7 +109,8 @@ async function generateTranscriptHash(data: any): Promise<string> {
 export default function SignTranscripts() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  let schoolIdFromUrl = searchParams.get('schoolId'); // Alterado para 'let'
+  // Alterado para usar a análise manual da URL, que provou ser mais robusta
+  const schoolIdFromUrl = new URLSearchParams(window.location.search).get('schoolId');
   const { user, profile, role, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -137,26 +138,7 @@ export default function SignTranscripts() {
     console.log("SignTranscripts useEffect: Current User Role =", role);
     console.log("SignTranscripts useEffect: Profile School ID =", profile?.school_id, "Type:", typeof profile?.school_id);
     console.log("SignTranscripts useEffect: Profile Municipality ID =", profile?.municipality_id);
-    console.log("SignTranscripts useEffect: School ID from URL (raw) =", schoolIdFromUrl, "Type:", typeof schoolIdFromUrl);
-
-    // ADDED MANUAL PARSING FOR DEBUGGING
-    console.log(`[DEBUG SignTranscripts] window.location.href: ${window.location.href}`); // Log full URL
-    console.log(`[DEBUG SignTranscripts] window.location.search: ${window.location.search}`);
-    const manualSearchParams = new URLSearchParams(window.location.search);
-    const manualSchoolIdFromUrl = manualSearchParams.get('schoolId');
-    console.log(`[DEBUG SignTranscripts] manualSchoolIdFromUrl (manual parse): '${manualSchoolIdFromUrl}' (type: ${typeof manualSchoolIdFromUrl})`);
-    // END ADDED MANUAL PARSING
-
-    // Clean schoolIdFromUrl from any extra query string parts
-    if (schoolIdFromUrl) {
-      const firstQuestionMarkIndex = schoolIdFromUrl.indexOf('?');
-      if (firstQuestionMarkIndex !== -1) {
-        schoolIdFromUrl = schoolIdFromUrl.substring(0, firstQuestionMarkIndex);
-        console.warn(`[SignTranscripts] Cleaned schoolIdFromUrl: ${schoolIdFromUrl}`);
-      }
-      schoolIdFromUrl = schoolIdFromUrl.trim(); // Ensure no leading/trailing spaces
-    }
-
+    console.log("SignTranscripts useEffect: School ID from URL (parsed) =", schoolIdFromUrl, "Type:", typeof schoolIdFromUrl);
 
     if (!authLoading && user && profile) {
       const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
