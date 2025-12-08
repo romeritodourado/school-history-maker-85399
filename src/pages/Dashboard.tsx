@@ -536,11 +536,20 @@ export default function Dashboard() {
 
   const cards = [
     {
+      title: 'Assinar Históricos', // Novo card
+      description: 'Assinar digitalmente históricos escolares pendentes',
+      icon: Signature,
+      path: `/assinar-historicos?schoolId=${profile?.school_id}`, // Link dinâmico
+      roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
+      order: 1, // Prioridade alta
+    },
+    {
       title: 'Novo Histórico',
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      roles: ['municipal_secretary', 'network_manager', 'secretary', 'administrative_assistant'], // Removido 'school_admin'
+      order: 2,
     },
     {
       title: 'Lista de Alunos',
@@ -548,6 +557,7 @@ export default function Dashboard() {
       icon: Users,
       path: '/lista-alunos',
       roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      order: 3,
     },
     {
       title: 'Carga Horária',
@@ -555,6 +565,7 @@ export default function Dashboard() {
       icon: Clock,
       path: '/carga-horaria',
       roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      order: 4,
     },
     {
       title: 'Gerenciar Escolas',
@@ -562,13 +573,7 @@ export default function Dashboard() {
       icon: School,
       path: '/escolas',
       roles: ['municipal_secretary', 'network_manager'],
-    },
-    {
-      title: 'Assinar Históricos', // Novo card
-      description: 'Assinar digitalmente históricos escolares pendentes',
-      icon: Signature,
-      path: `/assinar-historicos?schoolId=${profile?.school_id}`, // Link dinâmico
-      roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
+      order: 5,
     },
     {
       title: 'Validar Histórico',
@@ -576,6 +581,7 @@ export default function Dashboard() {
       icon: ShieldCheck,
       path: '/validar',
       roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      order: 6,
     },
   ];
 
@@ -588,6 +594,11 @@ export default function Dashboard() {
   }
 
   const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
+
+  // Filter and sort cards based on role
+  const filteredAndSortedCards = cards
+    .filter(card => card.roles && role && card.roles.includes(role))
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -1115,42 +1126,38 @@ export default function Dashboard() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cards.map((card) => {
+              {filteredAndSortedCards.map((card) => {
                 const Icon = card.icon;
-                // Check if the current user's role is allowed to see this card
-                if (card.roles && role && card.roles.includes(role)) {
-                  // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
-                  if (card.title === 'Assinar Históricos' && !profile?.school_id) {
-                    return null; // Don't render if no school_id is available for signing
-                  }
-                  
-                  let cardPath = card.path;
-                  // Adjust path for 'Assinar Históricos' if profile.school_id is available
-                  if (card.title === 'Assinar Históricos' && profile?.school_id) {
-                    cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
-                  } else if (card.path === '/novo-historico' || card.path === '/lista-alunos') {
-                    // For student-related pages, pass schoolId if available
-                    if (profile?.school_id) {
-                      cardPath = `${card.path}?schoolId=${profile.school_id}`;
-                    }
-                  }
-
-                  return (
-                    <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                      onClick={() => navigate(cardPath)}>
-                      <CardHeader>
-                        <div className="flex items-center space-x-2">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <Icon className="h-6 w-6 text-primary" />
-                          </div>
-                          <CardTitle>{card.title}</CardTitle>
-                        </div>
-                        <CardDescription>{card.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  );
+                // For 'Assinar Históricos', ensure profile.school_id exists before creating the link
+                if (card.title === 'Assinar Históricos' && !profile?.school_id) {
+                  return null; // Don't render if no school_id is available for signing
                 }
-                return null;
+                
+                let cardPath = card.path;
+                // Adjust path for 'Assinar Históricos' if profile.school_id is available
+                if (card.title === 'Assinar Históricos' && profile?.school_id) {
+                  cardPath = `/assinar-historicos?schoolId=${profile.school_id}`;
+                } else if (card.path === '/novo-historico' || card.path === '/lista-alunos') {
+                  // For student-related pages, pass schoolId if available
+                  if (profile?.school_id) {
+                    cardPath = `${card.path}?schoolId=${profile.school_id}`;
+                  }
+                }
+
+                return (
+                  <Card key={card.path} className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+                    onClick={() => navigate(cardPath)}>
+                    <CardHeader>
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Icon className="h-6 w-6 text-primary" />
+                        </div>
+                        <CardTitle>{card.title}</CardTitle>
+                      </div>
+                      <CardDescription>{card.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                );
               })}
             </div>
           </div>
