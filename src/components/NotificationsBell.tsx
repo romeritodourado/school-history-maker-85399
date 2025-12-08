@@ -30,22 +30,15 @@ export function NotificationsBell() {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
-    console.log("[NotificationsBell] fetchNotifications: Iniciando busca de notificações.");
     if (!user?.id || !profile?.school_id || (role !== 'school_admin' && role !== 'secretary')) {
-      console.log("[NotificationsBell] fetchNotifications: Condições para buscar notificações não atendidas. User ID:", user?.id, "School ID:", profile?.school_id, "Role:", role);
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
       return;
     }
 
-    // Adicionado logs de depuração
-    console.log("[NotificationsBell] Debug: user.id =", user.id);
-    console.log("[NotificationsBell] Debug: profile.school_id =", profile.school_id);
-
     setLoading(true);
     try {
-      console.log(`[NotificationsBell] fetchNotifications: Buscando notificações para user_id: ${user.id}`);
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -53,15 +46,12 @@ export function NotificationsBell() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[NotificationsBell] fetchNotifications: Erro do Supabase ao buscar notificações:', error);
         throw error;
       }
 
-      console.log('[NotificationsBell] fetchNotifications: Notificações carregadas com sucesso:', data);
       setNotifications(data || []);
       setUnreadCount(data?.filter(n => !n.read).length || 0);
     } catch (error: any) {
-      console.error('[NotificationsBell] fetchNotifications: Erro capturado no bloco catch:', error);
       toast({
         title: 'Erro ao carregar notificações',
         description: error.message || 'Não foi possível carregar suas notificações.',
@@ -69,7 +59,6 @@ export function NotificationsBell() {
       });
     } finally {
       setLoading(false);
-      console.log("[NotificationsBell] fetchNotifications: Finalizando carregamento de notificações.");
     }
   };
 
@@ -88,7 +77,6 @@ export function NotificationsBell() {
           filter: `user_id=eq.${user?.id}`
         },
         (payload) => {
-          console.log('[NotificationsBell] Notification change received!', payload);
           // Add the new notification to the state and update unread count
           const newNotification = payload.new as Notification;
           setNotifications(prev => [newNotification, ...prev]);
@@ -103,7 +91,6 @@ export function NotificationsBell() {
       .subscribe();
 
     return () => {
-      console.log("[NotificationsBell] Desinscrevendo do canal de notificações.");
       supabase.removeChannel(channel);
     };
   }, [user?.id, profile?.school_id, role, toast]);
