@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js'; // Import createClient
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Building2, School } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
-// QRCode import removed as it's no longer needed for this page
+import type { Database } from '@/integrations/supabase/types'; // Import Database type
+
+// Initialize Supabase client with service role key for public validation
+const supabaseServiceRole = createClient<Database>(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      persistSession: false, // No session needed for service role
+    }
+  }
+);
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
 
@@ -17,7 +28,7 @@ interface TranscriptValidation {
   municipality_name: string;
   completion_year: number | null;
   grade_series: string | null;
-  student_status: string | null; // ADDED
+  student_status: string | null;
   is_valid: boolean;
   document_hash: string | null;
   signed_data: any | null;
@@ -45,14 +56,12 @@ export default function ValidateTranscript() {
   const [validation, setValidation] = useState<TranscriptValidation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null); // Removed state
 
   const transcriptId = searchParams.get('id');
 
   useEffect(() => {
     if (transcriptId) {
       validateTranscript();
-      // QR Code generation logic removed from here
     } else {
       setError('ID do histórico não fornecido');
       setLoading(false);
@@ -61,8 +70,8 @@ export default function ValidateTranscript() {
 
   const validateTranscript = async () => {
     try {
-      // Fetch transcript data including signed_data and document_hash
-      const { data: transcriptData, error: transcriptError } = await supabase
+      // Fetch transcript data including signed_data and document_hash using the service role client
+      const { data: transcriptData, error: transcriptError } = await supabaseServiceRole
         .from('transcripts')
         .select(`
           id,
