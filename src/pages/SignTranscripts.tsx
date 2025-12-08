@@ -210,6 +210,16 @@ export default function SignTranscripts() {
     setLoading(true);
     try {
       // O schoolIdFromUrl já foi verificado no useEffect
+      console.log("[DEBUG] fetchPendingTranscripts: Iniciando busca de transcripts para schoolId:", schoolIdFromUrl, "e role:", role);
+      
+      // --- TESTE: Busca sem filtros para isolar o problema ---
+      // const { data: testData, error: testError } = await supabase
+      //   .from('transcripts')
+      //   .select('id, student_id, status, school_id')
+      //   .limit(5);
+      // console.log("[DEBUG] Teste de busca sem filtros:", testData, testError);
+      // --- FIM DO TESTE ---
+      
       let query = supabase
         .from('transcripts')
         .select(`
@@ -224,35 +234,58 @@ export default function SignTranscripts() {
           data, // Fetch the full data content
           students (full_name),
           schools (name)
-        `)
-        .eq('school_id', schoolIdFromUrl) // Usar o schoolId da URL
-        .order('created_at', { ascending: false });
-
+        `);
+      
+      // Aplicar filtros somente se schoolIdFromUrl estiver presente
+      if (schoolIdFromUrl) {
+        console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por school_id:", schoolIdFromUrl);
+        query = query.eq('school_id', schoolIdFromUrl); // Usar o schoolId da URL
+      } else {
+        console.warn("[DEBUG] fetchPendingTranscripts: schoolIdFromUrl não encontrado, pulando filtro por school_id");
+      }
+      
+      // Aplicar filtro por status com base no papel do usuário
       if (role === 'secretary') { // Changed role order
+        console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por status: pending_secretary_signature");
         query = query.eq('status', 'pending_secretary_signature');
       } else if (role === 'school_admin') { // Changed role order
+        console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por status: pending_director_signature");
         query = query.eq('status', 'pending_director_signature');
       } else {
         // Roles not authorized to sign
+        console.log("[DEBUG] fetchPendingTranscripts: Papel não autorizado para assinatura, retornando vazio.");
         setPendingTranscripts([]);
         setLoading(false);
         return;
       }
-
+      
+      // Ordenar por data de criação
+      query = query.order('created_at', { ascending: false });
+      
+      console.log("[DEBUG] fetchPendingTranscripts: Query montada:", query);
+      
       const { data, error } = await query;
-      if (error) throw error;
+      
+      console.log("[DEBUG] fetchPendingTranscripts: Resposta do Supabase:", data, error);
+      
+      if (error) {
+        console.error('[DEBUG] fetchPendingTranscripts: Erro ao buscar transcripts:', error);
+        throw error;
+      }
 
       setPendingTranscripts(data || []);
       setSelectedTranscripts([]); // Clear selections on data refresh
+      console.log("[DEBUG] fetchPendingTranscripts: Transcripts carregados com sucesso:", data?.length || 0);
     } catch (error: any) {
-      console.error('Error fetching notifications:', error);
+      console.error('[ERROR] fetchPendingTranscripts: Erro capturado:', error);
       toast({
         title: 'Erro ao carregar históricos',
-        description: error.message || 'Não foi possível carregar os históricos pendentes.',
+        description: error.message || 'Não foi possível carregar os históricos pendentes. Por favor, tente novamente mais tarde.',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
+      console.log("[DEBUG] fetchPendingTranscripts: Finalizando carregamento.");
     }
   };
 
