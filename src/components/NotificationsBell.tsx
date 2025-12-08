@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext'; // Caminho de importação corrigido
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,6 +38,10 @@ export function NotificationsBell() {
       setLoading(false);
       return;
     }
+
+    // Adicionado logs de depuração
+    console.log("[NotificationsBell] Debug: user.id =", user.id);
+    console.log("[NotificationsBell] Debug: profile.school_id =", profile.school_id);
 
     setLoading(true);
     try {
@@ -102,7 +106,7 @@ export function NotificationsBell() {
       console.log("[NotificationsBell] Desinscrevendo do canal de notificações.");
       supabase.removeChannel(channel);
     };
-  }, [user?.id, profile?.school_id, role, toast]); // Adicionado toast como dependência
+  }, [user?.id, profile?.school_id, role, toast]);
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read) {
