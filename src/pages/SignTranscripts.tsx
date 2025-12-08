@@ -140,8 +140,6 @@ export default function SignTranscripts() {
     console.log("SignTranscripts useEffect: School ID from URL =", schoolIdFromUrl);
 
     if (!authLoading && user && profile) {
-      // Verificação mais robusta: o usuário deve ter um school_id para acessar esta página
-      // Esta verificação é feita aqui e também na página de destino
       const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
       
       if (isSchoolLevelUser && !profile.school_id) {
@@ -149,15 +147,13 @@ export default function SignTranscripts() {
           title: 'Erro de Configuração do Perfil',
           description: `Seu perfil de ${profile.role} não está associado a uma escola. Por favor, entre em contato com o administrador do sistema para corrigir.`,
           variant: 'destructive',
-          duration: 8000, // Make it last longer
+          duration: 8000,
         });
-        setLoading(false); // Impede o carregamento e ações futuras
-        // Redireciona para o dashboard ou outra página segura
+        setLoading(false);
         navigate('/');
-        return; // IMPORTANT: return here to stop further execution
+        return;
       }
       
-      // Se for um usuário municipal, verificar municipality_id
       const isMunicipalLevelUser = ['municipal_secretary', 'network_manager'].includes(profile.role || '');
       if (isMunicipalLevelUser && !profile.municipality_id) {
         toast({
@@ -171,8 +167,6 @@ export default function SignTranscripts() {
         return;
       }
       
-      // Se chegou aqui, o perfil parece estar OK para continuar
-      // Mas ainda precisamos verificar se o schoolIdFromUrl é válido
       if (!schoolIdFromUrl) {
         toast({
           title: 'Erro',
@@ -183,9 +177,15 @@ export default function SignTranscripts() {
         return;
       }
       
-      // Verificar se o usuário tem permissão para acessar esta escola
-      // Esta verificação é feita no backend, mas podemos fazer uma verificação preliminar aqui
-      if (isSchoolLevelUser && profile.school_id !== schoolIdFromUrl) {
+      // --- ADDED DEBUG LOGS AND EXPLICIT STRING CONVERSION HERE ---
+      const profileSchoolIdString = profile.school_id ? String(profile.school_id) : null;
+      const urlSchoolIdString = schoolIdFromUrl ? String(schoolIdFromUrl) : null;
+
+      console.log(`[DEBUG SignTranscripts] Comparing: profileSchoolIdString='${profileSchoolIdString}' (type: ${typeof profileSchoolIdString})`);
+      console.log(`[DEBUG SignTranscripts] Comparing: urlSchoolIdString='${urlSchoolIdString}' (type: ${typeof urlSchoolIdString})`);
+      console.log(`[DEBUG SignTranscripts] Result of comparison (profileSchoolIdString !== urlSchoolIdString): ${profileSchoolIdString !== urlSchoolIdString}`);
+
+      if (isSchoolLevelUser && profileSchoolIdString !== urlSchoolIdString) {
         toast({
           title: 'Acesso negado',
           description: 'Você não tem permissão para acessar os históricos desta escola.',
@@ -209,16 +209,7 @@ export default function SignTranscripts() {
   const fetchPendingTranscripts = async () => {
     setLoading(true);
     try {
-      // O schoolIdFromUrl já foi verificado no useEffect
       console.log("[DEBUG] fetchPendingTranscripts: Iniciando busca de transcripts para schoolId:", schoolIdFromUrl, "e role:", role);
-      
-      // --- TESTE: Busca sem filtros para isolar o problema ---
-      // const { data: testData, error: testError } = await supabase
-      //   .from('transcripts')
-      //   .select('id, student_id, status, school_id')
-      //   .limit(5);
-      // console.log("[DEBUG] Teste de busca sem filtros:", testData, testError);
-      // --- FIM DO TESTE ---
       
       let query = supabase
         .from('transcripts')
@@ -236,30 +227,26 @@ export default function SignTranscripts() {
           schools (name)
         `);
       
-      // Aplicar filtros somente se schoolIdFromUrl estiver presente
       if (schoolIdFromUrl) {
         console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por school_id:", schoolIdFromUrl);
-        query = query.eq('school_id', schoolIdFromUrl); // Usar o schoolId da URL
+        query = query.eq('school_id', schoolIdFromUrl);
       } else {
         console.warn("[DEBUG] fetchPendingTranscripts: schoolIdFromUrl não encontrado, pulando filtro por school_id");
       }
       
-      // Aplicar filtro por status com base no papel do usuário
-      if (role === 'secretary') { // Changed role order
+      if (role === 'secretary') {
         console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por status: pending_secretary_signature");
         query = query.eq('status', 'pending_secretary_signature');
-      } else if (role === 'school_admin') { // Changed role order
+      } else if (role === 'school_admin') {
         console.log("[DEBUG] fetchPendingTranscripts: Aplicando filtro por status: pending_director_signature");
         query = query.eq('status', 'pending_director_signature');
       } else {
-        // Roles not authorized to sign
         console.log("[DEBUG] fetchPendingTranscripts: Papel não autorizado para assinatura, retornando vazio.");
         setPendingTranscripts([]);
         setLoading(false);
         return;
       }
       
-      // Ordenar por data de criação
       query = query.order('created_at', { ascending: false });
       
       console.log("[DEBUG] fetchPendingTranscripts: Query montada:", query);
@@ -274,7 +261,7 @@ export default function SignTranscripts() {
       }
 
       setPendingTranscripts(data || []);
-      setSelectedTranscripts([]); // Clear selections on data refresh
+      setSelectedTranscripts([]);
       console.log("[DEBUG] fetchPendingTranscripts: Transcripts carregados com sucesso:", data?.length || 0);
     } catch (error: any) {
       console.error('[ERROR] fetchPendingTranscripts: Erro capturado:', error);
@@ -322,7 +309,6 @@ export default function SignTranscripts() {
   const fetchTranscriptForPreview = async (transcriptId: string) => {
     setLoadingPreview(true);
     try {
-      // Fetch transcript data including signed_data and document_hash
       const { data: transcriptData, error: transcriptError } = await supabase
         .from('transcripts')
         .select(`
@@ -345,13 +331,11 @@ export default function SignTranscripts() {
       if (transcriptError) throw transcriptError;
       if (!transcriptData) throw new Error('Histórico não encontrado.');
 
-      // NEW CHECK: Ensure student_id is present and valid
       const studentId = transcriptData.student_id;
       if (!studentId) {
         throw new Error('ID do aluno não encontrado no histórico. O histórico pode estar corrompido ou o aluno foi excluído.');
       }
 
-      // Explicitly check for student and school data
       if (!transcriptData.students) {
         throw new Error('Dados do aluno não encontrados para este histórico. O aluno pode ter sido excluído ou há uma inconsistência nos dados.');
       }
@@ -360,7 +344,7 @@ export default function SignTranscripts() {
       }
 
       const student: StudentData = {
-        id: studentId, // Use the validated studentId
+        id: studentId,
         full_name: (transcriptData.students as any).full_name,
         mother_name: (transcriptData.students as any).mother_name,
         father_name: (transcriptData.students as any).father_name,
@@ -377,7 +361,6 @@ export default function SignTranscripts() {
       setPreviewTranscriptId(transcriptData.id);
       setPreviewStudent(student);
 
-      // Fetch academic years
       const { data: yearsData, error: yearsError } = await supabase
         .from("academic_years")
         .select("*")
@@ -387,7 +370,6 @@ export default function SignTranscripts() {
       if (yearsError) throw yearsError;
       setPreviewAcademicYears(yearsData || []);
 
-      // Fetch annual grades for each year
       const gradesMap: { [yearId: string]: GradeData[] } = {};
       for (const year of yearsData || []) {
         const { data: gradesData, error: gradesError } = await supabase
@@ -400,7 +382,6 @@ export default function SignTranscripts() {
       }
       setPreviewGrades(gradesMap);
 
-      // Fetch trimester grades (for the most recent year)
       if (yearsData && yearsData.length > 0) {
         const latestYear = yearsData[yearsData.length - 1];
         
@@ -420,7 +401,6 @@ export default function SignTranscripts() {
         setPreviewTrimesterGrades(trimesterData || []);
       }
 
-      // Fetch director and secretary profiles if IDs exist
       let directorProfile: ProfileData | null = null;
       if (transcriptData.director_signature_id) {
         const { data: dirProfile, error: dirError } = await supabase
@@ -467,8 +447,6 @@ export default function SignTranscripts() {
       return;
     }
 
-    // --- VERIFICAÇÃO INICIAL DE CONFIGURAÇÃO DO PERFIL ---
-    // Esta verificação já foi feita no useEffect, mas vamos repetir por segurança
     const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
     const isMunicipalLevelUser = ['municipal_secretary', 'network_manager'].includes(profile.role || '');
     
@@ -490,11 +468,9 @@ export default function SignTranscripts() {
       });
       return;
     }
-    // --- FIM DA VERIFICAÇÃO INICIAL ---
 
     setIsSigning(true);
     try {
-      // Re-authenticate user to confirm action
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: password,
@@ -540,7 +516,6 @@ export default function SignTranscripts() {
         console.log(`[SignTranscripts] DEBUG: Current Action: ${currentAction}`);
 
 
-        // --- VERIFICAÇÃO DEFENSIVA ADICIONADA ---
         if (isSchoolLevelUser) {
           if (userSchoolId === null) {
             console.error(`[SignTranscripts] RLS Mismatch (School): User profile school_id is null.`);
@@ -557,7 +532,6 @@ export default function SignTranscripts() {
           }
         }
         
-        // Check for municipality_id for municipal roles
         if (isMunicipalLevelUser) {
           if (userMunicipalityId === null) {
             console.error(`[SignTranscripts] RLS Mismatch (Municipality): User profile municipality_id is null.`);
@@ -572,12 +546,10 @@ export default function SignTranscripts() {
             throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${userMunicipalityId}, ID da rede do histórico: ${transcriptMunicipalityId}. Não é possível assinar.`);
           }
         }
-        // --- FIM DA VERIFICAÇÃO DEFENSIVA ---
 
-        // Fetch the full 'data' content of the transcript
         const { data: fullTranscriptData, error: fetchDataError } = await supabase
           .from('transcripts')
-          .select('data, signed_data') // Also fetch existing signed_data
+          .select('data, signed_data')
           .eq('id', transcriptId)
           .single();
 
@@ -586,40 +558,37 @@ export default function SignTranscripts() {
           throw new Error(`Conteúdo do histórico (data) não encontrado para o ID: ${transcriptId}`);
         }
 
-        let newSignedData = { ...(fullTranscriptData.signed_data || fullTranscriptData.data) }; // Start with existing signed_data or full data
-
-        const baseUpdate = { updated_at: now };
+        let newSignedData = { ...(fullTranscriptData.signed_data || fullTranscriptData.data) };
         let newDocumentHash: string | null = null;
 
         if (currentAction === 'sign') {
-          if (role === 'secretary') { // Changed role order
-            newSignedData = { ...newSignedData, secretary: signerProfileData }; // Secretary signs first
-            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
+          if (role === 'secretary') {
+            newSignedData = { ...newSignedData, secretary: signerProfileData };
+            newDocumentHash = await generateTranscriptHash(newSignedData);
             return {
               ...baseUpdate,
               id: transcriptId,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
-              status: 'pending_director_signature', // Next step for director
+              status: 'pending_director_signature',
               signed_data: newSignedData,
-              document_hash: newDocumentHash, // Update document_hash
+              document_hash: newDocumentHash,
             };
-          } else if (role === 'school_admin') { // Changed role order
-            newSignedData = { ...newSignedData, director: signerProfileData }; // Director signs last
-            newDocumentHash = await generateTranscriptHash(newSignedData); // Recalculate hash
+          } else if (role === 'school_admin') {
+            newSignedData = { ...newSignedData, director: signerProfileData };
+            newDocumentHash = await generateTranscriptHash(newSignedData);
             return {
               ...baseUpdate,
               id: transcriptId,
               director_signed_at: now,
               director_signature_id: user.id,
-              status: 'signed', // Fully signed
+              status: 'signed',
               signed_data: newSignedData,
-              document_hash: newDocumentHash, // Update document_hash
+              document_hash: newDocumentHash,
             };
           }
         } else if (currentAction === 'reject') {
-          // When rejecting, clear signatures and signed_data, reset status
-          newDocumentHash = await generateTranscriptHash(fullTranscriptData.data); // Hash of original data
+          newDocumentHash = await generateTranscriptHash(fullTranscriptData.data);
           return {
             ...baseUpdate,
             id: transcriptId,
@@ -628,8 +597,8 @@ export default function SignTranscripts() {
             director_signature_id: null,
             secretary_signed_at: null,
             secretary_signature_id: null,
-            signed_data: {}, // Clear signed data on rejection
-            document_hash: newDocumentHash, // Reset hash to original data hash
+            signed_data: {},
+            document_hash: newDocumentHash,
           };
         }
         return null;
@@ -642,23 +611,21 @@ export default function SignTranscripts() {
       if (validUpdates.length > 0) {
         const { error: updateError } = await supabase
           .from('transcripts')
-          .upsert(validUpdates, { onConflict: 'id' }); // Use upsert to update multiple records by ID
+          .upsert(validUpdates, { onConflict: 'id' });
 
         if (updateError) throw updateError;
 
-        // Create notifications for the next step or rejection using Edge Function
         for (const transcriptId of selectedTranscripts) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
 
           if (currentAction === 'sign') {
-            if (role === 'secretary') { // Changed role order
-              // Notify director
+            if (role === 'secretary') {
               const { data: directorProfiles, error: directorError } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('school_id', schoolIdFromUrl) // Usar o schoolId da URL
-                .eq('role', 'school_admin'); // Changed to school_admin
+                .eq('school_id', schoolIdFromUrl)
+                .eq('role', 'school_admin');
 
               if (directorError) console.error('Client: Error fetching director for notification:', directorError);
 
@@ -667,10 +634,10 @@ export default function SignTranscripts() {
                   console.log(`Client: Invoking create-notification for director ${director.id} for student ${transcript.students?.full_name}`);
                   const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
                     body: JSON.stringify({
-                      user_id: director.id, // Changed to director.id
+                      user_id: director.id,
                       type: 'transcript_pending_signature',
                       target_id: transcriptId,
-                      message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Diretor(a).`, // Changed message
+                      message: `Histórico de ${transcript.students?.full_name} aguardando sua assinatura como Diretor(a).`,
                     }),
                     headers: {
                       'Content-Type': 'application/json',
@@ -696,15 +663,10 @@ export default function SignTranscripts() {
                   }
                 }
               }
-            } else if (role === 'school_admin') { // Changed role order
-              // Notify the creator that it's fully signed
-              // For now, we'll just toast success. A more robust system might notify the original creator.
+            } else if (role === 'school_admin') {
               console.log(`Client: Transcript ${transcriptId} fully signed by director. No further notification logic implemented for creator.`);
             }
           } else if (currentAction === 'reject') {
-            // Notify the creator that it was rejected
-            // This would require knowing who created the transcript, which isn't directly in the transcript table yet.
-            // For now, we'll just toast success.
             console.log(`Client: Transcript ${transcriptId} rejected. No notification logic implemented for creator.`);
           }
         }
@@ -714,7 +676,7 @@ export default function SignTranscripts() {
           description: `${selectedTranscripts.length} histórico(s) ${currentAction === 'sign' ? 'assinado(s)' : 'rejeitado(s)'} com sucesso!`,
         });
         setDialogOpen(false);
-        fetchPendingTranscripts(); // Refresh the list
+        fetchPendingTranscripts();
       }
     } catch (error: any) {
       toast({
@@ -737,7 +699,6 @@ export default function SignTranscripts() {
     );
   }
 
-  // Verificação final antes de renderizar a página
   if (!user || !profile || !schoolIdFromUrl || (role !== 'school_admin' && role !== 'secretary')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -758,8 +719,8 @@ export default function SignTranscripts() {
     );
   }
 
-  const currentRoleLabel = role === 'secretary' ? 'Secretário(a) Escolar' : 'Diretor(a)'; // Changed role order
-  const pendingStatusLabel = role === 'secretary' ? 'aguardando sua assinatura como Secretário(a) Escolar' : 'aguardando sua assinatura como Diretor(a)'; // Changed role order
+  const currentRoleLabel = role === 'secretary' ? 'Secretário(a) Escolar' : 'Diretor(a)';
+  const pendingStatusLabel = role === 'secretary' ? 'aguardando sua assinatura como Secretário(a) Escolar' : 'aguardando sua assinatura como Diretor(a)';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
