@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FileText, Users, Clock, School, ShieldCheck, Building2, UserCog, LogOut, Settings, User as UserIcon, Loader2, Plus, Trash2, Edit, Signature, Info } from 'lucide-react'; // Adicionado Info
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
-import { supabase } => '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import correctLogo from "/correct-logo.png";
