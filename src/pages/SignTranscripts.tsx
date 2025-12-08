@@ -144,6 +144,12 @@ export default function SignTranscripts() {
     }
 
     if (!authLoading && user && profile) {
+      console.log("[SignTranscripts] useEffect: User is authenticated.");
+      console.log("[SignTranscripts] useEffect: User ID:", user.id);
+      console.log("[SignTranscripts] useEffect: User Role:", profile.role);
+      console.log("[SignTranscripts] useEffect: User School ID (from profile):", profile.school_id);
+      console.log("[SignTranscripts] useEffect: School ID (from URL):", schoolIdFromUrl);
+
       const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
       
       if (isSchoolLevelUser && !profile.school_id) {
@@ -185,6 +191,7 @@ export default function SignTranscripts() {
       const urlSchoolIdString = schoolIdFromUrl ? String(schoolIdFromUrl).trim() : null;
 
       if (isSchoolLevelUser && profileSchoolIdString !== urlSchoolIdString) {
+        console.error("[SignTranscripts] useEffect: Access denied - Profile school ID does not match URL school ID.");
         toast({
           title: 'Acesso negado',
           description: 'Você não tem permissão para acessar os históricos desta escola.',
@@ -196,6 +203,7 @@ export default function SignTranscripts() {
       
       fetchPendingTranscripts();
     } else if (!authLoading && (!user || !profile)) {
+      console.log("[SignTranscripts] useEffect: User not authenticated or profile not loaded. Redirecting to login.");
       toast({
         title: 'Acesso negado',
         description: 'Você precisa estar logado para acessar esta página.',
@@ -206,21 +214,35 @@ export default function SignTranscripts() {
   }, [authLoading, user, profile, schoolIdFromUrl, navigate, toast]);
 
   const fetchPendingTranscripts = async () => {
+    console.log("[SignTranscripts] fetchPendingTranscripts: Starting fetch.");
     setLoading(true);
     try {
       let query = supabase
         .from('transcripts')
         .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, school_id, municipality_id, data, students (full_name), schools (name)');
       
+      console.log("[SignTranscripts] Current user role for query:", role);
+      console.log("[SignTranscripts] Current user profile school_id for query:", profile?.school_id);
+      console.log("[SignTranscripts] schoolIdFromUrl for query:", schoolIdFromUrl);
+
       if (schoolIdFromUrl) {
         query = query.eq('school_id', schoolIdFromUrl);
+        console.log("[SignTranscripts] Query filter: school_id =", schoolIdFromUrl);
+      } else {
+        console.warn("[SignTranscripts] No schoolIdFromUrl provided. This might be an issue if the user is school-level.");
+        setPendingTranscripts([]);
+        setLoading(false);
+        return;
       }
       
       if (role === 'secretary') {
         query = query.eq('status', 'pending_secretary_signature');
+        console.log("[SignTranscripts] Query filter: status = pending_secretary_signature (for secretary)");
       } else if (role === 'school_admin') {
         query = query.eq('status', 'pending_director_signature');
+        console.log("[SignTranscripts] Query filter: status = pending_director_signature (for school_admin)");
       } else {
+        console.log("[SignTranscripts] User role is not secretary or school_admin. No pending transcripts to show.");
         setPendingTranscripts([]);
         setLoading(false);
         return;
@@ -231,12 +253,15 @@ export default function SignTranscripts() {
       const { data, error } = await query;
       
       if (error) {
+        console.error("[SignTranscripts] Supabase query error:", error);
         throw error;
       }
 
+      console.log("[SignTranscripts] Fetched data (raw):", data);
       setPendingTranscripts(data || []);
       setSelectedTranscripts([]);
     } catch (error: any) {
+      console.error("[SignTranscripts] Error in fetchPendingTranscripts catch block:", error);
       toast({
         title: 'Erro ao carregar históricos',
         description: error.message || 'Não foi possível carregar os históricos pendentes. Por favor, tente novamente mais tarde.',
@@ -244,6 +269,7 @@ export default function SignTranscripts() {
       });
     } finally {
       setLoading(false);
+      console.log("[SignTranscripts] fetchPendingTranscripts: Finished.");
     }
   };
 
