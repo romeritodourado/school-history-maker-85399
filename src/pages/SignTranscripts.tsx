@@ -210,19 +210,7 @@ export default function SignTranscripts() {
     try {
       let query = supabase
         .from('transcripts')
-        .select(`
-          id,
-          student_id,
-          status,
-          created_at,
-          director_signature_id,
-          secretary_signature_id,
-          school_id,
-          municipality_id,
-          data, // Fetch the full data content
-          students (full_name),
-          schools (name)
-        `);
+        .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, school_id, municipality_id, data, students (full_name), schools (name)');
       
       if (schoolIdFromUrl) {
         query = query.eq('school_id', schoolIdFromUrl);
@@ -294,20 +282,7 @@ export default function SignTranscripts() {
     try {
       const { data: transcriptData, error: transcriptError } = await supabase
         .from('transcripts')
-        .select(`
-          id,
-          student_id,
-          school_id,
-          municipality_id,
-          document_hash,
-          signed_data,
-          director_signed_at,
-          director_signature_id,
-          secretary_signed_at,
-          secretary_signature_id,
-          students (full_name, mother_name, father_name, birth_date, birth_place, birth_state, student_status, grade_series, observations),
-          schools (name, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url, municipalities (name, emblem_url))
-        `)
+        .select('id, student_id, school_id, municipality_id, document_hash, signed_data, director_signed_at, director_signature_id, secretary_signed_at, secretary_signature_id, students (full_name, mother_name, father_name, birth_date, birth_place, birth_state, student_status, grade_series, observations), schools (name, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url, municipalities (name, emblem_url))')
         .eq('id', transcriptId)
         .single();
 
@@ -814,7 +789,7 @@ export default function SignTranscripts() {
             <DialogDescription>
               Verifique os detalhes do histórico antes de assinar.
             </DialogDescription>
-          </DialogHeader>
+          </DialogDescription>
           {loadingPreview ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
