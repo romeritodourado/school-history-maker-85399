@@ -481,6 +481,17 @@ export default function SignTranscripts() {
         const userMunicipalityId = profile.municipality_id;
         const transcriptMunicipalityId = transcript.municipality_id;
 
+        // --- START DEBUG LOGS ---
+        console.log("--- Debugging RLS for Transcript ID:", transcriptId, "---");
+        console.log("Auth User ID:", user.id);
+        console.log("Profile Role:", profile.role);
+        console.log("Profile School ID:", profile.school_id);
+        console.log("School ID from URL:", schoolIdFromUrl);
+        console.log("Transcript current status:", transcript.status);
+        console.log("Transcript school_id:", transcript.school_id);
+        console.log("Action:", currentAction);
+        // --- END DEBUG LOGS ---
+
         if (isSchoolLevelUser) {
           if (userSchoolId === null) {
             throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma escola. Por favor, verifique as configurações da sua conta.`);
