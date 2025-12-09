@@ -545,7 +545,9 @@ export default function SignTranscripts() {
             };
           }
         } else if (currentAction === 'reject') {
-          newDocumentHash = await generateTranscriptHash(fullTranscriptData.data);
+          // Use the original data for hashing when rejecting
+          const dataToHashForReject = fullTranscriptData.data;
+          newDocumentHash = await generateTranscriptHash(dataToHashForReject);
           return {
             id: transcriptId,
             status: 'rejected',
@@ -553,7 +555,7 @@ export default function SignTranscripts() {
             director_signature_id: null,
             secretary_signed_at: null,
             secretary_signature_id: null,
-            signed_data: {},
+            signed_data: dataToHashForReject, // Set signed_data to the original data when rejecting
             document_hash: newDocumentHash,
           };
         }
