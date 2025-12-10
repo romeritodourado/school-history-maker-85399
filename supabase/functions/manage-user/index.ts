@@ -42,9 +42,17 @@ serve(async (req) => {
     }
 
     const requestBody = await req.json(); // Parse JSON once
-    const { action, userId, email, password, name, role, municipality_id, school_id, cpf } = requestBody;
+    const action = requestBody.action; // Acessando diretamente
+    const userId = requestBody.userId; // Acessando diretamente
+    const email = requestBody.email;
+    const password = requestBody.password;
+    const name = requestBody.name;
+    const role = requestBody.role;
+    const municipality_id = requestBody.municipality_id;
+    const school_id = requestBody.school_id;
+    const cpf = requestBody.cpf;
 
-    console.log('Edge Function: Received request body:', requestBody); // Log the entire body
+    console.log('Edge Function: Received request body (full):', JSON.stringify(requestBody)); // Log do corpo completo
     console.log('Edge Function: Extracted action:', action);
     console.log('Edge Function: Extracted userId:', userId);
 
