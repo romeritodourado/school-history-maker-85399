@@ -66,7 +66,7 @@ serve(async (req) => {
         isAllowed = false; // Must be in their own municipality
       } else {
         // Now check if the role requires a school_id and if it's valid
-        if (['school_admin', 'secretary', 'administrative_assistant'].includes(role)) {
+        if (['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role)) {
           if (!school_id) {
             console.error('Forbidden: Role requires a school_id but none was provided.');
             isAllowed = false;
@@ -91,8 +91,8 @@ serve(async (req) => {
           isAllowed = true;
         }
       }
-    } else if (currentProfile.role === 'school_admin') {
-      if ((role === 'secretary' || role === 'administrative_assistant') && school_id === currentProfile.school_id) {
+    } else if (currentProfile.role === 'school_admin' || currentProfile.role === 'vice_school_admin') {
+      if (['secretary', 'administrative_assistant'].includes(role) && school_id === currentProfile.school_id) {
         isAllowed = true;
       }
     }
@@ -223,7 +223,7 @@ serve(async (req) => {
         if (userToDeleteProfile.municipality_id === currentProfile.municipality_id && userToDeleteProfile.role !== 'super_admin') {
           canDelete = true;
         }
-      } else if (currentProfile.role === 'school_admin' && currentProfile.school_id) {
+      } else if ((currentProfile.role === 'school_admin' || currentProfile.role === 'vice_school_admin') && currentProfile.school_id) {
         if (userToDeleteProfile.school_id === currentProfile.school_id && (userToDeleteProfile.role === 'secretary' || userToDeleteProfile.role === 'administrative_assistant')) {
           canDelete = true;
         }

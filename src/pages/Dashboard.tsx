@@ -18,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant' | 'vice_school_admin';
 
 interface Municipality {
   id: string;
@@ -81,6 +81,12 @@ const systemRoles = [
     description: 'Responsável pela administração escolar',
     isSystemRole: true
   },
+  { 
+    id: 'vice_school_admin', // NOVO CARGO
+    name: 'Vice-Diretor Escolar',
+    description: 'Auxiliar do Diretor Escolar, com as mesmas prerrogativas de assinatura',
+    isSystemRole: true
+  },
   {
     id: 'secretary', 
     name: 'Secretário(a) Escolar',
@@ -136,7 +142,7 @@ const availablePermissions: Permission[] = [
   {
     id: 'delete_transcript',
     name: 'Excluir Históricos',
-    description: 'Permite excluir históricos escolares',
+    description: 'Permite excluir registros de históricos escolares',
     category: 'Históricos'
   },
   {
@@ -220,9 +226,9 @@ export default function Dashboard() {
     }
   }, [role, profile?.school_id]);
 
-  // Effect to fetch selected school details for school_admin, secretary, administrative_assistant
+  // Effect to fetch selected school details for school_admin, vice_school_admin, secretary, administrative_assistant
   useEffect(() => {
-    const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
+    const isSchoolLevelUser = ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
     if (!loading && isSchoolLevelUser && profile?.school_id) {
       fetchSelectedSchoolDetails(profile.school_id);
     } else if (!isSchoolLevelUser || !profile?.school_id) {
@@ -303,8 +309,9 @@ export default function Dashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
+      vice_school_admin: 'Vice-Diretor Escolar', // NOVO CARGO
       secretary: 'Secretário(a) Escolar',
-      administrative_assistant: 'Assistente Administrativo', // Novo cargo
+      administrative_assistant: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
@@ -541,7 +548,7 @@ export default function Dashboard() {
       description: 'Assinar digitalmente históricos escolares pendentes',
       icon: Signature,
       path: `/assinar-historicos`, // Removido o query param direto aqui
-      roles: ['school_admin', 'secretary'], // Visível apenas para Diretor e Secretário
+      roles: ['school_admin', 'vice_school_admin', 'secretary'], // Visível para Diretor, Vice-Diretor e Secretário
       order: 1, // Prioridade alta
       requiresSchoolId: true, // Indica que precisa de school_id
     },
@@ -550,7 +557,7 @@ export default function Dashboard() {
       description: 'Criar novo histórico escolar',
       icon: FileText,
       path: '/novo-historico',
-      roles: ['municipal_secretary', 'network_manager', 'secretary', 'administrative_assistant'], // Removido 'school_admin'
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'], // Adicionado school_admin e vice_school_admin
       order: 2,
       requiresSchoolId: true, // Indica que precisa de school_id
     },
@@ -559,7 +566,7 @@ export default function Dashboard() {
       description: 'Ver todos os alunos cadastrados',
       icon: Users,
       path: '/lista-alunos',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'],
       order: 3,
       requiresSchoolId: true, // Indica que precisa de school_id
     },
@@ -568,7 +575,7 @@ export default function Dashboard() {
       description: 'Gerenciar cargas horárias',
       icon: Clock,
       path: '/carga-horaria',
-      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      roles: ['municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'],
       order: 4,
       requiresSchoolId: false, // Não precisa de school_id
     },
@@ -586,7 +593,7 @@ export default function Dashboard() {
       description: 'Validar autenticidade de um histórico',
       icon: ShieldCheck,
       path: '/validar',
-      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'],
+      roles: ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'],
       order: 6,
       requiresSchoolId: false, // Não precisa de school_id
     },
@@ -600,7 +607,7 @@ export default function Dashboard() {
     );
   }
 
-  const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
+  const isSchoolLevelUser = ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
 
   // Filter and sort cards based on role
   const filteredAndSortedCards = cards

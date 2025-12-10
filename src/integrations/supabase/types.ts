@@ -245,7 +245,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           school_id: string | null
           signature_image_url: string | null
-          cpf: string | null // NOVO
+          cpf: string | null
         }
         Insert: {
           created_at?: string | null
@@ -257,7 +257,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
           signature_image_url?: string | null
-          cpf?: string | null // NOVO
+          cpf?: string | null
         }
         Update: {
           created_at?: string | null
@@ -269,7 +269,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
           signature_image_url?: string | null
-          cpf?: string | null // NOVO
+          cpf?: string | null
         }
         Relationships: [
           {
@@ -576,7 +576,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      app_role: "super_admin" | "municipal_secretary" | "network_manager" | "school_admin" | "secretary" | "administrative_assistant"
+      app_role: "super_admin" | "municipal_secretary" | "network_manager" | "school_admin" | "secretary" | "administrative_assistant" | "vice_school_admin"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { passwordChangeSchema, profileUpdateSchema } from '@/lib/validationSchemas';
 // Removido Progress
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant' | 'vice_school_admin';
 
 // Função para formatar CPF (000.000.000-00)
 const formatCpf = (value: string) => {
@@ -165,7 +165,7 @@ export default function AccountSettings() {
     return <p className="text-center mt-8">Você precisa estar logado para acessar esta página.</p>;
   }
 
-  const isDirectorOrSecretary = role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant';
+  const isDirectorOrSecretary = ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '');
 
   const getRoleLabel = (role: AppRole | null) => {
     if (!role) return 'N/A';
@@ -174,8 +174,9 @@ export default function AccountSettings() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
+      vice_school_admin: 'Vice-Diretor Escolar', // Novo cargo
       secretary: 'Secretário(a) Escolar',
-      administrative_assistant: 'Assistente Administrativo', // Novo cargo
+      administrative_assistant: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };

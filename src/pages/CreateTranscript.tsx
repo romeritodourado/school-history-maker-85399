@@ -165,7 +165,7 @@ const CreateTranscript = () => {
 
         if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
           query = query.eq('municipality_id', profile.municipality_id);
-        } else if (role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant') {
+        } else if (['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '')) {
           query = query.eq('id', profile?.school_id);
         }
 
@@ -926,7 +926,7 @@ const CreateTranscript = () => {
                     onValueChange={(value) => {
                       setSelectedSchoolId(value);
                     }}
-                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant')}
+                    disabled={!!profile?.school_id && (['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || ''))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a escola" />

@@ -17,7 +17,7 @@ import correctLogo from "/correct-logo.png"; // Importar a logo
 import { Link } from 'react-router-dom'; // Importar Link
 import { brazilianStates, brazilianCities } from '@/lib/brazilianStatesAndCities'; // Importar dados de estados e cidades
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'vice_school_admin';
 
 interface SchoolData {
   id: string;
@@ -93,7 +93,7 @@ export default function Schools() {
         .select('id, name')
         .order('name');
 
-      if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager' && currentUserProfile?.municipality_id) {
+      if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.eq('id', currentUserProfile.municipality_id);
       }
 
@@ -121,7 +121,7 @@ export default function Schools() {
 
       if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
         query = query.eq('municipality_id', currentUserProfile.municipality_id);
-      } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
+      } else if ((currentUserRole === 'school_admin' || currentUserRole === 'vice_school_admin') && currentUserProfile?.school_id) {
         query = query.eq('id', currentUserProfile.school_id);
       }
 
@@ -479,7 +479,7 @@ export default function Schools() {
                       </p>
                     )}
                     {formData.logo_url && (
-                      <div className="mt-2 flex items-center space-x-2">
+                      <div className="mt-2 flex items-center space-x-4">
                         <img src={formData.logo_url} alt="Logo da Escola" className="h-10 w-10 object-contain border rounded-md" />
                         <a href={formData.logo_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">Ver Logo</a>
                       </div>

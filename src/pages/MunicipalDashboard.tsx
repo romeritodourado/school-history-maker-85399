@@ -12,7 +12,7 @@ import correctLogo from "/correct-logo.png";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationsBell } from '@/components/NotificationsBell'; // Importar o sino de notificações
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant' | 'vice_school_admin';
 
 interface SchoolOption {
   id: string;
@@ -100,7 +100,7 @@ export default function MunicipalDashboard() {
     if (schoolIdFromUrl && schools.some(s => s.id === schoolIdFromUrl)) {
       console.log("MunicipalDashboard: Found school ID in URL params");
       initialSchoolToSelect = schoolIdFromUrl;
-    } else if ((role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
+    } else if (['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '') && profile?.school_id && schools.some(s => s.id === profile.school_id)) {
       console.log("MunicipalDashboard: Using school from user profile");
       initialSchoolToSelect = profile.school_id;
     } else if (schools.length === 1) {
@@ -233,8 +233,9 @@ export default function MunicipalDashboard() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
+      vice_school_admin: 'Vice-Diretor Escolar', // NOVO CARGO
       secretary: 'Secretário(a) Escolar',
-      administrative_assistant: 'Assistente Administrativo', // Novo cargo
+      administrative_assistant: 'Assistente Administrativo',
     };
     return labels[role] || role;
   };
@@ -392,7 +393,7 @@ export default function MunicipalDashboard() {
                 <Label htmlFor="select-school">Escola</Label>
                 <Select value={selectedSchoolId || ""} onValueChange={(value) => setSelectedSchoolId(value)}
                   disabled={
-                    (role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant') && 
+                    ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(role || '') && 
                     !!profile?.school_id && 
                     schools.some(s => s.id === profile.school_id)
                   }
