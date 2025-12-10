@@ -422,6 +422,7 @@ export default function Users() {
     if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação é irreversível.')) return;
     try {
       console.log('Users.tsx: Invoking manage-user edge function for deletion...');
+      console.log('Users.tsx: Deleting user with ID:', userId); // Adicionado este log
       const { data, error: edgeFunctionError } = await supabase.functions.invoke('manage-user', {
         body: JSON.stringify({
           action: 'delete',
