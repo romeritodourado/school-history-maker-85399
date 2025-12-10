@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -34,10 +34,10 @@ interface AuthContextType {
     role: AppRole,
     municipality_id?: string,
     school_id?: string,
-    cpf?: string // NOVO: Adicionado CPF
+    cpf?: string
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
-  refreshProfile: () => Promise<void>; // Adicionado: Função para atualizar o perfil
+  refreshProfile: () => Promise<void>;
 
   activeMunicipalityIdForSuperAdmin: string | null;
   setActiveMunicipalityIdForSuperAdmin: (id: string | null) => void;
@@ -267,7 +267,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     roleParam: AppRole,
     municipality_id?: string,
     school_id?: string,
-    cpf?: string // NOVO: Adicionado CPF
+    cpf?: string
   ) => {
     setOperationLoading(true);
     try {
@@ -275,7 +275,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email,
         password,
         options: {
-          data: { name, role: roleParam, municipality_id, school_id, cpf }, // NOVO: Incluir CPF
+          data: { name, role: roleParam, municipality_id, school_id, cpf },
         },
       });
       return { error };
@@ -308,7 +308,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         signIn,
         signUp,
         signOut,
-        refreshProfile, // Adicionado
+        refreshProfile,
         activeMunicipalityIdForSuperAdmin,
         setActiveMunicipalityIdForSuperAdmin,
       }}
