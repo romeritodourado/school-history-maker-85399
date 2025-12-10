@@ -118,6 +118,12 @@ interface ProfileData {
   cpf: string | null; // NOVO: Adicionado CPF
 }
 
+interface HistoricalSignerData { // NOVO: Interface para dados históricos do signatário
+  name: string | null;
+  registration_number: string | null;
+  cpf: string | null;
+}
+
 const formatGrade = (grade: number | null) => {
   if (grade === null) return "-";
   return grade.toFixed(1);
@@ -138,6 +144,8 @@ export const exportToPDF = async (
   transcriptId: string,
   directorProfile?: ProfileData | null,
   secretaryProfile?: ProfileData | null,
+  historicalDirectorData?: HistoricalSignerData | null, // NOVO
+  historicalSecretaryData?: HistoricalSignerData | null, // NOVO
   directorSignedAt?: string | null, // NOVO
   secretarySignedAt?: string | null, // NOVO
   documentHash?: string | null, // NOVO
@@ -185,34 +193,43 @@ export const exportToPDF = async (
   let signatureSubject = "Assinaturas Digitais: ";
   let signatureKeywords: string[] = ["Histórico Escolar", "Assinatura Digital", student.full_name, schoolName];
 
-  if (directorProfile?.name) {
-    signatureSubject += `Diretor(a) ${directorProfile.name}`;
-    signatureKeywords.push(`Diretor(a) ${directorProfile.name}`);
-    if (directorProfile.registration_number) {
-      signatureKeywords.push(`Registro Diretor: ${directorProfile.registration_number}`);
+  // Determine which profile data to use for display (active profile first, then historical data)
+  const displayDirectorName = directorProfile?.name || historicalDirectorData?.name;
+  const displayDirectorRegistration = directorProfile?.registration_number || historicalDirectorData?.registration_number;
+  const displayDirectorCpf = directorProfile?.cpf || historicalDirectorData?.cpf;
+
+  const displaySecretaryName = secretaryProfile?.name || historicalSecretaryData?.name;
+  const displaySecretaryRegistration = secretaryProfile?.registration_number || historicalSecretaryData?.registration_number;
+  const displaySecretaryCpf = secretaryProfile?.cpf || historicalSecretaryData?.cpf;
+
+  if (displayDirectorName) {
+    signatureSubject += `Diretor(a) ${displayDirectorName}`;
+    signatureKeywords.push(`Diretor(a) ${displayDirectorName}`);
+    if (displayDirectorRegistration) {
+      signatureKeywords.push(`Registro Diretor: ${displayDirectorRegistration}`);
     }
-    if (directorProfile.cpf) { // NOVO
-      signatureKeywords.push(`CPF Diretor: ${maskCpf(directorProfile.cpf)}`);
+    if (displayDirectorCpf) { // NOVO
+      signatureKeywords.push(`CPF Diretor: ${maskCpf(displayDirectorCpf)}`);
     }
     if (directorSignedAt) { // NOVO
       signatureKeywords.push(`Assinado Diretor: ${formatDateTime(directorSignedAt)}`);
     }
   }
-  if (secretaryProfile?.name) {
-    if (directorProfile?.name) signatureSubject += ", ";
-    signatureSubject += `Secretário(a) ${secretaryProfile.name}`;
-    signatureKeywords.push(`Secretário(a) ${secretaryProfile.name}`);
-    if (secretaryProfile.registration_number) {
-      signatureKeywords.push(`Registro Secretário: ${secretaryProfile.registration_number}`);
+  if (displaySecretaryName) {
+    if (displayDirectorName) signatureSubject += ", ";
+    signatureSubject += `Secretário(a) ${displaySecretaryName}`;
+    signatureKeywords.push(`Secretário(a) ${displaySecretaryName}`);
+    if (displaySecretaryRegistration) {
+      signatureKeywords.push(`Registro Secretário: ${displaySecretaryRegistration}`);
     }
-    if (secretaryProfile.cpf) { // NOVO
-      signatureKeywords.push(`CPF Secretário: ${maskCpf(secretaryProfile.cpf)}`);
+    if (displaySecretaryCpf) { // NOVO
+      signatureKeywords.push(`CPF Secretário: ${maskCpf(displaySecretaryCpf)}`);
     }
     if (secretarySignedAt) { // NOVO
       signatureKeywords.push(`Assinado Secretário: ${formatDateTime(secretarySignedAt)}`);
     }
   }
-  if (!directorProfile?.name && !secretaryProfile?.name) {
+  if (!displayDirectorName && !displaySecretaryName) {
     signatureSubject += "Nenhuma assinatura digital encontrada.";
   }
   if (documentHash) { // NOVO
@@ -770,11 +787,11 @@ export const exportToPDF = async (
   
   let signersText = "";
   const signers: string[] = [];
-  if (directorProfile?.name) {
-    signers.push(`Diretor(a) ${directorProfile.name}`);
+  if (displayDirectorName) {
+    signers.push(`Diretor(a) ${displayDirectorName}`);
   }
-  if (secretaryProfile?.name) {
-    signers.push(`Secretário(a) ${secretaryProfile.name}`);
+  if (displaySecretaryName) {
+    signers.push(`Secretário(a) ${displaySecretaryName}`);
   }
 
   const isSignedBySystem = (transcriptStatus === 'signed' || transcriptStatus === 'rejected') && (signers.length > 0 || documentHash);
@@ -812,16 +829,16 @@ export const exportToPDF = async (
 
   // --- Column 3: Individual Signatures (Director & Secretary) ---
   let individualSigCurrentY = signatureSectionStartY + 5;
-  const hasDirectorSignature = !!directorProfile && !!directorSignedAt; // Only show if signed
-  const hasSecretarySignature = !!secretaryProfile && !!secretarySignedAt; // Only show if signed
+  const hasDirectorSignatureInfo = !!displayDirectorName || !!displayDirectorRegistration || !!displayDirectorCpf;
+  const hasSecretarySignatureInfo = !!displaySecretaryName || !!displaySecretaryRegistration || !!displaySecretaryCpf;
   
-  if (hasDirectorSignature || hasSecretarySignature) {
+  if (hasDirectorSignatureInfo || hasSecretarySignatureInfo) {
     const signatureImageWidth = 30; // Reduzido de 40 para 30
     const signatureImageHeight = 12; // Reduzido de 16 para 12
     const signatureLineLength = usableColumnWidth - 10;
     
     // Director's Signature
-    if (hasDirectorSignature) {
+    if (hasDirectorSignatureInfo) {
       const directorCenterX = col3X + usableColumnWidth / 2;
       
       if (directorSignatureImageBase64) {
@@ -841,23 +858,23 @@ export const exportToPDF = async (
       doc.text("Diretor(a)", directorCenterX, individualSigCurrentY, { align: "center" });
       individualSigCurrentY += 3;
 
-      if (directorProfile?.name) {
+      if (displayDirectorName) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, signatureLineLength);
+        const wrappedDirectorName = doc.splitTextToSize(displayDirectorName, signatureLineLength);
         doc.text(wrappedDirectorName, directorCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += wrappedDirectorName.length * 2.5;
       }
-      if (directorProfile?.cpf) { // NOVO: Exibir CPF mascarado
+      if (displayDirectorCpf) { // NOVO: Exibir CPF mascarado
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(`CPF: ${maskCpf(directorProfile.cpf)}`, directorCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`CPF: ${maskCpf(displayDirectorCpf)}`, directorCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += 3;
       }
-      if (directorProfile?.registration_number) {
+      if (displayDirectorRegistration) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(`Registro: ${directorProfile.registration_number}`, directorCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
+        doc.text(`Registro: ${displayDirectorRegistration}`, directorCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
         individualSigCurrentY += 3;
       }
       
@@ -871,11 +888,11 @@ export const exportToPDF = async (
     }
 
     // Secretary's Signature (adicionar espaço antes se houver diretor)
-    if (hasDirectorSignature && hasSecretarySignature) {
+    if (hasDirectorSignatureInfo && hasSecretarySignatureInfo) {
       individualSigCurrentY += 5;
     }
 
-    if (hasSecretarySignature) {
+    if (hasSecretarySignatureInfo) {
       const secretaryCenterX = col3X + usableColumnWidth / 2;
       
       if (secretarySignatureImageBase64) {
@@ -895,23 +912,23 @@ export const exportToPDF = async (
       doc.text("Secretário(a)", secretaryCenterX, individualSigCurrentY, { align: "center" });
       individualSigCurrentY += 3;
 
-      if (secretaryProfile?.name) {
+      if (displaySecretaryName) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, signatureLineLength);
+        const wrappedSecretaryName = doc.splitTextToSize(displaySecretaryName, signatureLineLength);
         doc.text(wrappedSecretaryName, secretaryCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += wrappedSecretaryName.length * 2.5;
       }
-      if (secretaryProfile?.cpf) { // NOVO: Exibir CPF mascarado
+      if (displaySecretaryCpf) { // NOVO: Exibir CPF mascarado
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(`CPF: ${maskCpf(secretaryProfile.cpf)}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        doc.text(`CPF: ${maskCpf(displaySecretaryCpf)}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += 3;
       }
-      if (secretaryProfile?.registration_number) {
+      if (displaySecretaryRegistration) {
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
-        doc.text(`Registro: ${secretaryProfile.registration_number}`, secretaryCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
+        doc.text(`Registro: ${displaySecretaryRegistration}`, secretaryCenterX, individualSigCurrentY, { align: "center" }); // Adicionado "Registro:"
         individualSigCurrentY += 3;
       }
       
@@ -1069,63 +1086,6 @@ export const exportToExcel = (
       currentRow += 2;
     }
   });
-
-  XLSX.utils.sheet_add_aoa(ws, [["CERTIFICADO DE CONCLUSÃO"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  
-  let statusText = "";
-  const gradeInfo = student.grade_series ? ` (${student.grade_series})` : "";
-  
-  if (student.student_status === "concluído") {
-    statusText = `Certificamos que ${student.full_name} concluiu o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "cursando") {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`;
-  } else if (student.student_status === "transferido") {
-    statusText = `Certificamos que ${student.full_name} foi transferido(a)${gradeInfo}.`;
-  } else if (student.student_status === "conservado") {
-    statusText = `Certificamos que ${student.full_name} está com matrícula conservada${gradeInfo}.`;
-  } else {
-    statusText = `Certificamos que ${student.full_name} está cursando o Ensino Fundamental${gradeInfo}.`; // Default
-  }
-  
-  XLSX.utils.sheet_add_aoa(ws, [[statusText]], { origin: { r: currentRow, c: 0 } });
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(ws, [["_____________________", "", "_____________________"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(ws, [["Diretor(a)", "", "Secretário(a)"]], {
-    origin: { r: currentRow, c: 0 },
-  });
-  currentRow++;
-  if (student.schools?.authorization_decree_url) {
-    XLSX.utils.sheet_add_aoa(ws, [[student.schools.authorization_decree_url, "", student.schools.official_gazette_url || ""]], {
-      origin: { r: currentRow, c: 0 },
-    });
-  }
-  currentRow += 2;
-  
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [[`Luís Eduardo Magalhães - BA, ${new Date().toLocaleDateString("pt-BR")}`]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow += 2;
-
-  XLSX.utils.sheet_add_aoa(ws, [["LEGENDA"]], { origin: { r: currentRow, c: 0 } });
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["O = Ótimo (9,5 a 10,0)", "MB = Muito Bom (8,0 a 9,4)", "B = Bom (7,0 a 7,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
-  currentRow++;
-  XLSX.utils.sheet_add_aoa(
-    ws,
-    [["R = Regular (5,0 a 6,9)", "I = Insuficiente (0,0 a 4,9)"]],
-    { origin: { r: currentRow, c: 0 } }
-  );
 
   XLSX.utils.book_append_sheet(wb, ws, `historico_${student.full_name.replace(/ /g, "_")}`);
   XLSX.writeFile(wb, `historico_${student.full_name.replace(/ /g, "_")}.xlsx`);

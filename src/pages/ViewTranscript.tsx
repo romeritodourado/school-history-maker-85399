@@ -73,6 +73,13 @@ interface ProfileData {
   registration_number: string | null;
   role: string;
   signature_image_url: string | null; // Adicionado
+  cpf: string | null; // NOVO
+}
+
+interface HistoricalSignerData { // NOVO: Interface para dados históricos do signatário
+  name: string | null;
+  registration_number: string | null;
+  cpf: string | null;
 }
 
 const ViewTranscript = () => {
@@ -88,6 +95,8 @@ const ViewTranscript = () => {
   const [schoolPeriod, setSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
   const [directorProfile, setDirectorProfile] = useState<ProfileData | null>(null); // Novo estado
   const [secretaryProfile, setSecretaryProfile] = useState<ProfileData | null>(null); // Novo estado
+  const [historicalDirectorData, setHistoricalDirectorData] = useState<HistoricalSignerData | null>(null); // NOVO
+  const [historicalSecretaryData, setHistoricalSecretaryData] = useState<HistoricalSignerData | null>(null); // NOVO
   const [directorSignedAt, setDirectorSignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do diretor
   const [secretarySignedAt, setSecretarySignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do secretário
   const [documentHash, setDocumentHash] = useState<string | null>(null); // NOVO: Hash do documento
@@ -130,6 +139,10 @@ const ViewTranscript = () => {
       const yearGradesFromTranscript = displayData.yearGrades;
       const trimesterGradesFromTranscript = displayData.trimesterGrades;
       const schoolPeriodFromTranscript = displayData.schoolPeriod;
+
+      // Extract historical signer data from displayData
+      setHistoricalDirectorData(displayData.director || null);
+      setHistoricalSecretaryData(displayData.secretary || null);
 
       // Fetch student details (full_name, mother_name, etc.)
       const { data: studentDetails, error: studentDetailsError } = await supabase
@@ -180,7 +193,7 @@ const ViewTranscript = () => {
       if (transcriptRecord.director_signature_id) {
         const { data: dirProfile, error: dirError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role, signature_image_url')
+          .select('id, name, registration_number, role, signature_image_url, cpf')
           .eq('id', transcriptRecord.director_signature_id)
           .single();
         if (dirError) console.error('Error fetching director profile:', dirError);
@@ -193,7 +206,7 @@ const ViewTranscript = () => {
       if (transcriptRecord.secretary_signature_id) {
         const { data: secProfile, error: secError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role, signature_image_url')
+          .select('id, name, registration_number, role, signature_image_url, cpf')
           .eq('id', transcriptRecord.secretary_signature_id)
           .single();
         if (secError) console.error('Error fetching secretary profile:', secError);
@@ -225,6 +238,8 @@ const ViewTranscript = () => {
           transcriptId,
           directorProfile,
           secretaryProfile,
+          historicalDirectorData, // NOVO
+          historicalSecretaryData, // NOVO
           directorSignedAt,
           secretarySignedAt,
           documentHash,
@@ -314,10 +329,11 @@ const ViewTranscript = () => {
           transcriptId={transcriptId} // Pass the transcriptId
           directorProfile={directorProfile}
           secretaryProfile={secretaryProfile}
+          historicalDirectorData={historicalDirectorData} // NOVO
+          historicalSecretaryData={historicalSecretaryData} // NOVO
           directorSignedAt={directorSignedAt} // NOVO
           secretarySignedAt={secretarySignedAt} // NOVO
           documentHash={documentHash} // NOVO
-          transcriptStatus={transcriptStatus} // NOVO
         />
       </main>
     </div>

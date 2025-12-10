@@ -80,6 +80,12 @@ interface ProfileData {
   cpf: string | null; // NOVO: Adicionado CPF
 }
 
+interface HistoricalSignerData { // NOVO: Interface para dados históricos do signatário
+  name: string | null;
+  registration_number: string | null;
+  cpf: string | null;
+}
+
 interface TranscriptPreviewProps {
   student: StudentData;
   academicYears: AcademicYearData[];
@@ -87,8 +93,10 @@ interface TranscriptPreviewProps {
   trimesterGrades: TrimesterGradeData[];
   schoolPeriod?: { startDate: string; endDate: string; gradeClass: string; shift: string };
   transcriptId: string | null; // Adicionar transcriptId
-  directorProfile?: ProfileData | null; // Novo: Perfil do Diretor
-  secretaryProfile?: ProfileData | null; // Novo: Perfil do Secretário
+  directorProfile?: ProfileData | null; // Novo: Perfil do Diretor (ativo)
+  secretaryProfile?: ProfileData | null; // Novo: Perfil do Secretário (ativo)
+  historicalDirectorData?: HistoricalSignerData | null; // NOVO: Dados históricos do diretor
+  historicalSecretaryData?: HistoricalSignerData | null; // NOVO: Dados históricos do secretário
   directorSignedAt?: string | null; // NOVO: Data e hora da assinatura do diretor
   secretarySignedAt?: string | null; // NOVO: Data e hora da assinatura do secretário
   documentHash?: string | null; // NOVO: Hash do documento
@@ -103,6 +111,8 @@ export const TranscriptPreview = ({
   transcriptId, 
   directorProfile, 
   secretaryProfile,
+  historicalDirectorData, // NOVO
+  historicalSecretaryData, // NOVO
   directorSignedAt, // NOVO
   secretarySignedAt, // NOVO
   documentHash // NOVO
@@ -152,11 +162,11 @@ export const TranscriptPreview = ({
 
   const signedByText = () => {
     const signers: string[] = [];
-    if (directorProfile?.name) {
-      signers.push(`Diretor(a) ${directorProfile.name}`);
+    if (directorProfile?.name || historicalDirectorData?.name) {
+      signers.push(`Diretor(a) ${directorProfile?.name || historicalDirectorData?.name}`);
     }
-    if (secretaryProfile?.name) {
-      signers.push(`Secretário(a) ${secretaryProfile.name}`);
+    if (secretaryProfile?.name || historicalSecretaryData?.name) {
+      signers.push(`Secretário(a) ${secretaryProfile?.name || historicalSecretaryData?.name}`);
     }
 
     if (signers.length === 0) {
@@ -167,6 +177,19 @@ export const TranscriptPreview = ({
       return `Este documento foi assinado digitalmente por: ${signers.join(' e ')}.`;
     }
   };
+
+  // Determine which profile data to use for display (active profile first, then historical data)
+  const displayDirectorName = directorProfile?.name || historicalDirectorData?.name;
+  const displayDirectorRegistration = directorProfile?.registration_number || historicalDirectorData?.registration_number;
+  const displayDirectorCpf = directorProfile?.cpf || historicalDirectorData?.cpf;
+
+  const displaySecretaryName = secretaryProfile?.name || historicalSecretaryData?.name;
+  const displaySecretaryRegistration = secretaryProfile?.registration_number || historicalSecretaryData?.registration_number;
+  const displaySecretaryCpf = secretaryProfile?.cpf || historicalSecretaryData?.cpf;
+
+  const hasDirectorSignatureInfo = !!displayDirectorName || !!displayDirectorRegistration || !!displayDirectorCpf;
+  const hasSecretarySignatureInfo = !!displaySecretaryName || !!displaySecretaryRegistration || !!displaySecretaryCpf;
+
 
   return (
     <div className="space-y-6">
@@ -367,22 +390,22 @@ export const TranscriptPreview = ({
 
             {/* Assinaturas do Diretor e Secretário (Lado a Lado) */}
             <div className="flex justify-center gap-4">
-              {directorProfile && (
+              {(hasDirectorSignatureInfo || directorSignedAt) && (
                 <div className="flex-1 text-center">
-                  {directorProfile.signature_image_url && (
+                  {directorProfile?.signature_image_url && (
                     <img src={directorProfile.signature_image_url} alt="Assinatura Diretor" className="mx-auto h-16 w-auto object-contain mb-1" />
                   )}
                   <div className="border-t border-foreground pt-2">
                     <p className="text-sm font-semibold">Diretor(a)</p>
-                    {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
-                    {directorProfile.cpf && ( // NOVO: Exibir CPF mascarado
+                    {displayDirectorName && <p className="text-xs text-muted-foreground">{displayDirectorName}</p>}
+                    {displayDirectorCpf && ( // NOVO: Exibir CPF mascarado
                       <p className="text-xs text-muted-foreground mt-1">
-                        CPF: {maskCpf(directorProfile.cpf)}
+                        CPF: {maskCpf(displayDirectorCpf)}
                       </p>
                     )}
-                    {directorProfile.registration_number && (
+                    {displayDirectorRegistration && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Registro: {directorProfile.registration_number}
+                        Registro: {displayDirectorRegistration}
                       </p>
                     )}
                     {directorSignedAt && ( // NOVO: Exibir data e hora da assinatura do diretor
@@ -393,22 +416,22 @@ export const TranscriptPreview = ({
                   </div>
                 </div>
               )}
-              {secretaryProfile && (
+              {(hasSecretarySignatureInfo || secretarySignedAt) && (
                 <div className="flex-1 text-center">
-                  {secretaryProfile.signature_image_url && (
+                  {secretaryProfile?.signature_image_url && (
                     <img src={secretaryProfile.signature_image_url} alt="Assinatura Secretário" className="mx-auto h-16 w-auto object-contain mb-1" />
                   )}
                   <div className="border-t border-foreground pt-2">
                     <p className="text-sm font-semibold">Secretário(a)</p>
-                    {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
-                    {secretaryProfile.cpf && ( // NOVO: Exibir CPF mascarado
+                    {displaySecretaryName && <p className="text-xs text-muted-foreground">{displaySecretaryName}</p>}
+                    {displaySecretaryCpf && ( // NOVO: Exibir CPF mascarado
                       <p className="text-xs text-muted-foreground mt-1">
-                        CPF: {maskCpf(secretaryProfile.cpf)}
+                        CPF: {maskCpf(displaySecretaryCpf)}
                       </p>
                     )}
-                    {secretaryProfile.registration_number && (
+                    {displaySecretaryRegistration && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Registro: {secretaryProfile.registration_number}
+                        Registro: {displaySecretaryRegistration}
                       </p>
                     )}
                     {secretarySignedAt && ( // NOVO: Exibir data e hora da assinatura do secretário

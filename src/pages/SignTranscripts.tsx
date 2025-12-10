@@ -76,6 +76,13 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
+  cpf: string | null; // NOVO
+}
+
+interface HistoricalSignerData { // NOVO: Interface para dados históricos do signatário
+  name: string | null;
+  registration_number: string | null;
+  cpf: string | null;
 }
 
 interface TranscriptToSign {
@@ -85,6 +92,9 @@ interface TranscriptToSign {
   created_at: string;
   director_signature_id: string | null;
   secretary_signature_id: string | null;
+  director_signed_at: string | null; // NOVO
+  secretary_signed_at: string | null; // NOVO
+  document_hash: string | null; // NOVO
   school_id: string;
   municipality_id: string;
   data: any; // Adicionado para acessar o conteúdo original
@@ -133,6 +143,11 @@ export default function SignTranscripts() {
   const [previewSchoolPeriod, setPreviewSchoolPeriod] = useState<{ startDate: string; endDate: string; gradeClass: string; shift: string } | undefined>();
   const [previewDirectorProfile, setPreviewDirectorProfile] = useState<ProfileData | null>(null);
   const [previewSecretaryProfile, setPreviewSecretaryProfile] = useState<ProfileData | null>(null);
+  const [previewHistoricalDirectorData, setPreviewHistoricalDirectorData] = useState<HistoricalSignerData | null>(null); // NOVO
+  const [previewHistoricalSecretaryData, setPreviewHistoricalSecretaryData] = useState<HistoricalSignerData | null>(null); // NOVO
+  const [previewDirectorSignedAt, setPreviewDirectorSignedAt] = useState<string | null>(null); // NOVO
+  const [previewSecretarySignedAt, setPreviewSecretarySignedAt] = useState<string | null>(null); // NOVO
+  const [previewDocumentHash, setPreviewDocumentHash] = useState<string | null>(null); // NOVO
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
@@ -221,7 +236,7 @@ export default function SignTranscripts() {
     try {
       let query = supabase
         .from('transcripts')
-        .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, school_id, municipality_id, data, signed_data, students (full_name), schools (name)');
+        .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash, school_id, municipality_id, data, signed_data, students (full_name), schools (name)');
       
       console.log("[SignTranscripts] Current user role for query:", role);
       console.log("[SignTranscripts] Current user profile school_id for query:", profile?.school_id);
@@ -329,6 +344,10 @@ export default function SignTranscripts() {
         throw new Error('Dados da escola não encontrados para este histórico. A escola pode ter sido excluída ou há uma inconsistência nos dados.');
       }
 
+      // Determine which data to use for preview: signed_data if available, otherwise data
+      const previewDisplayData = transcriptData.signed_data || transcriptData.data;
+      if (!previewDisplayData) throw new Error("Dados do histórico para pré-visualização estão vazios.");
+
       const student: StudentData = {
         id: studentId,
         full_name: (transcriptData.students as any).full_name,
@@ -346,52 +365,24 @@ export default function SignTranscripts() {
 
       setPreviewTranscriptId(transcriptData.id);
       setPreviewStudent(student);
+      setPreviewDirectorSignedAt(transcriptData.director_signed_at);
+      setPreviewSecretarySignedAt(transcriptData.secretary_signed_at);
+      setPreviewDocumentHash(transcriptData.document_hash);
 
-      const { data: yearsData, error: yearsError } = await supabase
-        .from("academic_years")
-        .select("*")
-        .eq("student_id", student.id) 
-        .order("calendar_year");
+      setPreviewAcademicYears(previewDisplayData.academicYears || []);
+      setPreviewGrades(previewDisplayData.yearGrades || {});
+      setPreviewTrimesterGrades(previewDisplayData.trimesterGrades || []);
+      setPreviewSchoolPeriod(previewDisplayData.schoolPeriod || undefined);
 
-      if (yearsError) throw yearsError;
-      setPreviewAcademicYears(yearsData || []);
-
-      const gradesMap: { [yearId: string]: GradeData[] } = {};
-      for (const year of yearsData || []) {
-        const { data: gradesData, error: gradesError } = await supabase
-          .from("annual_grades")
-          .select("subject_name, grade, workload, absences")
-          .eq("academic_year_id", year.id); 
-
-        if (gradesError) throw gradesError;
-        gradesMap[year.id] = gradesData || [];
-      }
-      setPreviewGrades(gradesMap);
-
-      if (yearsData && yearsData.length > 0) {
-        const latestYear = yearsData[yearsData.length - 1];
-        
-        setPreviewSchoolPeriod({
-          startDate: latestYear.school_period_start || "",
-          endDate: latestYear.school_period_end || "",
-          gradeClass: latestYear.trimester_year || "",
-          shift: latestYear.trimester_shift || "",
-        });
-        
-        const { data: trimesterData, error: trimesterError } = await supabase
-          .from("trimester_grades")
-          .select("subject_name, trimester, grade, absences")
-          .eq("academic_year_id", latestYear.id); 
-
-        if (trimesterError) throw trimesterError;
-        setPreviewTrimesterGrades(trimesterData || []);
-      }
+      // Set historical signer data from the transcript's data/signed_data
+      setPreviewHistoricalDirectorData(previewDisplayData.director || null);
+      setPreviewHistoricalSecretaryData(previewDisplayData.secretary || null);
 
       let directorProfile: ProfileData | null = null;
       if (transcriptData.director_signature_id) {
         const { data: dirProfile, error: dirError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role')
+          .select('id, name, registration_number, role, cpf')
           .eq('id', transcriptData.director_signature_id)
           .single();
         if (dirError) console.error('Error fetching director profile:', dirError);
@@ -403,7 +394,7 @@ export default function SignTranscripts() {
       if (transcriptData.secretary_signature_id) {
         const { data: secProfile, error: secError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role')
+          .select('id, name, registration_number, role, cpf')
           .eq('id', transcriptData.secretary_signature_id)
           .single();
         if (secError) console.error('Error fetching secretary profile:', secError);
@@ -471,6 +462,7 @@ export default function SignTranscripts() {
         id: user.id,
         name: profile.name,
         registration_number: profile.registration_number,
+        cpf: profile.cpf, // NOVO: Incluir CPF
         role: profile.role,
       };
 
@@ -881,6 +873,11 @@ export default function SignTranscripts() {
               transcriptId={previewTranscriptId}
               directorProfile={previewDirectorProfile}
               secretaryProfile={previewSecretaryProfile}
+              historicalDirectorData={previewHistoricalDirectorData} // NOVO
+              historicalSecretaryData={previewHistoricalSecretaryData} // NOVO
+              directorSignedAt={previewDirectorSignedAt} // NOVO
+              secretarySignedAt={previewSecretarySignedAt} // NOVO
+              documentHash={previewDocumentHash} // NOVO
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">

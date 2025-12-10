@@ -245,6 +245,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           school_id: string | null
           signature_image_url: string | null
+          cpf: string | null // NOVO
         }
         Insert: {
           created_at?: string | null
@@ -256,6 +257,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
           signature_image_url?: string | null
+          cpf?: string | null // NOVO
         }
         Update: {
           created_at?: string | null
@@ -267,6 +269,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           school_id?: string | null
           signature_image_url?: string | null
+          cpf?: string | null // NOVO
         }
         Relationships: [
           {
@@ -591,7 +594,7 @@ export type Tables<
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
         Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
+> = PublicTableNameOrOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
       Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
