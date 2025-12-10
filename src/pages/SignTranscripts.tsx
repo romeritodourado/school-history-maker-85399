@@ -150,6 +150,8 @@ export default function SignTranscripts() {
   const [previewDocumentHash, setPreviewDocumentHash] = useState<string | null>(null); // NOVO
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  const directorRoles = ['school_admin', 'vice_school_admin']; // Incluindo vice_school_admin
+
   useEffect(() => {
     // Limpeza robusta do schoolIdFromUrl
     if (schoolIdFromUrl) {
@@ -167,7 +169,7 @@ export default function SignTranscripts() {
       console.log("[SignTranscripts] useEffect: User School ID (from profile):", profile.school_id);
       console.log("[SignTranscripts] useEffect: School ID (from URL):", schoolIdFromUrl);
 
-      const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
+      const isSchoolLevelUser = [...directorRoles, 'secretary', 'administrative_assistant'].includes(profile.role || '');
       
       if (isSchoolLevelUser && !profile.school_id) {
         toast({
@@ -255,11 +257,11 @@ export default function SignTranscripts() {
       if (role === 'secretary') {
         query = query.eq('status', 'pending_secretary_signature');
         console.log("[SignTranscripts] Query filter: status = pending_secretary_signature (for secretary)");
-      } else if (role === 'school_admin') {
+      } else if (directorRoles.includes(role || '')) { // Diretor ou Vice-Diretor
         query = query.eq('status', 'pending_director_signature');
-        console.log("[SignTranscripts] Query filter: status = pending_director_signature (for school_admin)");
+        console.log("[SignTranscripts] Query filter: status = pending_director_signature (for school_admin/vice_school_admin)");
       } else {
-        console.log("[SignTranscripts] User role is not secretary or school_admin. No pending transcripts to show.");
+        console.log("[SignTranscripts] User role is not secretary or school_admin/vice_school_admin. No pending transcripts to show.");
         setPendingTranscripts([]);
         setLoading(false);
         return;
@@ -424,7 +426,7 @@ export default function SignTranscripts() {
       return;
     }
 
-    const isSchoolLevelUser = ['school_admin', 'secretary', 'administrative_assistant'].includes(profile.role || '');
+    const isSchoolLevelUser = [...directorRoles, 'secretary', 'administrative_assistant'].includes(profile.role || '');
     const isMunicipalLevelUser = ['municipal_secretary', 'network_manager'].includes(profile.role || '');
     
     if (isSchoolLevelUser && !profile.school_id) {
@@ -529,7 +531,7 @@ export default function SignTranscripts() {
               signed_data: newSignedData,
               document_hash: newDocumentHash,
             };
-          } else if (role === 'school_admin') {
+          } else if (directorRoles.includes(role || '')) { // Diretor ou Vice-Diretor
             if (!transcript.signed_data) {
               throw new Error(`Histórico de ${transcript.students?.full_name} não possui dados assinados pelo secretário. Não é possível assinar como Diretor(a).`);
             }
@@ -587,7 +589,7 @@ export default function SignTranscripts() {
                 .from('profiles')
                 .select('id')
                 .eq('school_id', schoolIdFromUrl)
-                .eq('role', 'school_admin');
+                .in('role', directorRoles); // Buscar Diretor E Vice-Diretor
 
               if (directorError) console.error('Client: Error fetching director for notification:', directorError);
 
@@ -688,7 +690,7 @@ export default function SignTranscripts() {
     );
   }
 
-  if (!user || !profile || !schoolIdFromUrl || (role !== 'school_admin' && role !== 'secretary')) {
+  if (!user || !profile || !schoolIdFromUrl || (!directorRoles.includes(role || '') && role !== 'secretary')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
@@ -708,7 +710,7 @@ export default function SignTranscripts() {
     );
   }
 
-  const currentRoleLabel = role === 'secretary' ? 'Secretário(a) Escolar' : 'Diretor(a)';
+  const currentRoleLabel = role === 'secretary' ? 'Secretário(a) Escolar' : 'Diretor(a) / Vice-Diretor(a)';
   const pendingStatusLabel = role === 'secretary' ? 'aguardando sua assinatura como Secretário(a) Escolar' : 'aguardando sua assinatura como Diretor(a)';
 
   return (

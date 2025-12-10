@@ -143,16 +143,6 @@ export type Database = {
           target_id?: string | null
           target_table?: string | null
         }
-        Update: {
-          action?: string | null
-          actor_id?: string | null
-          actor_role?: Database["public"]["Enums"]["app_role"] | null
-          created_at?: string | null
-          id?: string
-          payload?: Json | null
-          target_id?: string | null
-          target_table?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "audit_logs_actor_id_fkey"

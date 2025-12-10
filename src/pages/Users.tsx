@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { z } from 'zod';
 import { signupSchema } from '@/lib/validationSchemas';
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant' | 'vice_school_admin';
 
 interface UserProfile {
   id: string;
@@ -150,7 +150,7 @@ export default function Users() {
       // Handle school_id based on new role
       if (roleRequiresSchool(prev.role)) {
         // If current user is school-level, default to their school
-        if ((currentUserRole === 'school_admin' || currentUserRole === 'secretary') && currentUserProfile?.school_id) {
+        if (['school_admin', 'vice_school_admin', 'secretary'].includes(currentUserRole || '') && currentUserProfile?.school_id) {
           if (newFormData.school_id !== currentUserProfile.school_id) {
             newFormData.school_id = currentUserProfile.school_id;
             changed = true;
@@ -239,7 +239,7 @@ export default function Users() {
       if (currentUserRole !== 'super_admin') {
         if ((currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') && currentUserProfile?.municipality_id) {
           query = query.eq('municipality_id', currentUserProfile.municipality_id);
-        } else if (currentUserRole === 'school_admin' && currentUserProfile?.school_id) {
+        } else if (['school_admin', 'vice_school_admin'].includes(currentUserRole || '') && currentUserProfile?.school_id) {
           query = query.eq('school_id', currentUserProfile.school_id);
         }
       }
@@ -266,11 +266,11 @@ export default function Users() {
   const roleRequiresMunicipality = (selectedRole: string) => {
     const roleObj = customRoles.find(cr => cr.name === selectedRole);
     if (roleObj) return roleObj.scope === 'municipal';
-    return ['municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
+    return ['municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
   };
 
   const roleRequiresSchool = (selectedRole: string) => {
-    return ['school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
+    return ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'].includes(selectedRole);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -462,6 +462,7 @@ export default function Users() {
       municipal_secretary: 'Secretário(a) Municipal',
       network_manager: 'Gerente de Estatísticas',
       school_admin: 'Diretor Escolar',
+      vice_school_admin: 'Vice-Diretor Escolar', // NOVO CARGO
       secretary: 'Secretário(a) Escolar',
       administrative_assistant: 'Assistente Administrativo', // Novo cargo
     };
@@ -476,7 +477,7 @@ export default function Users() {
   };
 
   const getAllAvailableRoles = () => {
-    const systemRoles: string[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'secretary', 'administrative_assistant'];
+    const systemRoles: string[] = ['super_admin', 'municipal_secretary', 'network_manager', 'school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'];
     const customRoleNames = customRoles.map(r => r.name);
     return [...systemRoles, ...customRoleNames];
   };
@@ -487,8 +488,8 @@ export default function Users() {
     if (currentUserRole === 'super_admin') return allRoles;
     if (currentUserRole === 'municipal_secretary' || currentUserRole === 'network_manager') 
       return allRoles.filter(r => r !== 'super_admin');
-    if (currentUserRole === 'school_admin') 
-      return allRoles.filter(r => r === 'secretary' || r === 'school_admin' || r === 'administrative_assistant');
+    if (currentUserRole === 'school_admin' || currentUserRole === 'vice_school_admin') 
+      return allRoles.filter(r => r === 'secretary' || r === 'school_admin' || r === 'vice_school_admin' || r === 'administrative_assistant');
     
     return [];
   };
@@ -765,7 +766,7 @@ export default function Users() {
                       value={formData.school_id || ''} // Ensure value is always a string
                       onValueChange={(value) => setFormData({ ...formData, school_id: value })}
                       disabled={
-                        (currentUserRole === 'school_admin' && 
+                        (['school_admin', 'vice_school_admin'].includes(currentUserRole || '') && 
                         currentUserProfile?.school_id !== formData.school_id) ||
                         !formData.municipality_id // Disable if no municipality is selected
                       }
