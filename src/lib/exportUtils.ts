@@ -131,7 +131,8 @@ export const exportToPDF = async (
   secretaryProfile?: ProfileData | null,
   directorSignedAt?: string | null, // NOVO
   secretarySignedAt?: string | null, // NOVO
-  documentHash?: string | null // NOVO
+  documentHash?: string | null, // NOVO
+  transcriptStatus?: string | null // NOVO
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -761,7 +762,7 @@ export const exportToPDF = async (
     signers.push(`Secretário(a) ${secretaryProfile.name}`);
   }
 
-  const isSignedBySystem = signers.length > 0;
+  const isSignedBySystem = (transcriptStatus === 'signed' || transcriptStatus === 'rejected') && (signers.length > 0 || documentHash);
   if (isSignedBySystem) {
     signersText = `Assinado digitalmente por: ${signers.join(' e ')}.`;
   } else {
@@ -794,10 +795,10 @@ export const exportToPDF = async (
   }
 
 
-  // --- Column 3: Individual Signatures (Director & Secretary) ---
+  -- Column 3: Individual Signatures (Director & Secretary) ---
   let individualSigCurrentY = signatureSectionStartY + 5;
-  const hasDirectorSignature = !!directorProfile;
-  const hasSecretarySignature = !!secretaryProfile;
+  const hasDirectorSignature = !!directorProfile && !!directorSignedAt; // Only show if signed
+  const hasSecretarySignature = !!secretaryProfile && !!secretarySignedAt; // Only show if signed
   
   if (hasDirectorSignature || hasSecretarySignature) {
     const signatureImageWidth = 30; // Reduzido de 40 para 30

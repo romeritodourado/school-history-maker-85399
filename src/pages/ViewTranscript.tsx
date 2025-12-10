@@ -80,6 +80,7 @@ const ViewTranscript = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [transcriptId, setTranscriptId] = useState<string | null>(null); // Novo estado para o ID do transcript
+  const [transcriptStatus, setTranscriptStatus] = useState<string | null>(null); // NOVO: Status do histórico
   const [student, setStudent] = useState<StudentData | null>(null);
   const [academicYears, setAcademicYears] = useState<AcademicYearData[]>([]);
   const [grades, setGrades] = useState<{ [yearId: string]: GradeData[] }>({});
@@ -99,8 +100,39 @@ const ViewTranscript = () => {
 
   const fetchTranscript = async () => {
     try {
-      // Fetch student
-      const { data: studentData, error: studentError } = await supabase
+      setLoading(true);
+      // Fetch the transcript record to get its ID and signature IDs
+      const { data: transcriptRecord, error: transcriptRecordError } = await supabase
+        .from('transcripts')
+        .select('id, student_id, school_id, municipality_id, status, data, signed_data, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash')
+        .eq('student_id', studentId)
+        .single();
+
+      if (transcriptRecordError) throw transcriptRecordError;
+      if (!transcriptRecord) throw new Error("Histórico não encontrado para este aluno.");
+
+      setTranscriptId(transcriptRecord.id);
+      setTranscriptStatus(transcriptRecord.status);
+      setDirectorSignedAt(transcriptRecord.director_signed_at);
+      setSecretarySignedAt(transcriptRecord.secretary_signed_at);
+      setDocumentHash(transcriptRecord.document_hash);
+
+      // Determine which data to use: signed_data if status is 'signed', otherwise 'data'
+      const displayData = transcriptRecord.status === 'signed' && transcriptRecord.signed_data 
+        ? transcriptRecord.signed_data 
+        : transcriptRecord.data;
+
+      if (!displayData) throw new Error("Dados do histórico estão vazios.");
+
+      // Extract student data from displayData
+      const studentDataFromTranscript = displayData.studentData;
+      const academicYearsFromTranscript = displayData.academicYears;
+      const yearGradesFromTranscript = displayData.yearGrades;
+      const trimesterGradesFromTranscript = displayData.trimesterGrades;
+      const schoolPeriodFromTranscript = displayData.schoolPeriod;
+
+      // Fetch student details (full_name, mother_name, etc.)
+      const { data: studentDetails, error: studentDetailsError } = await supabase
         .from("students")
         .select(`
           *,
@@ -119,28 +151,36 @@ const ViewTranscript = () => {
         .eq("id", studentId)
         .single();
 
-      if (studentError) throw studentError;
-      setStudent(studentData);
+      if (studentDetailsError) throw studentDetailsError;
+      
+      // Combine fetched student details with data from transcript (which might be more up-to-date for some fields)
+      const combinedStudentData: StudentData = {
+        ...studentDetails,
+        full_name: studentDataFromTranscript.full_name || studentDetails.full_name,
+        mother_name: studentDataFromTranscript.mother_name || studentDetails.mother_name,
+        father_name: studentDataFromTranscript.father_name || studentDetails.father_name,
+        birth_date: studentDataFromTranscript.birth_date || studentDetails.birth_date,
+        birth_place: studentDataFromTranscript.birth_place || studentDetails.birth_place,
+        birth_state: studentDataFromTranscript.birth_state || studentDetails.birth_state,
+        student_status: studentDataFromTranscript.student_status || studentDetails.student_status,
+        grade_series: studentDataFromTranscript.grade_series || studentDetails.grade_series,
+        observations: studentDataFromTranscript.observations || studentDetails.observations,
+        school_id: studentDataFromTranscript.school_id || studentDetails.school_id,
+        schools: studentDetails.schools, // Keep fetched school details
+      };
+      setStudent(combinedStudentData);
 
-      // Fetch the transcript record to get its ID and signature IDs
-      const { data: transcriptRecord, error: transcriptRecordError } = await supabase
-        .from('transcripts')
-        .select('id, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash') // ATUALIZADO: Incluindo datas de assinatura e hash
-        .eq('student_id', studentId)
-        .single();
-
-      if (transcriptRecordError) throw transcriptRecordError;
-      setTranscriptId(transcriptRecord.id); // Set the transcript ID
-      setDirectorSignedAt(transcriptRecord.director_signed_at); // NOVO
-      setSecretarySignedAt(transcriptRecord.secretary_signed_at); // NOVO
-      setDocumentHash(transcriptRecord.document_hash); // NOVO
+      setAcademicYears(academicYearsFromTranscript || []);
+      setGrades(yearGradesFromTranscript || {});
+      setTrimesterGrades(trimesterGradesFromTranscript || []);
+      setSchoolPeriod(schoolPeriodFromTranscript || undefined);
 
       // Fetch director profile if ID exists
       let fetchedDirectorProfile: ProfileData | null = null;
       if (transcriptRecord.director_signature_id) {
         const { data: dirProfile, error: dirError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role, signature_image_url') // Adicionado signature_image_url
+          .select('id, name, registration_number, role, signature_image_url')
           .eq('id', transcriptRecord.director_signature_id)
           .single();
         if (dirError) console.error('Error fetching director profile:', dirError);
@@ -153,7 +193,7 @@ const ViewTranscript = () => {
       if (transcriptRecord.secretary_signature_id) {
         const { data: secProfile, error: secError } = await supabase
           .from('profiles')
-          .select('id, name, registration_number, role, signature_image_url') // Adicionado signature_image_url
+          .select('id, name, registration_number, role, signature_image_url')
           .eq('id', transcriptRecord.secretary_signature_id)
           .single();
         if (secError) console.error('Error fetching secretary profile:', secError);
@@ -161,62 +201,20 @@ const ViewTranscript = () => {
       }
       setSecretaryProfile(fetchedSecretaryProfile);
 
-      // Fetch academic years
-      const { data: yearsData, error: yearsError } = await supabase
-        .from("academic_years")
-        .select("*")
-        .eq("student_id", studentId)
-        .order("calendar_year");
-
-      if (yearsError) throw yearsError;
-      setAcademicYears(yearsData || []);
-
-      // Fetch annual grades for each year
-      const gradesMap: { [yearId: string]: GradeData[] } = {};
-      for (const year of yearsData || []) {
-        const { data: gradesData, error: gradesError } = await supabase
-          .from("annual_grades")
-          .select("subject_name, grade, workload, absences")
-          .eq("academic_year_id", year.id);
-
-        if (gradesError) throw gradesError;
-        gradesMap[year.id] = gradesData || [];
-      }
-      setGrades(gradesMap);
-
-      // Fetch trimester grades (for the most recent year)
-      if (yearsData && yearsData.length > 0) {
-        const latestYear = yearsData[yearsData.length - 1];
-        
-        // Load school period data
-        setSchoolPeriod({
-          startDate: latestYear.school_period_start || "",
-          endDate: latestYear.school_period_end || "",
-          gradeClass: latestYear.trimester_year || "",
-          shift: latestYear.trimester_shift || "",
-        });
-        
-        const { data: trimesterData, error: trimesterError } = await supabase
-          .from("trimester_grades")
-          .select("subject_name, trimester, grade, absences")
-          .eq("academic_year_id", latestYear.id);
-
-        if (trimesterError) throw trimesterError;
-        setTrimesterGrades(trimesterData || []);
-      }
     } catch (error: any) {
       toast({
         title: "Erro",
         description: error.message || "Não foi possível carregar o histórico",
         variant: "destructive",
       });
+      setStudent(null); // Clear student data on error
     } finally {
       setLoading(false);
     }
   };
 
   const handleExportPDF = async () => {
-    if (student && academicYears.length > 0 && transcriptId) { // Pass transcriptId
+    if (student && academicYears.length > 0 && transcriptId) {
       try {
         await exportToPDF(
           student,
@@ -227,9 +225,10 @@ const ViewTranscript = () => {
           transcriptId,
           directorProfile,
           secretaryProfile,
-          directorSignedAt, // NOVO
-          secretarySignedAt, // NOVO
-          documentHash // NOVO
+          directorSignedAt,
+          secretarySignedAt,
+          documentHash,
+          transcriptStatus // Pass transcriptStatus
         );
         toast({
           title: "Sucesso",
@@ -318,6 +317,7 @@ const ViewTranscript = () => {
           directorSignedAt={directorSignedAt} // NOVO
           secretarySignedAt={secretarySignedAt} // NOVO
           documentHash={documentHash} // NOVO
+          transcriptStatus={transcriptStatus} // NOVO
         />
       </main>
     </div>
