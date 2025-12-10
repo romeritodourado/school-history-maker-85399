@@ -41,7 +41,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, userId, email, password, name, role, municipality_id, school_id } = await req.json();
+    const { action, userId, email, password, name, role, municipality_id, school_id, cpf } = await req.json(); // NOVO: Adicionado CPF
 
     let isAllowed = false;
     if (currentProfile.role === 'super_admin') {
@@ -106,6 +106,7 @@ serve(async (req) => {
           role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
+          cpf: cpf || null, // NOVO: Incluir CPF
         },
       });
 
@@ -135,6 +136,7 @@ serve(async (req) => {
           role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
+          cpf: cpf || null, // NOVO: Incluir CPF
         },
       };
       if (email) updateAuthData.email = email;
@@ -159,6 +161,7 @@ serve(async (req) => {
           role: role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
+          cpf: cpf || null, // NOVO: Incluir CPF
         })
         .eq('id', userId);
 

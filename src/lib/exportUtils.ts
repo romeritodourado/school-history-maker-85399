@@ -4,6 +4,14 @@ import * as XLSX from "xlsx";
 import QRCode from "qrcode"; // Importar a biblioteca qrcode
 import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
 
+// Função utilitária para mascarar o CPF
+const maskCpf = (cpf: string | null | undefined): string => {
+  if (!cpf) return "N/A";
+  const cleanedCpf = cpf.replace(/\D/g, ''); // Remove non-digits
+  if (cleanedCpf.length !== 11) return "CPF Inválido";
+  return `***.${cleanedCpf.substring(3, 6)}.${cleanedCpf.substring(6, 9)}-**`;
+};
+
 // Convert image to base64 with optional resizing
 const getImageAsBase64 = async (imageUrl: string, maxWidth = 100, maxHeight = 100): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -107,6 +115,7 @@ interface ProfileData {
   registration_number: string | null;
   role: string;
   signature_image_url: string | null;
+  cpf: string | null; // NOVO: Adicionado CPF
 }
 
 const formatGrade = (grade: number | null) => {
@@ -182,6 +191,9 @@ export const exportToPDF = async (
     if (directorProfile.registration_number) {
       signatureKeywords.push(`Registro Diretor: ${directorProfile.registration_number}`);
     }
+    if (directorProfile.cpf) { // NOVO
+      signatureKeywords.push(`CPF Diretor: ${maskCpf(directorProfile.cpf)}`);
+    }
     if (directorSignedAt) { // NOVO
       signatureKeywords.push(`Assinado Diretor: ${formatDateTime(directorSignedAt)}`);
     }
@@ -192,6 +204,9 @@ export const exportToPDF = async (
     signatureKeywords.push(`Secretário(a) ${secretaryProfile.name}`);
     if (secretaryProfile.registration_number) {
       signatureKeywords.push(`Registro Secretário: ${secretaryProfile.registration_number}`);
+    }
+    if (secretaryProfile.cpf) { // NOVO
+      signatureKeywords.push(`CPF Secretário: ${maskCpf(secretaryProfile.cpf)}`);
     }
     if (secretarySignedAt) { // NOVO
       signatureKeywords.push(`Assinado Secretário: ${formatDateTime(secretarySignedAt)}`);
@@ -795,7 +810,7 @@ export const exportToPDF = async (
   }
 
 
-  -- Column 3: Individual Signatures (Director & Secretary) ---
+  // --- Column 3: Individual Signatures (Director & Secretary) ---
   let individualSigCurrentY = signatureSectionStartY + 5;
   const hasDirectorSignature = !!directorProfile && !!directorSignedAt; // Only show if signed
   const hasSecretarySignature = !!secretaryProfile && !!secretarySignedAt; // Only show if signed
@@ -832,6 +847,12 @@ export const exportToPDF = async (
         const wrappedDirectorName = doc.splitTextToSize(directorProfile.name, signatureLineLength);
         doc.text(wrappedDirectorName, directorCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += wrappedDirectorName.length * 2.5;
+      }
+      if (directorProfile?.cpf) { // NOVO: Exibir CPF mascarado
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "normal");
+        doc.text(`CPF: ${maskCpf(directorProfile.cpf)}`, directorCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += 3;
       }
       if (directorProfile?.registration_number) {
         doc.setFontSize(6);
@@ -880,6 +901,12 @@ export const exportToPDF = async (
         const wrappedSecretaryName = doc.splitTextToSize(secretaryProfile.name, signatureLineLength);
         doc.text(wrappedSecretaryName, secretaryCenterX, individualSigCurrentY, { align: "center" });
         individualSigCurrentY += wrappedSecretaryName.length * 2.5;
+      }
+      if (secretaryProfile?.cpf) { // NOVO: Exibir CPF mascarado
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "normal");
+        doc.text(`CPF: ${maskCpf(secretaryProfile.cpf)}`, secretaryCenterX, individualSigCurrentY, { align: "center" });
+        individualSigCurrentY += 3;
       }
       if (secretaryProfile?.registration_number) {
         doc.setFontSize(6);

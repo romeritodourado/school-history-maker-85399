@@ -24,6 +24,7 @@ interface UserProfile {
   role: string; // Agora é string para incluir cargos personalizados
   municipality_name?: string;
   school_name?: string;
+  cpf: string | null; // NOVO: Adicionado CPF
 }
 
 interface Municipality {
@@ -58,6 +59,25 @@ interface GroupedUsers {
   }[];
 }
 
+// Função para formatar CPF (000.000.000-00)
+const formatCpf = (value: string) => {
+  if (!value) return "";
+  const cleaned = value.replace(/\D/g, ''); // Remove tudo que não é dígito
+  const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
+  if (match) {
+    return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`;
+  }
+  return cleaned;
+};
+
+// Função utilitária para mascarar o CPF para exibição
+const maskCpfDisplay = (cpf: string | null | undefined): string => {
+  if (!cpf) return "N/A";
+  const cleanedCpf = cpf.replace(/\D/g, ''); // Remove non-digits
+  if (cleanedCpf.length !== 11) return "CPF Inválido";
+  return `***.${cleanedCpf.substring(3, 6)}.${cleanedCpf.substring(6, 9)}-**`;
+};
+
 export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
@@ -75,6 +95,7 @@ export default function Users() {
     role: 'secretary', // Default role
     municipality_id: '',
     school_id: '',
+    cpf: '', // NOVO: Adicionado CPF
   });
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -208,7 +229,7 @@ export default function Users() {
       let query = supabase
         .from('profiles')
         .select(`
-          id, name, email, municipality_id, school_id, role,
+          id, name, email, municipality_id, school_id, role, cpf,
           municipalities (name),
           schools (name)
         `)
@@ -259,7 +280,8 @@ export default function Users() {
       signupSchema.parse({
         email: formData.email,
         password: formData.password,
-        name: formData.name
+        name: formData.name,
+        cpf: formData.cpf, // NOVO: Incluir CPF na validação
       });
 
       // Client-side validation for municipality_id and school_id
@@ -292,6 +314,7 @@ export default function Users() {
           role: formData.role,
           municipality_id: formData.municipality_id || null,
           school_id: formData.school_id || null,
+          cpf: formData.cpf.replace(/\D/g, '') || null, // NOVO: Enviar CPF sem formatação
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -361,6 +384,7 @@ export default function Users() {
           role: formData.role,
           municipality_id: formData.municipality_id || null,
           school_id: formData.school_id || null,
+          cpf: formData.cpf.replace(/\D/g, '') || null, // NOVO: Enviar CPF sem formatação
           // Password is not updated via this form, so it's not sent.
         }),
         headers: {
@@ -476,6 +500,7 @@ export default function Users() {
       role: 'secretary',
       municipality_id: currentUserProfile?.municipality_id || '', // Set default municipality if current user has one
       school_id: currentUserProfile?.school_id || '', // Set default school if current user has one
+      cpf: '', // NOVO: Resetar CPF
     }));
     setEditingUser(null);
   };
@@ -558,6 +583,11 @@ export default function Users() {
         <p className="text-sm text-muted-foreground flex items-center gap-1">
           <Mail className="h-3 w-3" /> {user.email}
         </p>
+        {user.cpf && ( // NOVO: Exibir CPF mascarado
+          <p className="text-sm text-muted-foreground">
+            CPF: {maskCpfDisplay(user.cpf)}
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Cargo: {getRoleLabel(user.role)}
         </p>
@@ -572,6 +602,7 @@ export default function Users() {
             role: user.role,
             municipality_id: user.municipality_id || '',
             school_id: user.school_id || '',
+            cpf: user.cpf ? formatCpf(user.cpf) : '', // NOVO: Carregar CPF formatado
           };
           setFormData(initialFormData);
           console.log("handleEdit: Editing user", user);
@@ -756,6 +787,19 @@ export default function Users() {
                     </Select>
                   </div>
                 )}
+                <div> {/* NOVO: Campo CPF */}
+                  <Label htmlFor="cpf">CPF</Label>
+                  <Input
+                    id="cpf"
+                    value={formData.cpf}
+                    onChange={(e) => setFormData({ ...formData, cpf: formatCpf(e.target.value) })}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O CPF será usado para identificação na assinatura digital.
+                  </p>
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
                     Cancelar

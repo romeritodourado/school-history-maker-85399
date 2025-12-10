@@ -33,7 +33,8 @@ interface AuthContextType {
     name: string,
     role: AppRole,
     municipality_id?: string,
-    school_id?: string
+    school_id?: string,
+    cpf?: string // NOVO: Adicionado CPF
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>; // Adicionado: Função para atualizar o perfil
@@ -265,7 +266,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     name: string,
     roleParam: AppRole,
     municipality_id?: string,
-    school_id?: string
+    school_id?: string,
+    cpf?: string // NOVO: Adicionado CPF
   ) => {
     setOperationLoading(true);
     try {
@@ -273,7 +275,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email,
         password,
         options: {
-          data: { name, role: roleParam, municipality_id, school_id },
+          data: { name, role: roleParam, municipality_id, school_id, cpf }, // NOVO: Incluir CPF
         },
       });
       return { error };

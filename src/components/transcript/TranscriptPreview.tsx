@@ -5,6 +5,14 @@ import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Impor
 import QRCode from "qrcode"; // Importar a biblioteca qrcode
 import { useEffect, useState } from "react"; // Importar useEffect e useState
 
+// Função utilitária para mascarar o CPF
+const maskCpf = (cpf: string | null | undefined): string => {
+  if (!cpf) return "N/A";
+  const cleanedCpf = cpf.replace(/\D/g, ''); // Remove non-digits
+  if (cleanedCpf.length !== 11) return "CPF Inválido";
+  return `***.${cleanedCpf.substring(3, 6)}.${cleanedCpf.substring(6, 9)}-**`;
+};
+
 interface StudentData {
   id: string;
   full_name: string; // Changed from name
@@ -68,7 +76,8 @@ interface ProfileData {
   name: string | null;
   registration_number: string | null;
   role: string;
-  signature_image_url: string | null; // Adicionado
+  signature_image_url: string | null;
+  cpf: string | null; // NOVO: Adicionado CPF
 }
 
 interface TranscriptPreviewProps {
@@ -131,8 +140,7 @@ export const TranscriptPreview = ({
     const grade = trimesterGrades.find(
       (g) => g.subject_name === subject && g.trimester === trimester
     );
-    if (!grade) return "-";
-    return field === "grade" ? formatGrade(grade.grade) : grade.absences;
+    return grade ? grade[field] : "";
   };
 
   const municipalityCityName = student.schools?.city || "Não Informado"; // Usar o campo 'city' diretamente
@@ -367,6 +375,11 @@ export const TranscriptPreview = ({
                   <div className="border-t border-foreground pt-2">
                     <p className="text-sm font-semibold">Diretor(a)</p>
                     {directorProfile.name && <p className="text-xs text-muted-foreground">{directorProfile.name}</p>}
+                    {directorProfile.cpf && ( // NOVO: Exibir CPF mascarado
+                      <p className="text-xs text-muted-foreground mt-1">
+                        CPF: {maskCpf(directorProfile.cpf)}
+                      </p>
+                    )}
                     {directorProfile.registration_number && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Registro: {directorProfile.registration_number}
@@ -388,6 +401,11 @@ export const TranscriptPreview = ({
                   <div className="border-t border-foreground pt-2">
                     <p className="text-sm font-semibold">Secretário(a)</p>
                     {secretaryProfile.name && <p className="text-xs text-muted-foreground">{secretaryProfile.name}</p>}
+                    {secretaryProfile.cpf && ( // NOVO: Exibir CPF mascarado
+                      <p className="text-xs text-muted-foreground mt-1">
+                        CPF: {maskCpf(secretaryProfile.cpf)}
+                      </p>
+                    )}
                     {secretaryProfile.registration_number && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Registro: {secretaryProfile.registration_number}

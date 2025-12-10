@@ -914,7 +914,7 @@ export default function Dashboard() {
                                   <div className="space-y-2">
                                     <Label htmlFor={`edit-role-desc-${role.id}`}>Descrição (Opcional)</Label>
                                     <Textarea
-                                      id={`edit-role-desc-${role.id}`}
+                                      id="edit-role-desc-${role.id}"
                                       value={editingRoleDescription}
                                       onChange={(e) => setEditingRoleDescription(e.target.value)}
                                       className="min-h-[80px]"

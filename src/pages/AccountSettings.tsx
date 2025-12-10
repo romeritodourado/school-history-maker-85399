@@ -14,6 +14,17 @@ import { passwordChangeSchema, profileUpdateSchema } from '@/lib/validationSchem
 
 type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'administrative_assistant';
 
+// Função para formatar CPF (000.000.000-00)
+const formatCpf = (value: string) => {
+  if (!value) return "";
+  const cleaned = value.replace(/\D/g, ''); // Remove tudo que não é dígito
+  const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
+  if (match) {
+    return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`;
+  }
+  return cleaned;
+};
+
 export default function AccountSettings() {
   const { user, profile, role, loading: authLoading, refreshProfile } = useAuth(); // Adicionado refreshProfile
   const navigate = useNavigate();
@@ -21,6 +32,7 @@ export default function AccountSettings() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
+  const [cpf, setCpf] = useState(''); // NOVO: Estado para o CPF
   // Removido signatureImageUrl state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +45,7 @@ export default function AccountSettings() {
       setName(profile.name || '');
       setEmail(user.email || '');
       setRegistrationNumber(profile.registration_number || '');
+      setCpf(profile.cpf ? formatCpf(profile.cpf) : ''); // NOVO: Carregar CPF formatado
       // Removido setSignatureImageUrl
     }
   }, [user, profile, authLoading]);
@@ -55,21 +68,23 @@ export default function AccountSettings() {
     }
 
     try {
-      // Validate name, email, registrationNumber
+      // Validate name, email, registrationNumber, cpf
       profileUpdateSchema.parse({ 
         name, 
         email, 
         registration_number: registrationNumber, 
+        cpf: cpf, // NOVO: Incluir CPF na validação
         // Removido signature_image_url
       });
 
-      // Update profile name, registration_number
+      // Update profile name, registration_number, cpf
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
           name, 
           email, // Update email in profile table as well for consistency
           registration_number: registrationNumber,
+          cpf: cpf.replace(/\D/g, ''), // NOVO: Salvar CPF sem formatação
           signature_image_url: null // Definir como null, pois não usaremos mais a imagem
         })
         .eq('id', user.id);
@@ -227,6 +242,20 @@ export default function AccountSettings() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Este número aparecerá abaixo da sua assinatura no histórico.
+                    </p>
+                  </div>
+                  <div className="space-y-2"> {/* NOVO: Campo CPF */}
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={cpf}
+                      onChange={(e) => setCpf(formatCpf(e.target.value))}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      disabled={loading}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Seu CPF será usado para identificação na assinatura digital.
                     </p>
                   </div>
                   {/* Removido o bloco de upload de imagem de assinatura */}

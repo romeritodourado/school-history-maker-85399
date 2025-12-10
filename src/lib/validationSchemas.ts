@@ -73,6 +73,11 @@ export const signupSchema = z.object({
     .min(3, 'Nome deve ter pelo menos 3 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres')
     .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
+  cpf: z.string() // NOVO: Adicionado CPF
+    .trim()
+    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, 'CPF inválido (formato: 000.000.000-00)')
+    .optional()
+    .or(z.literal('')),
 });
 
 // Login validation schema
@@ -204,6 +209,11 @@ export const profileUpdateSchema = z.object({
   registration_number: z.string()
     .trim()
     .max(50, 'Número de registro deve ter no máximo 50 caracteres')
+    .optional()
+    .or(z.literal('')),
+  cpf: z.string() // NOVO: Adicionado CPF
+    .trim()
+    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, 'CPF inválido (formato: 000.000.000-00)')
     .optional()
     .or(z.literal('')),
   // Removido signature_image_url
