@@ -41,7 +41,12 @@ serve(async (req) => {
       });
     }
 
-    const { action, userId, email, password, name, role, municipality_id, school_id, cpf } = await req.json(); // NOVO: Adicionado CPF
+    const requestBody = await req.json(); // Parse JSON once
+    const { action, userId, email, password, name, role, municipality_id, school_id, cpf } = requestBody;
+
+    console.log('Edge Function: Received request body:', requestBody); // Log the entire body
+    console.log('Edge Function: Extracted action:', action);
+    console.log('Edge Function: Extracted userId:', userId);
 
     let isAllowed = false;
     if (currentProfile.role === 'super_admin') {
@@ -106,7 +111,7 @@ serve(async (req) => {
           role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
-          cpf: cpf || null, // NOVO: Incluir CPF
+          cpf: cpf || null,
         },
       });
 
@@ -136,7 +141,7 @@ serve(async (req) => {
           role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
-          cpf: cpf || null, // NOVO: Incluir CPF
+          cpf: cpf || null,
         },
       };
       if (email) updateAuthData.email = email;
@@ -161,7 +166,7 @@ serve(async (req) => {
           role: role,
           municipality_id: municipality_id || null,
           school_id: school_id || null,
-          cpf: cpf || null, // NOVO: Incluir CPF
+          cpf: cpf || null,
         })
         .eq('id', userId);
 
@@ -178,7 +183,11 @@ serve(async (req) => {
         status: 200,
       });
     } else if (action === 'delete') {
+      console.log('Edge Function: Processing delete action.');
+      console.log('Edge Function: userId for deletion:', userId);
+
       if (!userId) {
+        console.error('Edge Function: User ID is missing or empty for delete action.');
         return new Response(JSON.stringify({ error: 'User ID is required for delete action.' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
@@ -192,6 +201,7 @@ serve(async (req) => {
         .single();
 
       if (userToDeleteProfileError || !userToDeleteProfile) {
+        console.error('Edge Function: User to delete profile not found or error:', userToDeleteProfileError);
         return new Response(JSON.stringify({ error: 'User to delete profile not found.' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404,
@@ -212,6 +222,7 @@ serve(async (req) => {
       }
 
       if (!canDelete) {
+        console.error('Edge Function: Forbidden - Not allowed to delete user:', userId, 'by role:', currentProfile.role);
         return new Response(JSON.stringify({ error: 'Forbidden: Not allowed to delete this user.' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,
