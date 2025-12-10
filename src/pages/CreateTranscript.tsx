@@ -165,7 +165,7 @@ const CreateTranscript = () => {
 
         if ((role === 'municipal_secretary' || role === 'network_manager') && profile?.municipality_id) {
           query = query.eq('municipality_id', profile.municipality_id);
-        } else if (role === 'school_admin' || role === 'secretary') {
+        } else if (role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant') {
           query = query.eq('id', profile?.school_id);
         }
 
@@ -188,7 +188,7 @@ const CreateTranscript = () => {
     }
   }, [id]);
 
-  // 3. Determine and set selectedSchoolId once schools and studentData are available
+  // 3. Determine e set selectedSchoolId once schools and studentData are available
   useEffect(() => {
     // Only proceed if schools are loaded and we are not actively loading transcript data
     if (schools.length === 0 || loadingData) {
@@ -614,21 +614,32 @@ const CreateTranscript = () => {
         schoolId: currentSchoolId,
         municipalityId: currentMunicipalityId,
       };
-      const documentHash = await generateTranscriptHash(dataToHash);
+      // No hash generated here, as it's done at the time of signing by the secretary.
 
       // Insert or update transcript entry
       let transcriptRecordId: string;
-      let existingDirectorSignatureId: string | null = null;
-      let existingDirectorSignedAt: string | null = null;
-      let existingSecretarySignatureId: string | null = null;
-      let existingSecretarySignedAt: string | null = null;
-      let existingSignedData: any | null = null;
+      
+      // Always clear signature fields when saving from CreateTranscript,
+      // as this is the start of a new signing cycle or a re-draft.
+      const transcriptUpdatePayload = {
+        student_id: studentId,
+        school_id: currentSchoolId,
+        municipality_id: currentMunicipalityId,
+        status: 'pending_secretary_signature', // Always set to pending_secretary_signature
+        document_hash: null, // Clear hash
+        data: dataToHash, // Store current data as the editable version
+        signed_data: null, // Clear signed data
+        director_signature_id: null,
+        director_signed_at: null,
+        secretary_signature_id: null,
+        secretary_signed_at: null,
+      };
 
       if (id) {
-        // Fetch existing transcript data to preserve signatures
+        // Check if a transcript record already exists for this student
         const { data: existingTranscript, error: fetchTranscriptError } = await supabase
           .from('transcripts')
-          .select('id, director_signature_id, director_signed_at, secretary_signature_id, secretary_signed_at, signed_data')
+          .select('id')
           .eq('student_id', id)
           .single();
 
@@ -638,60 +649,27 @@ const CreateTranscript = () => {
 
         if (existingTranscript) {
           transcriptRecordId = existingTranscript.id;
-          existingDirectorSignatureId = existingTranscript.director_signature_id;
-          existingDirectorSignedAt = existingTranscript.director_signed_at;
-          existingSecretarySignatureId = existingTranscript.secretary_signature_id;
-          existingSecretarySignedAt = existingTranscript.secretary_signed_at;
-          existingSignedData = existingTranscript.signed_data;
+          // Update existing transcript
+          const { error: transcriptUpdateError } = await supabase
+            .from('transcripts')
+            .update(transcriptUpdatePayload)
+            .eq('id', transcriptRecordId);
+          if (transcriptUpdateError) throw transcriptUpdateError;
         } else {
-          // If student exists but no transcript record, treat as new transcript
+          // If student exists but no transcript record, insert new transcript
           const { data: newTranscript, error: transcriptInsertError } = await supabase
             .from('transcripts')
-            .insert([{
-              student_id: studentId,
-              school_id: currentSchoolId,
-              municipality_id: currentMunicipalityId,
-              status: 'draft', // Start as draft if no existing transcript
-              document_hash: documentHash,
-              data: dataToHash,
-            }])
+            .insert([transcriptUpdatePayload])
             .select('id')
             .single();
           if (transcriptInsertError) throw transcriptInsertError;
           transcriptRecordId = newTranscript.id;
         }
-
-        // Update existing transcript, preserving signature fields
-        const { error: transcriptUpdateError } = await supabase
-          .from('transcripts')
-          .update({
-            school_id: currentSchoolId,
-            municipality_id: currentMunicipalityId,
-            status: 'pending_secretary_signature', // Changed to pending_secretary_signature
-            document_hash: documentHash,
-            data: dataToHash,
-            // Preserve existing signature fields
-            director_signature_id: existingDirectorSignatureId,
-            director_signed_at: existingDirectorSignedAt,
-            secretary_signature_id: existingSecretarySignatureId,
-            secretary_signed_at: existingSecretarySignedAt,
-            signed_data: existingSignedData, // Preserve existing signed_data
-          })
-          .eq('id', transcriptRecordId);
-        if (transcriptUpdateError) throw transcriptUpdateError;
-
       } else {
         // Insert new student and new transcript
         const { data: newTranscript, error: transcriptInsertError } = await supabase
           .from('transcripts')
-          .insert([{
-            student_id: studentId,
-            school_id: currentSchoolId,
-            municipality_id: currentMunicipalityId,
-            status: 'pending_secretary_signature', // Changed to pending_secretary_signature
-            document_hash: documentHash,
-            data: dataToHash,
-          }])
+          .insert([transcriptUpdatePayload])
           .select('id')
           .single();
         if (transcriptInsertError) throw transcriptInsertError;
@@ -703,7 +681,7 @@ const CreateTranscript = () => {
         .from('profiles')
         .select('id')
         .eq('school_id', currentSchoolId)
-        .eq('role', 'secretary'); // Changed to secretary
+        .eq('role', 'secretary');
 
       if (secretaryError) console.error('Client: Error fetching secretary for notification:', secretaryError);
 
@@ -712,10 +690,10 @@ const CreateTranscript = () => {
           console.log(`Client: Invoking create-notification for secretary ${secretary.id} for student ${studentData.full_name}`);
           const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
             body: JSON.stringify({
-              user_id: secretary.id, // Changed to secretary.id
+              user_id: secretary.id,
               type: 'transcript_pending_signature',
               target_id: transcriptRecordId,
-              message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Secretário(a).`, // Changed message
+              message: `Novo histórico de ${studentData.full_name} aguardando sua assinatura como Secretário(a).`,
             }),
             headers: {
               'Content-Type': 'application/json',
@@ -744,7 +722,7 @@ const CreateTranscript = () => {
 
       toast({
         title: "Sucesso",
-        description: id ? "Histórico escolar atualizado e enviado para assinatura do Secretário(a)." : "Histórico escolar criado e enviado para assinatura do Secretário(a).", // Changed message
+        description: id ? "Histórico escolar atualizado e enviado para assinatura do Secretário(a)." : "Histórico escolar criado e enviado para assinatura do Secretário(a).",
       });
 
       navigate(`/visualizar/${studentId}`);
@@ -942,7 +920,7 @@ const CreateTranscript = () => {
                     onValueChange={(value) => {
                       setSelectedSchoolId(value);
                     }}
-                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary')}
+                    disabled={!!profile?.school_id && (role === 'school_admin' || role === 'secretary' || role === 'administrative_assistant')}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a escola" />
