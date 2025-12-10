@@ -85,8 +85,10 @@ interface TranscriptToSign {
   created_at: string;
   director_signature_id: string | null;
   secretary_signature_id: string | null;
-  school_id: string; // ADICIONADO
-  municipality_id: string; // ADICIONADO
+  school_id: string;
+  municipality_id: string;
+  data: any; // Adicionado para acessar o conteúdo original
+  signed_data: any | null; // Adicionado para acessar o conteúdo assinado
   students: {
     full_name: string;
   } | null;
@@ -95,7 +97,7 @@ interface TranscriptToSign {
   } | null;
 }
 
-// Função para gerar o hash do conteúdo do histórico (duplicada para validação independente)
+// Função para gerar o hash do conteúdo do histórico
 async function generateTranscriptHash(data: any): Promise<string> {
   const dataString = JSON.stringify(data);
   const textEncoder = new TextEncoder();
@@ -219,7 +221,7 @@ export default function SignTranscripts() {
     try {
       let query = supabase
         .from('transcripts')
-        .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, school_id, municipality_id, data, students (full_name), schools (name)');
+        .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, school_id, municipality_id, data, signed_data, students (full_name), schools (name)');
       
       console.log("[SignTranscripts] Current user role for query:", role);
       console.log("[SignTranscripts] Current user profile school_id for query:", profile?.school_id);
@@ -517,26 +519,18 @@ export default function SignTranscripts() {
           }
         }
 
-        const { data: fullTranscriptData, error: fetchDataError } = await supabase
-          .from('transcripts')
-          .select('data, signed_data')
-          .eq('id', transcriptId)
-          .single();
-
-        if (fetchDataError) throw fetchDataError;
-        if (!fullTranscriptData || !fullTranscriptData.data) {
-          throw new Error(`Conteúdo do histórico (data) não encontrado para o ID: ${transcriptId}`);
-        }
-
-        let newSignedData = { ...(fullTranscriptData.signed_data || fullTranscriptData.data) };
+        let newSignedData: any;
         let newDocumentHash: string | null = null;
+        let updatePayload: any = { id: transcriptId };
 
         if (currentAction === 'sign') {
           if (role === 'secretary') {
-            newSignedData = { ...newSignedData, secretary: signerProfileData };
+            newSignedData = { ...(transcript.data || {}) }; // Start with original data
+            newSignedData.secretary = signerProfileData;
             newDocumentHash = await generateTranscriptHash(newSignedData);
-            return {
-              id: transcriptId,
+            
+            updatePayload = {
+              ...updatePayload,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
               status: 'pending_director_signature',
@@ -544,10 +538,15 @@ export default function SignTranscripts() {
               document_hash: newDocumentHash,
             };
           } else if (role === 'school_admin') {
-            newSignedData = { ...newSignedData, director: signerProfileData };
+            if (!transcript.signed_data) {
+              throw new Error(`Histórico de ${transcript.students?.full_name} não possui dados assinados pelo secretário. Não é possível assinar como Diretor(a).`);
+            }
+            newSignedData = { ...(transcript.signed_data || {}) }; // Continue from secretary's signed data
+            newSignedData.director = signerProfileData;
             newDocumentHash = await generateTranscriptHash(newSignedData);
-            return {
-              id: transcriptId,
+
+            updatePayload = {
+              ...updatePayload,
               director_signed_at: now,
               director_signature_id: user.id,
               status: 'signed',
@@ -556,21 +555,24 @@ export default function SignTranscripts() {
             };
           }
         } else if (currentAction === 'reject') {
-          // Use the original data for hashing when rejecting
-          const dataToHashForReject = fullTranscriptData.data;
-          newDocumentHash = await generateTranscriptHash(dataToHashForReject);
-          return {
-            id: transcriptId,
+          // When rejecting, revert signed_data to original data and clear signature fields
+          newSignedData = { ...(transcript.data || {}) }; // Revert to original data
+          newDocumentHash = await generateTranscriptHash(newSignedData); // Hash the original data
+
+          updatePayload = {
+            ...updatePayload,
             status: 'rejected',
-            director_signed_at: null,
-            director_signature_id: null,
-            secretary_signed_at: null,
-            secretary_signature_id: null,
-            signed_data: dataToHashForReject, // Set signed_data to the original data when rejecting
             document_hash: newDocumentHash,
+            signed_data: newSignedData, // Revert signed_data to original data
+            director_signature_id: null,
+            director_signed_at: null,
+            secretary_signature_id: null,
+            secretary_signed_at: null,
           };
+          // If director rejects, secretary's signature should be cleared by the trigger function
+          // but we explicitly clear director's here.
         }
-        return null;
+        return updatePayload;
       }));
 
       const validUpdates = updates.filter(Boolean);
@@ -627,6 +629,40 @@ export default function SignTranscripts() {
                     });
                   }
                 }
+              }
+            }
+          } else if (currentAction === 'reject') {
+            // Notify the original creator (secretary or administrative_assistant) if rejected
+            const creatorRole = transcript.data?.creator?.role; // Assuming creator info is stored in data
+            const creatorId = transcript.data?.creator?.id;
+
+            if (creatorId && ['secretary', 'administrative_assistant'].includes(creatorRole)) {
+              const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
+                body: JSON.stringify({
+                  user_id: creatorId,
+                  type: 'transcript_rejected',
+                  target_id: transcriptId,
+                  message: `O histórico de ${transcript.students?.full_name} foi rejeitado por ${profile.name} (${profile.role}).`,
+                }),
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (notificationError) {
+                console.error('Client: Error invoking create-notification edge function for rejection:', notificationError);
+                toast({
+                  title: "Erro na notificação",
+                  description: notificationError.message || "Não foi possível enviar a notificação de rejeição.",
+                  variant: "destructive",
+                });
+              } else if (notificationResponse && notificationResponse.error) {
+                console.error('Client: Edge function returned error for rejection notification:', notificationResponse.error);
+                toast({
+                  title: "Erro na notificação",
+                  description: notificationResponse.error || "Não foi possível enviar a notificação de rejeição.",
+                  variant: "destructive",
+                });
               }
             }
           }
