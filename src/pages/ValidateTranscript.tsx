@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
 import type { Database } from '@/integrations/supabase/types'; // Import Database type
 
-// Initialize Supabase client with service role key for public validation
-const supabaseServiceRole = createClient<Database>(
+// Initialize Supabase client with ANON key for public validation
+const supabasePublic = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+  import.meta.env.VITE_SUPABASE_ANON_KEY, // Usando a chave ANÔNIMA (pública)
   {
     auth: {
-      persistSession: false, // No session needed for service role
+      persistSession: false, // No session needed for public validation
     }
   }
 );
@@ -72,8 +72,8 @@ export default function ValidateTranscript() {
 
   const validateTranscript = async () => {
     try {
-      // Fetch transcript data including signed_data and document_hash using the service role client
-      const { data: transcriptData, error: transcriptError } = await supabaseServiceRole
+      // Fetch transcript data including signed_data and document_hash using the public client
+      const { data: transcriptData, error: transcriptError } = await supabasePublic // Usando supabasePublic
         .from('transcripts')
         .select(`
           id,
@@ -95,6 +95,7 @@ export default function ValidateTranscript() {
 
       if (transcriptError) {
         console.error(`[ValidateTranscript] Supabase Error for ID ${transcriptId}:`, transcriptError);
+        // Se o erro for de RLS, a mensagem será genérica, mas o log ajuda.
         throw transcriptError;
       }
       if (!transcriptData) {
