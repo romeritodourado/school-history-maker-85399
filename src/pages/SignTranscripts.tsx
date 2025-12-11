@@ -450,6 +450,7 @@ export default function SignTranscripts() {
 
     setIsSigning(true);
     try {
+      // 1. Autenticar o usuário com a senha fornecida
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: password,
@@ -477,48 +478,74 @@ export default function SignTranscripts() {
         const userMunicipalityId = profile.municipality_id;
         const transcriptMunicipalityId = transcript.municipality_id;
 
-        // --- START DEBUG LOGS ---
-        console.log("--- Debugging RLS for Transcript ID:", transcriptId, "---");
-        console.log("Auth User ID:", user.id);
-        console.log("Profile Role:", profile.role);
-        console.log("Profile School ID:", profile.school_id);
-        console.log("School ID from URL:", schoolIdFromUrl);
-        console.log("Transcript current status:", transcript.status);
-        console.log("Transcript school_id:", transcript.school_id);
-        console.log("Action:", currentAction);
-        // --- END DEBUG LOGS ---
-
+        // --- VALIDAÇÕES DE SEGURANÇA E FLUXO DE TRABALHO (Adicionado/Reforçado) ---
+        
+        // 1. Validação de Papel e Status
+        if (profile.role === 'secretary') {
+          if (transcript.status !== 'pending_secretary_signature') {
+            console.warn(`[Validation Failed] Transcript ${transcriptId} status is ${transcript.status}, expected pending_secretary_signature.`);
+            toast({
+              title: 'Aviso',
+              description: `Histórico de ${transcript.students?.full_name} não está pendente de assinatura do Secretário(a).`,
+              variant: 'default',
+            });
+            return null;
+          }
+        } else if (directorRoles.includes(profile.role)) {
+          if (transcript.status !== 'pending_director_signature') {
+            console.warn(`[Validation Failed] Transcript ${transcriptId} status is ${transcript.status}, expected pending_director_signature.`);
+            toast({
+              title: 'Aviso',
+              description: `Histórico de ${transcript.students?.full_name} não está pendente de assinatura do Diretor(a).`,
+              variant: 'default',
+            });
+            return null;
+          }
+        } else {
+          // Se o usuário não é secretário nem diretor/vice-diretor, ele não deveria estar aqui.
+          console.error(`[Validation Failed] User role ${profile.role} is not authorized to sign/reject.`);
+          toast({
+            title: 'Erro de Permissão',
+            description: `Seu cargo (${profile.role}) não tem permissão para assinar ou rejeitar históricos.`,
+            variant: 'destructive',
+          });
+          return null;
+        }
+        
+        // 2. Validação de Escola (para usuários de nível escolar)
         if (isSchoolLevelUser) {
-          if (userSchoolId === null) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma escola. Por favor, verifique as configurações da sua conta.`);
-          }
-          if (transcriptSchoolId === null) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma escola. Por favor, entre em contato com o suporte.`);
-          }
-
           if (userSchoolId !== transcriptSchoolId) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua escola (${transcript.schools?.name}). ID da escola do perfil: ${userSchoolId}, ID da escola do histórico: ${transcriptSchoolId}. Não é possível assinar.`);
+            console.error(`[Validation Failed] School ID mismatch for ${transcriptId}. User: ${userSchoolId}, Transcript: ${transcriptSchoolId}`);
+            toast({
+              title: 'Acesso Negado',
+              description: `Você só pode ${currentAction === 'sign' ? 'assinar' : 'rejeitar'} históricos da sua escola (${transcript.schools?.name}).`,
+              variant: 'destructive',
+            });
+            return null;
           }
         }
         
+        // 3. Validação de Rede Municipal (para usuários de nível municipal, embora não assinem, é bom manter a verificação de contexto)
         if (isMunicipalLevelUser) {
-          if (userMunicipalityId === null) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: Seu perfil não está associado a uma rede municipal. Por favor, verifique as configurações da sua conta.`);
-          }
-          if (transcriptMunicipalityId === null) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pode ser assinado: O histórico não está associado a uma rede municipal. Por favor, entre em contato com o suporte.`);
-          }
           if (userMunicipalityId !== transcriptMunicipalityId) {
-            throw new Error(`O histórico de ${transcript.students?.full_name} não pertence à sua rede municipal. ID da rede do perfil: ${userMunicipalityId}, ID da rede do histórico: ${transcriptMunicipalityId}. Não é possível assinar.`);
+            console.error(`[Validation Failed] Municipality ID mismatch for ${transcriptId}. User: ${userMunicipalityId}, Transcript: ${transcriptMunicipalityId}`);
+            toast({
+              title: 'Acesso Negado',
+              description: `Você só pode ${currentAction === 'sign' ? 'assinar' : 'rejeitar'} históricos da sua rede municipal.`,
+              variant: 'destructive',
+            });
+            return null;
           }
         }
+        
+        // --- FIM DAS VALIDAÇÕES ---
 
         let newSignedData: any;
         let newDocumentHash: string | null = null;
         let updatePayload: any = { id: transcriptId };
 
         if (currentAction === 'sign') {
-          if (role === 'secretary') {
+          if (profile.role === 'secretary') {
             newSignedData = { ...(transcript.data || {}) }; // Start with original data
             newSignedData.secretary = signerProfileData;
             newDocumentHash = await generateTranscriptHash(newSignedData);
@@ -531,7 +558,7 @@ export default function SignTranscripts() {
               signed_data: newSignedData,
               document_hash: newDocumentHash,
             };
-          } else if (directorRoles.includes(role || '')) { // Diretor ou Vice-Diretor
+          } else if (directorRoles.includes(profile.role || '')) { // Diretor ou Vice-Diretor
             if (!transcript.signed_data) {
               throw new Error(`Histórico de ${transcript.students?.full_name} não possui dados assinados pelo secretário. Não é possível assinar como Diretor(a).`);
             }
@@ -579,7 +606,7 @@ export default function SignTranscripts() {
 
         if (updateError) throw updateError;
 
-        for (const transcriptId of selectedTranscripts) {
+        for (const transcriptId of validUpdates.map(u => u.id)) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
 
@@ -664,10 +691,13 @@ export default function SignTranscripts() {
 
         toast({
           title: 'Sucesso',
-          description: `${selectedTranscripts.length} histórico(s) ${currentAction === 'sign' ? 'assinado(s)' : 'rejeitado(s)'} com sucesso!`,
+          description: `${validUpdates.length} histórico(s) ${currentAction === 'sign' ? 'assinado(s)' : 'rejeitado(s)'} com sucesso!`,
         });
         setDialogOpen(false);
         fetchPendingTranscripts();
+      } else {
+        // Se não houve updates válidos, mas a autenticação passou, apenas feche o diálogo.
+        setDialogOpen(false);
       }
     } catch (error: any) {
       toast({
