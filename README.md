@@ -17,7 +17,7 @@ Sistema completo para criação, gerenciamento e exportação de históricos esc
 - Vite
 - Tailwind CSS
 - shadcn/ui
-- Supabase (banco de dados) - **Autenticação removida**
+- Supabase (banco de dados e autenticação) - **Autenticação ativa**
 - jsPDF (geração de PDFs)
 - XLSX (geração de Excel)
 
