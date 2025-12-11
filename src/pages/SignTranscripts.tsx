@@ -240,9 +240,15 @@ export default function SignTranscripts() {
         .from('transcripts')
         .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash, school_id, municipality_id, data, signed_data, students (full_name), schools (name)');
       
-      console.log("[SignTranscripts] Current user role for query:", role);
-      console.log("[SignTranscripts] Current user profile school_id for query:", profile?.school_id);
-      console.log("[SignTranscripts] schoolIdFromUrl for query:", schoolIdFromUrl);
+      console.log("=== VICE-DIRETOR DEBUG ===");
+      console.log("Usuário role:", role);
+      console.log("É vice_school_admin?", role === 'vice_school_admin');
+      console.log("Está em directorRoles?", directorRoles.includes(role || ''));
+      if (role === 'vice_school_admin') {
+        console.log("✅ VICE-DIRETOR: Deve ver pending_director_signature");
+        console.log("School ID match:", profile?.school_id === schoolIdFromUrl);
+      }
+      console.log("==========================");
 
       if (schoolIdFromUrl) {
         query = query.eq('school_id', schoolIdFromUrl);
@@ -613,7 +619,7 @@ export default function SignTranscripts() {
         await Promise.all(updatePromises);
         // --- FIM DA SUBSTITUIÇÃO ---
 
-        for (const { id: transcriptId } of validUpdates) {
+        for (const { id: transcriptId } of validUpdates.map(u => ({ id: u.id }))) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
 
