@@ -457,14 +457,17 @@ export default function SignTranscripts() {
     setIsSigning(true);
     try {
       // 1. Autenticar o usuário com a senha fornecida
+      console.log(`[Auth Check] Attempting re-authentication for user: ${user.email}`);
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: password,
       });
 
       if (authError) {
+        console.error(`[Auth Check] Re-authentication failed:`, authError);
         throw new Error('Senha incorreta. Não foi possível confirmar a ação.');
       }
+      console.log(`[Auth Check] Re-authentication successful.`);
 
       const now = new Date().toISOString();
       const signerProfileData = {
@@ -603,7 +606,7 @@ export default function SignTranscripts() {
       console.log("[SignTranscripts] handleConfirmAction: validUpdates before updates:", validUpdates);
 
       if (validUpdates.length > 0) {
-        // --- SUBSTITUIÇÃO DO UPSERT POR UPDATES INDIVIDUAIS ---
+        // --- USANDO UPDATES INDIVIDUAIS ---
         const updatePromises = validUpdates.map(async ({ id, payload }) => {
           const { error: updateError } = await supabase
             .from('transcripts')
@@ -617,9 +620,9 @@ export default function SignTranscripts() {
         });
 
         await Promise.all(updatePromises);
-        // --- FIM DA SUBSTITUIÇÃO ---
+        // --- FIM DOS UPDATES INDIVIDUAIS ---
 
-        for (const { id: transcriptId } of validUpdates.map(u => ({ id: u.id }))) {
+        for (const { id: transcriptId } of validUpdates) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
 
