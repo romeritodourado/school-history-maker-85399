@@ -542,7 +542,7 @@ export default function SignTranscripts() {
 
         let newSignedData: any;
         let newDocumentHash: string | null = null;
-        let updatePayload: any = { id: transcriptId };
+        let updatePayload: any = {}; // Não inclua 'id' aqui, pois será usado no .eq()
 
         if (currentAction === 'sign') {
           if (profile.role === 'secretary') {
@@ -551,7 +551,6 @@ export default function SignTranscripts() {
             newDocumentHash = await generateTranscriptHash(newSignedData);
             
             updatePayload = {
-              ...updatePayload,
               secretary_signed_at: now,
               secretary_signature_id: user.id,
               status: 'pending_director_signature',
@@ -567,7 +566,6 @@ export default function SignTranscripts() {
             newDocumentHash = await generateTranscriptHash(newSignedData);
 
             updatePayload = {
-              ...updatePayload,
               director_signed_at: now,
               director_signature_id: user.id,
               status: 'signed',
@@ -581,7 +579,6 @@ export default function SignTranscripts() {
           newDocumentHash = await generateTranscriptHash(newSignedData); // Hash the original data
 
           updatePayload = {
-            ...updatePayload,
             status: 'rejected',
             document_hash: newDocumentHash,
             signed_data: newSignedData, // Revert signed_data to original data
@@ -590,23 +587,33 @@ export default function SignTranscripts() {
             secretary_signature_id: null,
             secretary_signed_at: null,
           };
-          // If director rejects, secretary's signature should be cleared by the trigger function
-          // but we explicitly clear director's here.
         }
-        return updatePayload;
+        
+        // Retorna o ID e o payload para o Promise.all
+        return { id: transcriptId, payload: updatePayload };
       }));
 
-      const validUpdates = updates.filter(Boolean);
-      console.log("[SignTranscripts] handleConfirmAction: validUpdates before upsert:", validUpdates); // Log de depuração
+      const validUpdates = updates.filter(Boolean) as { id: string, payload: any }[];
+      console.log("[SignTranscripts] handleConfirmAction: validUpdates before updates:", validUpdates);
 
       if (validUpdates.length > 0) {
-        const { error: updateError } = await supabase
-          .from('transcripts')
-          .upsert(validUpdates, { onConflict: 'id' });
+        // --- SUBSTITUIÇÃO DO UPSERT POR UPDATES INDIVIDUAIS ---
+        const updatePromises = validUpdates.map(async ({ id, payload }) => {
+          const { error: updateError } = await supabase
+            .from('transcripts')
+            .update(payload)
+            .eq('id', id);
+          
+          if (updateError) {
+            console.error(`Error updating transcript ${id}:`, updateError);
+            throw new Error(`Falha ao atualizar histórico ${id}: ${updateError.message}`);
+          }
+        });
 
-        if (updateError) throw updateError;
+        await Promise.all(updatePromises);
+        // --- FIM DA SUBSTITUIÇÃO ---
 
-        for (const transcriptId of validUpdates.map(u => u.id)) {
+        for (const { id: transcriptId } of validUpdates) {
           const transcript = pendingTranscripts.find(t => t.id === transcriptId);
           if (!transcript) continue;
 
