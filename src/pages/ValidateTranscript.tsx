@@ -61,8 +61,10 @@ export default function ValidateTranscript() {
 
   useEffect(() => {
     if (transcriptId) {
+      console.log(`[ValidateTranscript] Attempting validation for ID: ${transcriptId}`);
       validateTranscript();
     } else {
+      console.error('[ValidateTranscript] ID do histórico não fornecido na URL.');
       setError('ID do histórico não fornecido');
       setLoading(false);
     }
@@ -85,14 +87,22 @@ export default function ValidateTranscript() {
           students (full_name, completion_year, grade_series, student_status),
           schools (name),
           municipalities (name),
-          director_signature_id (name, registration_number),
-          secretary_signature_id (name, registration_number)
+          director_signature_id (name, registration_number, cpf),
+          secretary_signature_id (name, registration_number, cpf)
         `)
         .eq('id', transcriptId)
         .single();
 
-      if (transcriptError) throw transcriptError;
-      if (!transcriptData) throw new Error('Histórico não encontrado.');
+      if (transcriptError) {
+        console.error(`[ValidateTranscript] Supabase Error for ID ${transcriptId}:`, transcriptError);
+        throw transcriptError;
+      }
+      if (!transcriptData) {
+        console.error(`[ValidateTranscript] No data found for ID ${transcriptId}.`);
+        throw new Error('Histórico não encontrado.');
+      }
+      
+      console.log(`[ValidateTranscript] Data fetched successfully for ID ${transcriptId}. Status: ${transcriptData.status}`);
 
       let isValid = false;
       let regeneratedHash: string | null = null;
@@ -100,12 +110,14 @@ export default function ValidateTranscript() {
       if (transcriptData.signed_data && transcriptData.document_hash) {
         regeneratedHash = await generateTranscriptHash(transcriptData.signed_data);
         isValid = regeneratedHash === transcriptData.document_hash;
+        console.log(`[ValidateTranscript] Hashing check: Registered Hash=${transcriptData.document_hash}, Regenerated Hash=${regeneratedHash}, Match=${isValid}`);
       } else {
         isValid = false; // Cannot validate if data or hash is missing
+        console.warn(`[ValidateTranscript] Validation skipped: signed_data or document_hash missing.`);
       }
 
-      const directorProfile = transcriptData.director_signature_id as { name: string | null, registration_number: string | null } | null;
-      const secretaryProfile = transcriptData.secretary_signature_id as { name: string | null, registration_number: string | null } | null;
+      const directorProfile = transcriptData.director_signature_id as { name: string | null, registration_number: string | null, cpf: string | null } | null;
+      const secretaryProfile = transcriptData.secretary_signature_id as { name: string | null, registration_number: string | null, cpf: string | null } | null;
 
       const validationData: TranscriptValidation = {
         student_name: (transcriptData.students as { full_name: string } | null)?.full_name || 'Não informado',
@@ -270,7 +282,7 @@ export default function ValidateTranscript() {
             {validation.is_valid ? (
               <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5" />
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
                   Este histórico é autêntico e não foi adulterado.
                 </p>
                 {validation.document_hash && (
@@ -282,7 +294,7 @@ export default function ValidateTranscript() {
             ) : (
               <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-800 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200 font-medium flex items-center gap-2">
-                  <XCircle className="h-5 w-5" />
+                  <XCircle className="h-5 w-5 mr-2" />
                   ATENÇÃO: Este documento pode ter sido adulterado ou não foi assinado digitalmente!
                 </p>
                 {validation.document_hash && (
