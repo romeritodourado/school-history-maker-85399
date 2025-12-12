@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const mountedRef = useRef(true);
   const initDone = useRef(false);
-  const sessionInitialized = useRef(false);
+  const authStateInitialized = useRef(false); // 1. Adicionado authStateInitialized ref
 
   useEffect(() => {
     return () => {
@@ -119,11 +119,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user?.id, fetchProfileForUser]);
 
+  // 2. Substituído o useEffect de INIT SESSION
   // ================== INIT SESSION =====================
   useEffect(() => {
-    if (initDone.current) return;
+    if (initDone.current || authStateInitialized.current) return;
     initDone.current = true;
-
+    
     const init = async () => {
       try {
         console.log("AuthContext: Recuperando sessão inicial...");
@@ -133,21 +134,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const sessionData = data?.session ?? null;
 
         if (sessionData?.user) {
-          console.log("AuthContext: Processando sessão inicial do usuário:", sessionData.user.id);
+          console.log("AuthContext: Sessão encontrada para usuário:", sessionData.user.id);
+          
+          // Primeiro setar o usuário básico
           setUser(sessionData.user);
           setSession(sessionData);
+          
+          // Depois buscar perfil
           const prof = await fetchProfileForUser(sessionData.user.id);
           
-          if (!prof) {
-            console.warn("AuthContext: Perfil não encontrado para o usuário:", sessionData.user.id);
-            // If profile not found, consider user not fully authenticated for app purposes
-            setUser(null);
-            setSession(null);
-            setProfile(null);
-            setRole(null);
-          } else {
+          if (prof) {
             setProfile(prof);
             setRole(prof.role);
+            console.log("AuthContext: Perfil carregado com sucesso");
+          } else {
+            console.warn("AuthContext: Perfil não encontrado");
+            // Manter user mas sem perfil
+            setProfile(null);
+            setRole(null);
           }
         } else {
           console.log("AuthContext: Nenhuma sessão ativa encontrada");
@@ -158,93 +162,84 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (err) {
         console.error("AuthContext: Erro no init()", err);
-        // Ensure state is cleared on error
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
       } finally {
-        // Ensure these are set regardless of success or failure
+        // ORDEM CRÍTICA: Primeiro sessionLoading = false, DEPOIS initialSessionChecked = true
         if (mountedRef.current) {
-          setInitialSessionChecked(true); // Mark initial check as complete
-          setSessionLoading(false);      // Stop session loading
+          setSessionLoading(false);
         }
+        
+        // Pequeno delay para garantir sincronização
+        setTimeout(() => {
+          if (mountedRef.current) {
+            setInitialSessionChecked(true);
+            authStateInitialized.current = true;
+            console.log("AuthContext: Inicialização completa", {
+              sessionLoading: false,
+              initialSessionChecked: true
+            });
+          }
+        }, 50);
       }
     };
 
     init();
   }, [fetchProfileForUser]);
 
+  // 3. Substituído o AUTH LISTENER
   // ================== AUTH LISTENER =====================
   useEffect(() => {
     console.log("AuthContext: Configurando listener de auth state change.");
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, sessionData) => {
-        console.log("Auth state changed - Event:", event, "Session:", sessionData?.user?.id);
+        console.log("Auth state changed - Event:", event);
+        
+        if (!mountedRef.current) return;
 
-        // Evitar processamento duplicado do SIGNED_IN
-        if (event === "SIGNED_IN" && sessionData?.user) {
-          // Se a sessão já foi inicializada com este mesmo usuário, ignorar
-          if (sessionInitialized.current && user?.id === sessionData.user.id) {
-            console.log("AuthContext: SIGNED_IN recebido para usuário já autenticado, ignorando.");
-            return;
-          }
-          
-          console.log("AuthContext: Processando SIGNED_IN para usuário:", sessionData.user.id);
-          sessionInitialized.current = true;
-          setAuthLoading(true);
-          
-          const prof = await fetchProfileForUser(sessionData.user.id);
+        // Ignorar eventos durante loading
+        if (sessionLoading || authLoading) {
+          console.log("AuthContext: Ignorando evento durante loading");
+          return;
+        }
 
-          if (mountedRef.current) {
+        setAuthLoading(true);
+
+        try {
+          if (event === "SIGNED_IN" && sessionData?.user) {
+            console.log("AuthContext: Processando SIGNED_IN");
+            
+            const prof = await fetchProfileForUser(sessionData.user.id);
+            
             setUser(sessionData.user);
             setSession(sessionData);
             setProfile(prof ?? null);
             setRole(prof?.role ?? null);
-            setAuthLoading(false);
-          }
-        } 
-        else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          if (sessionData?.user) {
-            console.log("AuthContext: Atualizando dados do usuário:", sessionData.user.id);
-            setAuthLoading(true);
-            
-            const prof = await fetchProfileForUser(sessionData.user.id);
-
-            if (mountedRef.current) {
-              setUser(sessionData.user);
-              setSession(sessionData);
-              setProfile(prof ?? null);
-              setRole(prof?.role ?? null);
-              setAuthLoading(false);
-            }
-          }
-        } 
-        else if (event === "SIGNED_OUT") {
-          console.log("AuthContext: Processando SIGNED_OUT");
-          sessionInitialized.current = false;
-          if (mountedRef.current) {
+          } 
+          else if (event === "SIGNED_OUT") {
+            console.log("AuthContext: Processando SIGNED_OUT");
             setUser(null);
             setSession(null);
             setProfile(null);
             setRole(null);
             setActiveMunicipalityIdForSuperAdmin(null);
-            setAuthLoading(false);
           }
+        } catch (error) {
+          console.error("AuthContext: Erro no listener:", error);
+        } finally {
+          setAuthLoading(false);
         }
       }
     );
 
     return () => {
-      console.log("AuthContext: Removendo listener de auth state change.");
-      try {
-        listener.subscription.unsubscribe();
-      } catch (err) {
-        console.warn("AuthContext: Erro ao desinscrever listener:", err);
-      }
+      console.log("AuthContext: Removendo listener");
+      listener?.subscription?.unsubscribe();
     };
-  }, [fetchProfileForUser, user?.id]);
+  }, [fetchProfileForUser, sessionLoading, authLoading]);
 
   // ================== AUTH OPERATIONS =====================
   const signIn = async (email: string, password: string) => {
