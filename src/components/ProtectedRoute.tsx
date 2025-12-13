@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import FullPageLoader from "@/components/FullPageLoader";
@@ -7,44 +7,51 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
-console.log("🛡️ ProtectedRoute.tsx CARREGADO");
+console.log("🛡️ ProtectedRoute carregado");
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, profile, isLoading, initialSessionChecked } = useAuth();
+  const { user, profile, isLoading, isInitialized } = useAuth();
   const location = useLocation();
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
 
   useEffect(() => {
-    console.log("🛡️ ProtectedRoute: Renderizado", {
+    console.log("🔍 ProtectedRoute análise:", {
       path: location.pathname,
       isLoading,
-      initialSessionChecked,
+      isInitialized,
       user: user?.id || 'null',
       profile: profile?.id || 'null',
-      timestamp: new Date().toISOString()
+      authStatus
     });
-  }, [location.pathname, isLoading, initialSessionChecked, user, profile]);
 
-  // Debug em tempo real
-  console.log("🛡️ ProtectedRoute: Estado atual", {
-    isLoading,
-    initialSessionChecked,
-    user: user?.id || 'null',
-    profile: profile?.id || 'null'
-  });
+    // Só decidir quando a inicialização estiver completa
+    if (isInitialized && !isLoading) {
+      if (user && profile) {
+        console.log("✅ ProtectedRoute: Usuário autenticado");
+        setAuthStatus('authenticated');
+      } else {
+        console.log("🔒 ProtectedRoute: Usuário não autenticado");
+        setAuthStatus('unauthenticated');
+      }
+    } else {
+      console.log("⏳ ProtectedRoute: Aguardando verificação...");
+      setAuthStatus('checking');
+    }
+  }, [isLoading, isInitialized, user, profile, location.pathname, authStatus]);
 
-  // REGRA SIMPLES: Se ainda está carregando ou não verificou, mostrar loader
-  if (isLoading || !initialSessionChecked) {
-    console.log("🛡️ ProtectedRoute: Mostrando loader (carregando/verificando)");
+  // 1. Se ainda está verificando, mostrar loader
+  if (authStatus === 'checking') {
+    console.log("🔄 ProtectedRoute: Mostrando loader");
     return <FullPageLoader message="Verificando autenticação..." />;
   }
 
-  // Se verificou e não tem usuário/perfil, redirecionar
-  if (!user || !profile) {
-    console.log("🛡️ ProtectedRoute: Redirecionando para /login");
+  // 2. Se não autenticado, redirecionar
+  if (authStatus === 'unauthenticated') {
+    console.log("➡️ ProtectedRoute: Redirecionando para /login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Usuário autenticado
-  console.log("🛡️ ProtectedRoute: ✅ Acesso permitido para", user.id);
+  // 3. Autenticado
+  console.log("🎯 ProtectedRoute: Renderizando conteúdo para", user?.id);
   return <>{children}</>;
 }

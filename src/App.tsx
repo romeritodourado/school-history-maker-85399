@@ -23,6 +23,7 @@ import AccountSettings from "./pages/AccountSettings";
 import SignTranscripts from "./pages/SignTranscripts";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/ThemeProvider";
+import AuthErrorBoundary from "./components/AuthErrorBoundary"; // Importar AuthErrorBoundary
 
 // Configura o QueryClient com um staleTime padrão de 5 minutos
 const queryClient = new QueryClient({
@@ -38,121 +39,123 @@ const App = () => (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <BrowserRouter>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
-              <Route
-                path="/municipal-network-setup"
-                element={
-                  <ProtectedRoute>
-                    <MunicipalNetworkSetup />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/validar" element={<ValidateTranscript />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/municipal-dashboard/:municipalityId"
-                element={
-                  <ProtectedRoute>
-                    <MunicipalDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manage-municipalities"
-                element={
-                  <ProtectedRoute>
-                    <ManageMunicipalities />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/lista-alunos"
-                element={
-                  <ProtectedRoute>
-                    <StudentList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/novo-historico"
-                element={
-                  <ProtectedRoute>
-                    <CreateTranscript />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/visualizar/:id"
-                element={
-                  <ProtectedRoute>
-                    <ViewTranscript />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/editar/:id"
-                element={
-                  <ProtectedRoute>
-                    <CreateTranscript />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/carga-horaria"
-                element={
-                  <ProtectedRoute>
-                    <WorkloadManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/escolas"
-                element={
-                  <ProtectedRoute>
-                    <Schools />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/usuarios"
-                element={
-                  <ProtectedRoute>
-                    <Users />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/account-settings"
-                element={
-                  <ProtectedRoute>
-                    <AccountSettings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/assinar-historicos"
-                element={
-                  <ProtectedRoute>
-                    <SignTranscripts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
+          <AuthErrorBoundary>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/initial-superadmin-setup" element={<InitialSuperAdminSetup />} />
+                <Route
+                  path="/municipal-network-setup"
+                  element={
+                    <ProtectedRoute>
+                      <MunicipalNetworkSetup />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/validar" element={<ValidateTranscript />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/municipal-dashboard/:municipalityId"
+                  element={
+                    <ProtectedRoute>
+                      <MunicipalDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/manage-municipalities"
+                  element={
+                    <ProtectedRoute>
+                      <ManageMunicipalities />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/lista-alunos"
+                  element={
+                    <ProtectedRoute>
+                      <StudentList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/novo-historico"
+                  element={
+                    <ProtectedRoute>
+                      <CreateTranscript />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/visualizar/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ViewTranscript />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/editar/:id"
+                  element={
+                    <ProtectedRoute>
+                      <CreateTranscript />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/carga-horaria"
+                  element={
+                    <ProtectedRoute>
+                      <WorkloadManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/escolas"
+                  element={
+                    <ProtectedRoute>
+                      <Schools />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/usuarios"
+                  element={
+                    <ProtectedRoute>
+                      <Users />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/account-settings"
+                  element={
+                    <ProtectedRoute>
+                      <AccountSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/assinar-historicos"
+                  element={
+                    <ProtectedRoute>
+                      <SignTranscripts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TooltipProvider>
+          </AuthErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
