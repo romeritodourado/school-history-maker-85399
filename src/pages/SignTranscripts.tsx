@@ -164,11 +164,7 @@ export default function SignTranscripts() {
 
     if (!authLoading && user && profile) {
       console.log("[SignTranscripts] useEffect: User is authenticated.");
-      console.log("[SignTranscripts] useEffect: User ID:", user.id);
-      console.log("[SignTranscripts] useEffect: User Role:", profile.role);
-      console.log("[SignTranscripts] useEffect: User School ID (from profile):", profile.school_id);
-      console.log("[SignTranscripts] useEffect: School ID (from URL):", schoolIdFromUrl);
-
+      
       const isSchoolLevelUser = [...directorRoles, 'secretary', 'administrative_assistant'].includes(profile.role || '');
       
       if (isSchoolLevelUser && !profile.school_id) {
@@ -240,16 +236,6 @@ export default function SignTranscripts() {
         .from('transcripts')
         .select('id, student_id, status, created_at, director_signature_id, secretary_signature_id, director_signed_at, secretary_signed_at, document_hash, school_id, municipality_id, data, signed_data, students (full_name), schools (name)');
       
-      console.log("=== VICE-DIRETOR DEBUG ===");
-      console.log("Usuário role:", role);
-      console.log("É vice_school_admin?", role === 'vice_school_admin');
-      console.log("Está em directorRoles?", directorRoles.includes(role || ''));
-      if (role === 'vice_school_admin') {
-        console.log("✅ VICE-DIRETOR: Deve ver pending_director_signature");
-        console.log("School ID match:", profile?.school_id === schoolIdFromUrl);
-      }
-      console.log("==========================");
-
       if (schoolIdFromUrl) {
         query = query.eq('school_id', schoolIdFromUrl);
         console.log("[SignTranscripts] Query filter: school_id =", schoolIdFromUrl);
@@ -500,7 +486,7 @@ export default function SignTranscripts() {
             });
             return null;
           }
-        } else if (directorRoles.includes(profile.role)) {
+        } else if (directorRoles.includes(profile.role || '')) {
           if (transcript.status !== 'pending_director_signature') {
             console.warn(`[Validation Failed] Transcript ${transcriptId} status is ${transcript.status}, expected pending_director_signature.`);
             toast({
