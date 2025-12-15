@@ -19,6 +19,15 @@ interface AuthContextType {
   isLoading: boolean;
   isInitialized: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    roleParam: AppRole,
+    municipality_id?: string,
+    school_id?: string,
+    cpf?: string
+  ) => Promise<{ error: any }>; // Adicionado signUp
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>; // Mantendo refreshProfile para atualizações de perfil
   activeMunicipalityIdForSuperAdmin: string | null; // Mantendo estados específicos
@@ -186,6 +195,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           data: { name, role: roleParam, municipality_id, school_id, cpf },
         },
       });
+      
+      if (!error) {
+        // Se o cadastro for bem-sucedido, o usuário é criado, mas não logado automaticamente.
+        // O perfil é criado via trigger.
+        // Não recarregamos aqui, apenas retornamos o sucesso.
+      }
+      
       return { error };
     } finally {
       setIsLoading(false);
@@ -233,7 +249,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     isLoading,
     isInitialized,
     signIn,
-    signUp,
+    signUp, // Incluído no contexto
     signOut,
     refreshProfile,
     activeMunicipalityIdForSuperAdmin,
