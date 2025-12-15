@@ -456,12 +456,14 @@ export default function SignTranscripts() {
       console.log(`[Auth Check] Re-authentication successful.`);
 
       const now = new Date().toISOString();
+      
+      // GARANTINDO CONSISTÊNCIA DO HASH: Todos os campos devem ser explicitamente definidos, mesmo que null
       const signerProfileData = {
         id: user.id,
-        name: profile.name,
-        registration_number: profile.registration_number,
-        cpf: profile.cpf, // NOVO: Incluir CPF
-        role: profile.role,
+        name: profile.name || null,
+        registration_number: profile.registration_number || null,
+        cpf: profile.cpf || null, 
+        role: profile.role || null,
       };
 
       const updates = await Promise.all(selectedTranscripts.map(async transcriptId => {
