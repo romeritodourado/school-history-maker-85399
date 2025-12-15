@@ -613,12 +613,7 @@ const CreateTranscript = () => {
         schoolPeriod,
         schoolId: currentSchoolId,
         municipalityId: currentMunicipalityId,
-        // NOVO: Incluir dados do criador do histórico para notificação de rejeição
-        creator: {
-          id: user?.id,
-          name: profile?.name,
-          role: profile?.role,
-        }
+        // REMOVIDO: creator field para garantir consistência do hash
       };
       // No hash generated here, as it's done at the time of signing by the secretary.
 

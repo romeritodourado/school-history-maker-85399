@@ -139,7 +139,7 @@ const ViewTranscript = () => {
       const studentDataFromTranscript = displayData.studentData;
       const academicYearsFromTranscript = displayData.academicYears;
       const yearGradesFromTranscript = displayData.yearGrades;
-      const trimesterGradesFromTranscript = displayData.trimesterGrimesterGrades;
+      const trimesterGradesFromTranscript = displayData.trimesterGrades; // CORRIGIDO AQUI
       const schoolPeriodFromTranscript = displayData.schoolPeriod;
 
       // Extract historical signer data from displayData

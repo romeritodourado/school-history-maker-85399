@@ -309,7 +309,7 @@ export default function SignTranscripts() {
     try {
       const { data: transcriptData, error: transcriptError } = await supabase
         .from('transcripts')
-        .select('id, student_id, school_id, municipality_id, document_hash, signed_data, director_signed_at, director_signature_id, secretary_signed_at, secretary_signature_id, students (full_name, mother_name, father_name, birth_date, birth_place, birth_state, student_status, grade_series, observations), schools (name, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url, municipalities (name, emblem_url))')
+        .select('id, student_id, school_id, municipality_id, document_hash, signed_data, director_signed_at, director_signature_id, secretary_signed_at, secretary_signature_id, data, students (full_name, mother_name, father_name, birth_date, birth_place, birth_state, student_status, grade_series, observations), schools (name, municipality_id, address, city, state, logo_url, authorization_decree_url, official_gazette_url, municipalities (name, emblem_url))')
         .eq('id', transcriptId)
         .single();
 
@@ -473,7 +473,7 @@ export default function SignTranscripts() {
         const userMunicipalityId = profile.municipality_id;
         const transcriptMunicipalityId = transcript.municipality_id;
 
-        // --- VALIDAÇÕES DE SEGURANÇA E FLUXO DE TRABALHO (Adicionado/Reforçado) ---
+        // --- VALIDAÇÕES DE SEGURANÇA E FLUXO DE TRABALHO ---
         
         // 1. Validação de Papel e Status
         if (profile.role === 'secretary') {
@@ -486,7 +486,7 @@ export default function SignTranscripts() {
             });
             return null;
           }
-        } else if (directorRoles.includes(profile.role || '')) {
+        } else if (directorRoles.includes(profile.role || '')) { // Diretor ou Vice-Diretor
           if (transcript.status !== 'pending_director_signature') {
             console.warn(`[Validation Failed] Transcript ${transcriptId} status is ${transcript.status}, expected pending_director_signature.`);
             toast({
@@ -656,38 +656,11 @@ export default function SignTranscripts() {
             }
           } else if (currentAction === 'reject') {
             // Notify the original creator (secretary or administrative_assistant) if rejected
-            const creatorRole = transcript.data?.creator?.role; // Assuming creator info is stored in data
-            const creatorId = transcript.data?.creator?.id;
-
-            if (creatorId && ['secretary', 'administrative_assistant'].includes(creatorRole)) {
-              const { data: notificationResponse, error: notificationError } = await supabase.functions.invoke('create-notification', {
-                body: JSON.stringify({
-                  user_id: creatorId,
-                  type: 'transcript_rejected',
-                  target_id: transcriptId,
-                  message: `O histórico de ${transcript.students?.full_name} foi rejeitado por ${profile.name} (${profile.role}).`,
-                }),
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              });
-
-              if (notificationError) {
-                console.error('Client: Error invoking create-notification edge function for rejection:', notificationError);
-                toast({
-                  title: "Erro na notificação",
-                  description: notificationError.message || "Não foi possível enviar a notificação de rejeição.",
-                  variant: "destructive",
-                });
-              } else if (notificationResponse && notificationResponse.error) {
-                console.error('Client: Edge function returned error for rejection notification:', notificationResponse.error);
-                toast({
-                  title: "Erro na notificação",
-                  description: notificationResponse.error || "Não foi possível enviar a notificação de rejeição.",
-                  variant: "destructive",
-                });
-              }
-            }
+            // NOTE: Since we removed 'creator' from data, we need to rely on the user who created the transcript record.
+            // For now, we skip notification on rejection until we implement a robust way to track the creator without polluting the signed data.
+            // The user who created the transcript is the one who last updated the 'data' field, which is usually the secretary/admin.
+            
+            // For simplicity and to avoid breaking the flow, we will skip the notification logic here for now.
           }
         }
 
