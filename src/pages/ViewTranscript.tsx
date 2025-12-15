@@ -101,7 +101,7 @@ const ViewTranscript = () => {
   const [historicalSecretaryData, setHistoricalSecretaryData] = useState<HistoricalSignerData | null>(null); // NOVO
   const [directorSignedAt, setDirectorSignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do diretor
   const [secretarySignedAt, setSecretarySignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do secretário
-  const [documentHash, setDocumentHash] = useState<string | null>(documentHash); // NOVO: Hash do documento
+  const [documentHash, setDocumentHash] = useState<string | null>(null); // CORRIGIDO: Inicializado com null
 
   useEffect(() => {
     if (studentId) {
@@ -139,7 +139,7 @@ const ViewTranscript = () => {
       const studentDataFromTranscript = displayData.studentData;
       const academicYearsFromTranscript = displayData.academicYears;
       const yearGradesFromTranscript = displayData.yearGrades;
-      const trimesterGradesFromTranscript = displayData.trimesterGrades;
+      const trimesterGradesFromTranscript = displayData.trimesterGrimesterGrades;
       const schoolPeriodFromTranscript = displayData.schoolPeriod;
 
       // Extract historical signer data from displayData
