@@ -369,7 +369,12 @@ export default function SignTranscripts() {
           .select('id, name, registration_number, role, cpf')
           .eq('id', transcriptData.director_signature_id)
           .single();
-        if (dirError) console.error('Error fetching director profile:', dirError);
+        
+        // Tratamento de erro PGRST116 (No rows found)
+        if (dirError && dirError.code !== 'PGRST116') {
+          console.error('Error fetching director profile:', dirError);
+          throw dirError;
+        }
         directorProfile = dirProfile;
       }
       setPreviewDirectorProfile(directorProfile);
@@ -381,7 +386,12 @@ export default function SignTranscripts() {
           .select('id, name, registration_number, role, cpf')
           .eq('id', transcriptData.secretary_signature_id)
           .single();
-        if (secError) console.error('Error fetching secretary profile:', secError);
+        
+        // Tratamento de erro PGRST116 (No rows found)
+        if (secError && secError.code !== 'PGRST116') {
+          console.error('Error fetching secretary profile:', secError);
+          throw secError;
+        }
         secretaryProfile = secProfile;
       }
       setPreviewSecretaryProfile(secretaryProfile);

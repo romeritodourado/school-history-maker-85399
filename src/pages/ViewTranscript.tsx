@@ -198,7 +198,12 @@ const ViewTranscript = () => {
           .select('id, name, registration_number, role, signature_image_url, cpf')
           .eq('id', transcriptRecord.director_signature_id)
           .single();
-        if (dirError) console.error('Error fetching director profile:', dirError);
+        
+        // Tratamento de erro PGRST116 (No rows found)
+        if (dirError && dirError.code !== 'PGRST116') {
+          console.error('Error fetching director profile:', dirError);
+          throw dirError;
+        }
         fetchedDirectorProfile = dirProfile;
       }
       setDirectorProfile(fetchedDirectorProfile);
@@ -211,7 +216,12 @@ const ViewTranscript = () => {
           .select('id, name, registration_number, role, signature_image_url, cpf')
           .eq('id', transcriptRecord.secretary_signature_id)
           .single();
-        if (secError) console.error('Error fetching secretary profile:', secError);
+        
+        // Tratamento de erro PGRST116 (No rows found)
+        if (secError && secError.code !== 'PGRST116') {
+          console.error('Error fetching secretary profile:', secError);
+          throw secError;
+        }
         fetchedSecretaryProfile = secProfile;
       }
       setSecretaryProfile(fetchedSecretaryProfile);
