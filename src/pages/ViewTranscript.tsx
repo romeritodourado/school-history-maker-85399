@@ -202,7 +202,7 @@ const ViewTranscript = () => {
         // Tratamento de erro PGRST116 (No rows found)
         if (dirError && dirError.code !== 'PGRST116') {
           console.error('Error fetching director profile:', dirError);
-          throw dirError;
+          // Não lançar erro, apenas logar e continuar
         }
         fetchedDirectorProfile = dirProfile;
       }
@@ -220,7 +220,7 @@ const ViewTranscript = () => {
         // Tratamento de erro PGRST116 (No rows found)
         if (secError && secError.code !== 'PGRST116') {
           console.error('Error fetching secretary profile:', secError);
-          throw secError;
+          // Não lançar erro, apenas logar e continuar
         }
         fetchedSecretaryProfile = secProfile;
       }
