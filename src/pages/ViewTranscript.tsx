@@ -333,6 +333,12 @@ const ViewTranscript = () => {
                     (currentUserRole === 'network_manager' && currentUserProfile?.municipality_id === student?.schools?.municipality_id) ||
                     (['school_admin', 'vice_school_admin'].includes(currentUserRole || '') && currentUserProfile?.school_id === student?.school_id);
 
+  useEffect(() => {
+    if (!loading && student) {
+      console.log(`[ViewTranscript] Status: ${transcriptStatus}, Can Revert: ${canRevert}`);
+    }
+  }, [loading, student, transcriptStatus, canRevert]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
