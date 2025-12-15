@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import correctLogo from "/correct-logo.png";
 import type { Database } from '@/integrations/supabase/types'; // Import Database type
+import { generateTranscriptHash } from '@/lib/hashUtils'; // Importar função de hash centralizada
 
 // Initialize Supabase client with ANON key for public validation
 const supabasePublic = createClient<Database>(
@@ -38,17 +39,6 @@ interface TranscriptValidation {
   secretary_name: string | null;
   secretary_registration: string | null;
   secretary_signed_at: string | null;
-}
-
-// Função para gerar o hash do conteúdo do histórico (duplicada para validação independente)
-async function generateTranscriptHash(data: any): Promise<string> {
-  const dataString = JSON.stringify(data);
-  const textEncoder = new TextEncoder();
-  const dataBuffer = textEncoder.encode(dataString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
 }
 
 export default function ValidateTranscript() {

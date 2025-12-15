@@ -12,6 +12,7 @@ import correctLogo from "/correct-logo.png";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { TranscriptPreview } from '@/components/transcript/TranscriptPreview'; // Importar TranscriptPreview
+import { generateTranscriptHash } from '@/lib/hashUtils'; // Importar função de hash centralizada
 
 interface StudentData {
   id: string;
@@ -105,17 +106,6 @@ interface TranscriptToSign {
   schools: {
     name: string;
   } | null;
-}
-
-// Função para gerar o hash do conteúdo do histórico
-async function generateTranscriptHash(data: any): Promise<string> {
-  const dataString = JSON.stringify(data);
-  const textEncoder = new TextEncoder();
-  const dataBuffer = textEncoder.encode(dataString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
 }
 
 export default function SignTranscripts() {
