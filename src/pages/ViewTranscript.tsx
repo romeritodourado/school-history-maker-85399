@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
+import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher' | 'vice_school_admin';
 
 interface StudentData {
   id: string;
@@ -85,6 +86,7 @@ interface HistoricalSignerData { // NOVO: Interface para dados históricos do si
 const ViewTranscript = () => {
   const { id: studentId } = useParams(); // Renomeado para studentId
   const { toast } = useToast();
+  const { role: currentUserRole, profile: currentUserProfile } = useAuth(); // Usar useAuth
   const [loading, setLoading] = useState(true);
   const [transcriptId, setTranscriptId] = useState<string | null>(null); // Novo estado para o ID do transcript
   const [transcriptStatus, setTranscriptStatus] = useState<string | null>(null); // NOVO: Status do histórico
@@ -268,6 +270,68 @@ const ViewTranscript = () => {
       });
     }
   };
+  
+  const handleRevertToDraft = async () => {
+    if (!transcriptId || !studentId) return;
+
+    if (!confirm('Tem certeza que deseja reverter este histórico para o status de rascunho? Isso removerá todas as assinaturas digitais e o histórico voltará para a fila de assinatura do Secretário(a).')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // 1. Fetch the current transcript data (the 'data' field)
+      const { data: currentTranscript, error: fetchError } = await supabase
+        .from('transcripts')
+        .select('data')
+        .eq('id', transcriptId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!currentTranscript?.data) throw new Error("Dados originais do histórico não encontrados.");
+
+      // 2. Update the transcript record
+      const { error: updateError } = await supabase
+        .from('transcripts')
+        .update({
+          status: 'pending_secretary_signature', // Reverte para o início do ciclo
+          document_hash: null, // Limpa o hash
+          signed_data: null, // Limpa os dados assinados
+          director_signature_id: null,
+          director_signed_at: null,
+          secretary_signature_id: null,
+          secretary_signed_at: null,
+          // Mantém o campo 'data' original
+        })
+        .eq('id', transcriptId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Sucesso",
+        description: "Histórico revertido para o status 'Pendente de Assinatura do Secretário(a)'.",
+      });
+      
+      // 3. Re-fetch data to update the view
+      await fetchTranscript();
+
+    } catch (error: any) {
+      toast({
+        title: "Erro ao reverter",
+        description: error.message || "Não foi possível reverter o histórico.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Determine if the current user has permission to revert
+  const canRevert = currentUserRole === 'super_admin' || 
+                    currentUserRole === 'municipal_secretary' || 
+                    (currentUserRole === 'network_manager' && currentUserProfile?.municipality_id === student?.schools?.municipality_id) ||
+                    (['school_admin', 'vice_school_admin'].includes(currentUserRole || '') && currentUserProfile?.school_id === student?.school_id);
 
   if (loading) {
     return (
@@ -300,6 +364,12 @@ const ViewTranscript = () => {
               <p className="text-muted-foreground">{student.full_name}</p>
             </div>
             <div className="flex gap-2">
+              {canRevert && (transcriptStatus === 'signed' || transcriptStatus === 'rejected') && (
+                <Button onClick={handleRevertToDraft} variant="destructive" size="sm">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reverter para Rascunho
+                </Button>
+              )}
               <Button onClick={handleExportPDF} variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Exportar PDF
