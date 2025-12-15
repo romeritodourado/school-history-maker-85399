@@ -8,7 +8,7 @@ import { TranscriptPreview } from "@/components/transcript/TranscriptPreview";
 import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 
-type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher' | 'vice_school_admin';
+type AppRole = 'super_admin' | 'municipal_secretary' | 'network_manager' | 'school_admin' | 'secretary' | 'teacher' | 'vice_school_admin' | 'administrative_assistant';
 
 interface StudentData {
   id: string;
@@ -101,7 +101,7 @@ const ViewTranscript = () => {
   const [historicalSecretaryData, setHistoricalSecretaryData] = useState<HistoricalSignerData | null>(null); // NOVO
   const [directorSignedAt, setDirectorSignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do diretor
   const [secretarySignedAt, setSecretarySignedAt] = useState<string | null>(null); // NOVO: Data e hora da assinatura do secretário
-  const [documentHash, setDocumentHash] = useState<string | null>(null); // NOVO: Hash do documento
+  const [documentHash, setDocumentHash] = useState<string | null>(documentHash); // NOVO: Hash do documento
 
   useEffect(() => {
     if (studentId) {
@@ -338,10 +338,12 @@ const ViewTranscript = () => {
   };
 
   // Determine if the current user has permission to revert
+  const schoolLevelRoles = ['school_admin', 'vice_school_admin', 'secretary', 'administrative_assistant'];
+  
   const canRevert = currentUserRole === 'super_admin' || 
                     currentUserRole === 'municipal_secretary' || 
                     (currentUserRole === 'network_manager' && currentUserProfile?.municipality_id === student?.schools?.municipality_id) ||
-                    (['school_admin', 'vice_school_admin'].includes(currentUserRole || '') && currentUserProfile?.school_id === student?.school_id);
+                    (schoolLevelRoles.includes(currentUserRole || '') && currentUserProfile?.school_id === student?.school_id);
 
   useEffect(() => {
     if (!loading && student) {
