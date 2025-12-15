@@ -55,6 +55,8 @@ const App = () => (
                   }
                 />
                 <Route path="/validar" element={<ValidateTranscript />} />
+                {/* Rota de correção de logout */}
+                <Route path="/logout-fix" element={<iframe src="/fix-auth.html" className="w-full h-screen border-none" title="Logout Fix" />} />
                 <Route
                   path="/"
                   element={

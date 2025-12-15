@@ -6,21 +6,20 @@
 <body>
   <h1>Limpando autenticação...</h1>
   <script>
-    // Limpa tudo relacionado ao Supabase
-    localStorage.removeItem('sb-access-token');
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('supabase.auth.refreshToken');
+    console.log('🧹 Limpando tokens Supabase no localStorage...');
     
-    // Limpa por padrão
+    // Limpa todos os tokens Supabase
     Object.keys(localStorage).forEach(key => {
-      if (key.includes('supabase') || key.includes('sb-')) {
+      if (key.startsWith('sb-') || key.includes('supabase.auth')) {
         localStorage.removeItem(key);
+        console.log(`Removido: ${key}`);
       }
     });
     
     sessionStorage.clear();
+    console.log('🧹 sessionStorage limpo!');
     
-    console.log('🧹 Autenticação limpa! Redirecionando...');
+    console.log('🔄 Redirecionando para o início...');
     setTimeout(() => {
       window.location.href = '/';
     }, 1000);

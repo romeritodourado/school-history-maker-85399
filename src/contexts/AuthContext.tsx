@@ -196,6 +196,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
+      
+      // Limpeza explícita do localStorage para garantir que não haja tokens antigos
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase.auth')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
       // Recarregar a página para reinicializar tudo
       window.location.reload();
     } finally {
