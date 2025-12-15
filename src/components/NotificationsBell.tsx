@@ -101,21 +101,24 @@ export function NotificationsBell() {
   const handleNotificationClick = async (notification: Notification) => {
     // 1. Marcar como lido no banco de dados
     if (!notification.read) {
+      console.log(`[NotificationsBell] Attempting to mark notification ${notification.id} as read.`);
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
         .eq('id', notification.id);
         
       if (error) {
-        console.error("Error marking notification as read:", error);
+        console.error("[NotificationsBell] Error marking notification as read:", error);
         toast({
           title: 'Erro',
-          description: 'Não foi possível marcar a notificação como lida.',
+          description: 'Não foi possível marcar a notificação como lida. Verifique o console para detalhes.',
           variant: 'destructive',
         });
         // Se falhar, não atualiza o estado local
         return;
       }
+      
+      console.log(`[NotificationsBell] Notification ${notification.id} marked as read successfully in DB.`);
       
       // 2. Atualizar estado local imediatamente
       setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
