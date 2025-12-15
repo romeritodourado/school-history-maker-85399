@@ -126,30 +126,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(currentProfile);
           setRole(currentProfile?.role || null);
           
+          setIsLoading(false); // Definir isLoading como false primeiro
           setIsInitialized(true);
           
-          // Pequeno delay para garantir propagação do estado
-          setTimeout(() => {
-            if (mountedRef.current) {
-              setIsLoading(false);
-              console.log("🎉 AUTENTICAÇÃO INICIALIZADA!", {
-                user: currentUser?.id || 'null',
-                profile: currentProfile?.id || 'null',
-                isLoading: false,
-                isInitialized: true
-              });
-            }
-          }, 50);
+          console.log("🎉 AUTENTICAÇÃO INICIALIZADA!", {
+            user: currentUser?.id || 'null',
+            profile: currentProfile?.id || 'null',
+            isLoading: false,
+            isInitialized: true
+          });
         }
       }
     };
     
-    // Delay estratégico para evitar race conditions
-    const timer = setTimeout(() => {
-      initialize();
-    }, 100);
+    // Removendo o setTimeout para evitar problemas de timing
+    initialize();
     
-    return () => clearTimeout(timer);
   }, []);
 
   // ================== OPERAÇÕES =====================
