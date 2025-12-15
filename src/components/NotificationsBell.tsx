@@ -30,7 +30,10 @@ export function NotificationsBell() {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
-    if (!user?.id || !profile?.school_id || (role !== 'school_admin' && role !== 'secretary')) {
+    // Apenas usuários de nível escolar (Diretor, Vice-Diretor, Secretário) devem ver notificações de assinatura
+    const isSchoolLevelUser = ['school_admin', 'vice_school_admin', 'secretary'].includes(role || '');
+    
+    if (!user?.id || !profile?.school_id || !isSchoolLevelUser) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
@@ -96,22 +99,39 @@ export function NotificationsBell() {
   }, [user?.id, profile?.school_id, role, toast]);
 
   const handleNotificationClick = async (notification: Notification) => {
+    // 1. Marcar como lido no banco de dados
     if (!notification.read) {
-      await supabase
+      const { error } = await supabase
         .from('notifications')
         .update({ read: true })
         .eq('id', notification.id);
-      // Update local state immediately
+        
+      if (error) {
+        console.error("Error marking notification as read:", error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível marcar a notificação como lida.',
+          variant: 'destructive',
+        });
+        // Se falhar, não atualiza o estado local
+        return;
+      }
+      
+      // 2. Atualizar estado local imediatamente
       setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
-    if (notification.type === 'transcript_pending_signature') {
+    
+    // 3. Redirecionar
+    if (notification.type === 'transcript_pending_signature' || notification.type === 'transcript_rejected') {
+      // Redireciona para a página de assinatura, passando o schoolId
       navigate(`/assinar-historicos?schoolId=${profile?.school_id}`);
     }
   };
 
-  // Only show the bell if the user is a school_admin or secretary
-  if (role !== 'school_admin' && role !== 'secretary') {
+  // Apenas mostrar o sino se o usuário for de nível escolar (Diretor, Vice-Diretor, Secretário)
+  const isSchoolLevelUser = ['school_admin', 'vice_school_admin', 'secretary'].includes(role || '');
+  if (!isSchoolLevelUser) {
     return null;
   }
 
