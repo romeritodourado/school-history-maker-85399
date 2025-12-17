@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import correctLogo from "/correct-logo.png"; // Importar o logo principal
 import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
-import QRCode from "qrcode"; // Importar a biblioteca qrcode
+import * as QRCode from "qrcode"; // Importar a biblioteca qrcode como namespace
 import { useEffect, useState } from "react"; // Importar useEffect e useState
 
 // Função utilitária para mascarar o CPF

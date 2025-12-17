@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import QRCode from "qrcode"; // Importar a biblioteca qrcode
+import * as QRCode from "qrcode"; // Importar a biblioteca qrcode como namespace
 import correctSignatureLogo from "@/assets/correct-signature-logo.png"; // Importar o novo logo de assinatura
 
 // Função utilitária para mascarar o CPF
